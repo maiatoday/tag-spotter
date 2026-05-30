@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -58,7 +59,7 @@ import java.io.File
 import java.util.UUID
 
 @Composable
-fun CameraScreen(
+fun CaptureScreen(
     onPhotoCaptured: (String, Double, Double, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -70,6 +71,8 @@ fun CameraScreen(
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         )
     }
+
+    var isLoading by remember { mutableStateOf(false) }
 
     // Permission Launcher for GPS Location
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -101,6 +104,7 @@ fun CameraScreen(
             val uri = tempPhotoUri
             val file = tempPhotoFile
             if (uri != null && file != null) {
+                isLoading = true
                 scope.launch(Dispatchers.Default) {
                     var lat = 0.0
                     var lng = 0.0
@@ -121,10 +125,12 @@ fun CameraScreen(
 
                     if (optimizedPath != null) {
                         withContext(Dispatchers.Main) {
+                            isLoading = false
                             onPhotoCaptured(optimizedPath, lat, lng, isFallback)
                         }
                     } else {
                         withContext(Dispatchers.Main) {
+                            isLoading = false
                             Toast.makeText(context, "Error saving captured photo.", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -138,6 +144,7 @@ fun CameraScreen(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
+            isLoading = true
             scope.launch(Dispatchers.Default) {
                 val exifLoc = ExifLocationExtractor.getPhotoLocation(context, uri)
                 var lat = 0.0
@@ -160,10 +167,12 @@ fun CameraScreen(
                 val optimizedPath = ImageOptimizer.optimizeAndSaveImage(context, uri)
                 if (optimizedPath != null) {
                     withContext(Dispatchers.Main) {
+                        isLoading = false
                         onPhotoCaptured(optimizedPath, lat, lng, isFallback)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
+                        isLoading = false
                         Toast.makeText(context, "Error processing gallery image.", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -436,6 +445,35 @@ fun CameraScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        enabled = true,
+                        onClick = {} // intercept clicks
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Processing image...",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

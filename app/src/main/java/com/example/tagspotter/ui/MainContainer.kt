@@ -29,7 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import com.example.tagspotter.ui.screens.CameraScreen
+import com.example.tagspotter.ui.screens.CaptureScreen
 import com.example.tagspotter.ui.screens.GalleryScreen
 import com.example.tagspotter.ui.screens.MapScreen
 import com.example.tagspotter.ui.screens.SettingsScreen
@@ -232,7 +232,7 @@ private fun TabContent(
             onCategoryChange = onCategoryChange,
             onSpotClick = onSpotClick
         )
-        Tab.Camera -> CameraScreen(
+        Tab.Camera -> CaptureScreen(
             onPhotoCaptured = onPhotoCaptured
         )
         Tab.Settings -> SettingsScreen()

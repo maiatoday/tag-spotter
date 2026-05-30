@@ -31,8 +31,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditLocationAlt
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -160,12 +164,31 @@ fun TaggingScreen(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("New Urban Spot") },
+                navigationIcon = {
+                    IconButton(onClick = onCancelClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.primary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp)
+        ) {
         if (isLandscape) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -179,14 +202,6 @@ fun TaggingScreen(
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        // Screen Title
-                        Text(
-                            text = "New Urban Spot",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-
                         // Image Preview (Coil)
                         Box(
                             modifier = Modifier
@@ -332,14 +347,6 @@ fun TaggingScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 72.dp)
             ) {
-                // Screen Title
-                Text(
-                    text = "New Urban Spot",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
                 // Image Preview (Coil)
                 Box(
                     modifier = Modifier
@@ -472,6 +479,7 @@ fun TaggingScreen(
             }
         }
     }
+}
 
     // Map Picker Dialog
     if (isMapPickerDialogVisible) {
