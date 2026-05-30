@@ -97,6 +97,7 @@ import com.example.tagspotter.utils.ImageOptimizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.util.Log
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -115,10 +116,12 @@ fun DetailScreen(
     val scope = rememberCoroutineScope()
 
     // Fetch the spot detail flow
-    val spotDetails by repository.getSpotById(spotId).collectAsState(initial = null)
+    val spotDetailsFlow = remember(spotId) { repository.getSpotById(spotId) }
+    val spotDetails by spotDetailsFlow.collectAsState(initial = null)
     var noteInput by remember { mutableStateOf("") }
     var zoomImagePath by remember { mutableStateOf<String?>(null) }
-    val defaultPhotographer by app.settingsRepository.photographerName.collectAsState(initial = "")
+    val defaultPhotographerFlow = remember { app.settingsRepository.photographerName }
+    val defaultPhotographer by defaultPhotographerFlow.collectAsState(initial = "")
 
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
 
@@ -184,6 +187,7 @@ fun DetailScreen(
             }
             return@Scaffold
         }
+        Log.d("TagSpotter", "details emitted: id=${details.spot.id}, artists=${details.spot.artists}")
 
         val isErased = details.spot.status == "erased"
         val sortedImages = details.images.sortedBy { it.timestamp }
@@ -231,6 +235,7 @@ fun DetailScreen(
                             }
                         },
                         onUpdateArtists = { list ->
+                            Log.d("TagSpotter", "onUpdateArtists (landscape) called with: $list")
                             scope.launch(Dispatchers.IO) {
                                 repository.updateSpotArtists(details.spot.id, list)
                             }
@@ -296,6 +301,7 @@ fun DetailScreen(
                         }
                     },
                     onUpdateArtists = { list ->
+                        Log.d("TagSpotter", "onUpdateArtists (portrait) called with: $list")
                         scope.launch(Dispatchers.IO) {
                             repository.updateSpotArtists(details.spot.id, list)
                         }
@@ -749,7 +755,14 @@ private fun DetailInfoCard(
                         Row {
                             IconButton(
                                 onClick = {
-                                    onUpdateArtists(localArtistsList.toList())
+                                    val cleaned = artistEditInput.trim()
+                                    val finalArtists = if (cleaned.isNotEmpty() && !localArtistsList.contains(cleaned)) {
+                                        localArtistsList.toList() + cleaned
+                                    } else {
+                                        localArtistsList.toList()
+                                    }
+                                    onUpdateArtists(finalArtists)
+                                    artistEditInput = ""
                                     isEditingArtists = false
                                 },
                                 modifier = Modifier.size(28.dp)

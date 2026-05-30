@@ -116,7 +116,8 @@ fun TaggingScreen(
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
     var showCategoryMenu by remember { mutableStateOf(false) }
 
-    val defaultPhotographer by app.settingsRepository.photographerName.collectAsState(initial = "")
+    val defaultPhotographerFlow = remember { app.settingsRepository.photographerName }
+    val defaultPhotographer by defaultPhotographerFlow.collectAsState(initial = "")
     var photographer by remember { mutableStateOf("") }
     var isFirstLoad by remember { mutableStateOf(true) }
     if (isFirstLoad && defaultPhotographer.isNotEmpty()) {
@@ -127,8 +128,8 @@ fun TaggingScreen(
     val predefinedTags = remember { setOf("mural", "stencil", "throwup", "pasteup", "sticker") }
     
     // Collect dynamic custom tags from repository
-    val recentCustomTags by repository.getRecentCustomTags(predefinedTags)
-        .collectAsState(initial = emptyList())
+    val recentCustomTagsFlow = remember { repository.getRecentCustomTags(predefinedTags) }
+    val recentCustomTags by recentCustomTagsFlow.collectAsState(initial = emptyList())
 
     val categories = listOf("graffiti", "sculpture", "tree", "architecture", "public_place")
 
