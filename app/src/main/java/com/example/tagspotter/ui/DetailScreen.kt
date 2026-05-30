@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -62,6 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,9 +77,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.Marker
 import com.example.tagspotter.ui.screens.ZoomableImageOverlay
 import com.example.tagspotter.TagSpotterApplication
 import com.example.tagspotter.data.SpotImage
@@ -110,6 +119,7 @@ fun DetailScreen(
     var isEditingArtists by remember { mutableStateOf(false) }
     var artistEditInput by remember { mutableStateOf("") }
     val localArtistsList = remember { mutableStateListOf<String>() }
+    var isMapPickerDialogVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(spotDetails, isEditingArtists) {
         if (isEditingArtists && spotDetails != null) {
@@ -324,20 +334,35 @@ fun DetailScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Map,
-                            contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = String.format("GPS: %.6f, %.6f", details.spot.latitude, details.spot.longitude),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.LightGray
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Map,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = String.format("GPS: %.6f, %.6f", details.spot.latitude, details.spot.longitude),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.LightGray
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { isMapPickerDialogVisible = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit location",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
 
                     // Artists Section
@@ -713,6 +738,132 @@ fun DetailScreen(
                 imagePath = zoomImagePath!!,
                 onClose = { zoomImagePath = null }
             )
+        }
+    }
+
+    if (isMapPickerDialogVisible) {
+        Dialog(
+            onDismissRequest = { isMapPickerDialogVisible = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.8f))
+            ) {
+                var tempLat by remember { mutableDoubleStateOf(spotDetails?.spot?.latitude ?: 0.0) }
+                var tempLng by remember { mutableDoubleStateOf(spotDetails?.spot?.longitude ?: 0.0) }
+                var mapInstance: MapView? by remember { mutableStateOf(null) }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .fillMaxHeight(0.85f)
+                        .align(Alignment.Center)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Update Coordinates",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Text(
+                        text = "Tap on the map to move the tag pin.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    // OpenStreetMap AndroidView
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                MapView(ctx).apply {
+                                    setTileSource(TileSourceFactory.MAPNIK)
+                                    setMultiTouchControls(true)
+                                    controller.setZoom(17.0)
+                                    controller.setCenter(GeoPoint(tempLat, tempLng))
+
+                                    // Add marker overlay
+                                    val marker = Marker(this).apply {
+                                        position = GeoPoint(tempLat, tempLng)
+                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                        title = "Graffiti Spot"
+                                    }
+                                    overlays.add(marker)
+                                    
+                                    // Tap to move marker
+                                    val receiver = object : MapEventsReceiver {
+                                        override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
+                                            if (p != null) {
+                                                tempLat = p.latitude
+                                                tempLng = p.longitude
+                                                marker.position = p
+                                                invalidate()
+                                            }
+                                            return true
+                                        }
+
+                                        override fun longPressHelper(p: GeoPoint?): Boolean = false
+                                    }
+                                    overlays.add(MapEventsOverlay(receiver))
+                                    mapInstance = this
+                                }
+                            },
+                            update = { map ->
+                                map.controller.setCenter(GeoPoint(tempLat, tempLng))
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Button(
+                            onClick = { isMapPickerDialogVisible = false },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.DarkGray
+                             )
+                        ) {
+                            Text("Cancel")
+                        }
+
+                        Button(
+                            onClick = {
+                                scope.launch(Dispatchers.IO) {
+                                    repository.updateSpotLocation(spotId, tempLat, tempLng)
+                                    withContext(Dispatchers.Main) {
+                                        isMapPickerDialogVisible = false
+                                        Toast.makeText(context, "Location Updated!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1.5f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.background
+                            )
+                        ) {
+                            Text("Confirm Location")
+                        }
+                    }
+                }
+            }
         }
     }
 }

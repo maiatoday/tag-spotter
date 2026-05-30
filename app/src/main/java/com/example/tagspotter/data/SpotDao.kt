@@ -36,6 +36,9 @@ interface SpotDao {
     @Query("UPDATE spots SET artists = :artists WHERE id = :spotId")
     suspend fun updateSpotArtists(spotId: Long, artists: List<String>)
 
+    @Query("UPDATE spots SET latitude = :latitude, longitude = :longitude WHERE id = :spotId")
+    suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double)
+
     @Transaction
     @Query("SELECT * FROM spots WHERE id = :id")
     fun getSpotDetails(id: Long): Flow<SpotDetails?>
