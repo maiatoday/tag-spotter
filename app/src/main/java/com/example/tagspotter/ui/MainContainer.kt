@@ -101,6 +101,7 @@ fun MainContainer(
                 )
                 Tab.Map -> MapScreen(
                     selectedCategory = currentCategory,
+                    onCategoryChange = { currentCategory = it },
                     onSpotClick = onSpotClick
                 )
                 Tab.Camera -> CameraScreen(

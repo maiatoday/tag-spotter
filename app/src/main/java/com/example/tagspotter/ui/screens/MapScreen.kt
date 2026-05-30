@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -69,6 +71,7 @@ import java.io.File
 @Composable
 fun MapScreen(
     selectedCategory: String,
+    onCategoryChange: (String) -> Unit,
     onSpotClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -155,6 +158,60 @@ fun MapScreen(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // Floating Category Filter Overlay Row
+        LazyRow(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp, start = 12.dp, end = 12.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = Color.Gray.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
+            items(categories) { category ->
+                val isSelected = selectedCategory == category
+                val categoryColor = when (category) {
+                    "All" -> MaterialTheme.colorScheme.secondary
+                    "graffiti" -> MaterialTheme.colorScheme.tertiary
+                    "sculpture" -> MaterialTheme.colorScheme.secondary
+                    "tree" -> MaterialTheme.colorScheme.primary
+                    "architecture" -> Color(0xFFBF5AF2)
+                    "public_place" -> Color(0xFFFF9F0A)
+                    else -> MaterialTheme.colorScheme.primary
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = if (isSelected) categoryColor.copy(alpha = 0.15f) else Color.Transparent,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = if (isSelected) categoryColor else Color.DarkGray,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .clickable { onCategoryChange(category) }
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = category.replace("_", " ").capitalize(),
+                        color = if (isSelected) categoryColor else Color.LightGray,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
 
         // Overlay Slide-up card for Selected Pin details
         AnimatedVisibility(
