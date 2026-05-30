@@ -240,6 +240,11 @@ fun DetailScreen(
                                 repository.updateSpotPhotographer(details.spot.id, name)
                             }
                         },
+                        onUpdateDescription = { desc ->
+                            scope.launch(Dispatchers.IO) {
+                                repository.updateSpotDescription(details.spot.id, desc)
+                            }
+                        },
                         onMapPickerClick = { isMapPickerDialogVisible = true }
                     )
 
@@ -298,6 +303,11 @@ fun DetailScreen(
                     onUpdatePhotographer = { name ->
                         scope.launch(Dispatchers.IO) {
                             repository.updateSpotPhotographer(details.spot.id, name)
+                        }
+                    },
+                    onUpdateDescription = { desc ->
+                        scope.launch(Dispatchers.IO) {
+                            repository.updateSpotDescription(details.spot.id, desc)
                         }
                     },
                     onMapPickerClick = { isMapPickerDialogVisible = true }
@@ -578,6 +588,7 @@ private fun DetailInfoCard(
     onUpdateStatus: (String) -> Unit,
     onUpdateArtists: (List<String>) -> Unit,
     onUpdatePhotographer: (String) -> Unit,
+    onUpdateDescription: (String) -> Unit,
     onMapPickerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -590,6 +601,9 @@ private fun DetailInfoCard(
     var isEditingPhotographer by remember { mutableStateOf(false) }
     var photographerEditInput by remember { mutableStateOf("") }
 
+    var isEditingDescription by remember { mutableStateOf(false) }
+    var descriptionEditInput by remember { mutableStateOf("") }
+
     LaunchedEffect(isEditingArtists) {
         if (isEditingArtists) {
             localArtistsList.clear()
@@ -600,6 +614,12 @@ private fun DetailInfoCard(
     LaunchedEffect(isEditingPhotographer) {
         if (isEditingPhotographer) {
             photographerEditInput = details.spot.photographer
+        }
+    }
+
+    LaunchedEffect(isEditingDescription) {
+        if (isEditingDescription) {
+            descriptionEditInput = details.spot.description
         }
     }
 
@@ -1016,17 +1036,96 @@ private fun DetailInfoCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Original Description",
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = details.spot.description.ifEmpty { "No description given." },
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            if (isEditingDescription) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Edit Description",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    onUpdateDescription(descriptionEditInput.trim())
+                                    isEditingDescription = false
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save description",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { isEditingDescription = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel edit",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = descriptionEditInput,
+                        onValueChange = { descriptionEditInput = it },
+                        label = { Text("Description") },
+                        placeholder = { Text("e.g. Artist info, style, notes...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 4,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedLabelColor = MaterialTheme.colorScheme.secondary
+                        )
+                    )
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Description",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.Gray
+                        )
+                        IconButton(
+                            onClick = { isEditingDescription = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit description",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = details.spot.description.ifEmpty { "No description given." },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
 
             if (details.spot.tags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
