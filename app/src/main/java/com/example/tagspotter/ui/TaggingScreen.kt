@@ -110,6 +110,14 @@ fun TaggingScreen(
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
     var showCategoryMenu by remember { mutableStateOf(false) }
 
+    val defaultPhotographer by app.settingsRepository.photographerName.collectAsState(initial = "")
+    var photographer by remember { mutableStateOf("") }
+    var isFirstLoad by remember { mutableStateOf(true) }
+    if (isFirstLoad && defaultPhotographer.isNotEmpty()) {
+        photographer = defaultPhotographer
+        isFirstLoad = false
+    }
+
     val predefinedTags = remember { setOf("mural", "stencil", "throwup", "pasteup", "sticker") }
     
     // Collect dynamic custom tags from repository
@@ -270,6 +278,23 @@ fun TaggingScreen(
                 placeholder = { Text("e.g. Artist info, style, notes...") },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = Color.Gray,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Photographer Input
+            OutlinedTextField(
+                value = photographer,
+                onValueChange = { photographer = it },
+                label = { Text("Photographer") },
+                placeholder = { Text("e.g. Jane Doe") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Gray,
@@ -587,7 +612,8 @@ fun TaggingScreen(
                             tags = selectedTags.toList(),
                             category = selectedCategory,
                             status = "active",
-                            artists = selectedArtists.toList()
+                            artists = selectedArtists.toList(),
+                            photographer = photographer.trim()
                         )
                         repository.saveSpot(spot, imagePath)
                         withContext(Dispatchers.Main) {

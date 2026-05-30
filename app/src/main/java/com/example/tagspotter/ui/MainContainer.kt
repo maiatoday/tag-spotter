@@ -23,11 +23,14 @@ import androidx.compose.ui.graphics.Color
 import com.example.tagspotter.ui.screens.CameraScreen
 import com.example.tagspotter.ui.screens.GalleryScreen
 import com.example.tagspotter.ui.screens.MapScreen
+import com.example.tagspotter.ui.screens.SettingsScreen
+import androidx.compose.material.icons.filled.Settings
 
 enum class Tab {
     Gallery,
     Map,
-    Camera
+    Camera,
+    Settings
 }
 
 @Composable
@@ -85,6 +88,19 @@ fun MainContainer(
                         indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
                     )
                 )
+                NavigationBarItem(
+                    selected = selectedTab == Tab.Settings,
+                    onClick = { selectedTab = Tab.Settings },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                    label = { Text("Settings") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = Color.Gray,
+                        selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                        unselectedTextColor = Color.Gray,
+                        indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                    )
+                )
             }
         }
     ) { innerPadding ->
@@ -109,6 +125,7 @@ fun MainContainer(
                         onPhotoCaptured(path, lat, lng, isFallback, currentCategory)
                     }
                 )
+                Tab.Settings -> SettingsScreen()
             }
         }
     }

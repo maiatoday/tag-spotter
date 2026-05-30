@@ -115,16 +115,26 @@ fun DetailScreen(
     val spotDetails by repository.getSpotById(spotId).collectAsState(initial = null)
     var noteInput by remember { mutableStateOf("") }
     var zoomImagePath by remember { mutableStateOf<String?>(null) }
+    val defaultPhotographer by app.settingsRepository.photographerName.collectAsState(initial = "")
 
     var isEditingArtists by remember { mutableStateOf(false) }
     var artistEditInput by remember { mutableStateOf("") }
     val localArtistsList = remember { mutableStateListOf<String>() }
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
 
+    var isEditingPhotographer by remember { mutableStateOf(false) }
+    var photographerEditInput by remember { mutableStateOf("") }
+
     LaunchedEffect(spotDetails, isEditingArtists) {
         if (isEditingArtists && spotDetails != null) {
             localArtistsList.clear()
             localArtistsList.addAll(spotDetails!!.spot.artists)
+        }
+    }
+
+    LaunchedEffect(spotDetails, isEditingPhotographer) {
+        if (isEditingPhotographer && spotDetails != null) {
+            photographerEditInput = spotDetails!!.spot.photographer
         }
     }
 
@@ -560,6 +570,122 @@ fun DetailScreen(
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Photographer Section
+                    Spacer(modifier = Modifier.height(16.dp))
+                    if (isEditingPhotographer) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Edit Photographer",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Row {
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch(Dispatchers.IO) {
+                                                repository.updateSpotPhotographer(spotId, photographerEditInput.trim())
+                                                withContext(Dispatchers.Main) {
+                                                    isEditingPhotographer = false
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Save photographer",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { isEditingPhotographer = false },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Cancel edit",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = photographerEditInput,
+                                onValueChange = { photographerEditInput = it },
+                                label = { Text("Photographer Name") },
+                                placeholder = { Text("e.g. Jane Doe") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                                    unfocusedBorderColor = Color.Gray,
+                                    focusedLabelColor = MaterialTheme.colorScheme.secondary
+                                )
+                            )
+
+                            if (defaultPhotographer.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    androidx.compose.material3.TextButton(
+                                        onClick = { photographerEditInput = defaultPhotographer },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "Use Profile Name ($defaultPhotographer)",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Photographer",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = Color.Gray
+                                )
+                                IconButton(
+                                    onClick = { isEditingPhotographer = true },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit photographer",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = details.spot.photographer.ifEmpty { "Unknown Photographer" },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
 

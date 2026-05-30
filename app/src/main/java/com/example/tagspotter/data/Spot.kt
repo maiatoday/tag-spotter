@@ -17,7 +17,8 @@ data class Spot(
     val tags: List<String>,
     val category: String, // e.g. "graffiti", "sculpture", "tree", "architecture"
     val status: String, // "active" or "erased"
-    val artists: List<String> = emptyList()
+    val artists: List<String> = emptyList(),
+    val photographer: String = ""
 )
 
 @Entity(

@@ -13,6 +13,7 @@ interface SpotRepository {
     suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long
     suspend fun updateSpotStatus(spotId: Long, status: String)
     suspend fun updateSpotArtists(spotId: Long, artists: List<String>)
+    suspend fun updateSpotPhotographer(spotId: Long, photographer: String)
     suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double)
     suspend fun deleteSpot(spotDetails: SpotDetails)
     fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>>
@@ -73,6 +74,10 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
 
     override suspend fun updateSpotArtists(spotId: Long, artists: List<String>) {
         spotDao.updateSpotArtists(spotId, artists)
+    }
+
+    override suspend fun updateSpotPhotographer(spotId: Long, photographer: String) {
+        spotDao.updateSpotPhotographer(spotId, photographer)
     }
 
     override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {
