@@ -109,7 +109,7 @@ fun GalleryScreen(
             EmptyGalleryState(category = selectedCategory)
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f),

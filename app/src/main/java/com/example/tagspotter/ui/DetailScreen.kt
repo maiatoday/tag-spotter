@@ -1,5 +1,6 @@
 package com.example.tagspotter.ui
 
+import android.content.res.Configuration
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -89,6 +91,7 @@ import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import com.example.tagspotter.ui.screens.ZoomableImageOverlay
 import com.example.tagspotter.TagSpotterApplication
+import com.example.tagspotter.data.SpotDetails
 import com.example.tagspotter.data.SpotImage
 import com.example.tagspotter.utils.ImageOptimizer
 import kotlinx.coroutines.Dispatchers
@@ -117,26 +120,7 @@ fun DetailScreen(
     var zoomImagePath by remember { mutableStateOf<String?>(null) }
     val defaultPhotographer by app.settingsRepository.photographerName.collectAsState(initial = "")
 
-    var isEditingArtists by remember { mutableStateOf(false) }
-    var artistEditInput by remember { mutableStateOf("") }
-    val localArtistsList = remember { mutableStateListOf<String>() }
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
-
-    var isEditingPhotographer by remember { mutableStateOf(false) }
-    var photographerEditInput by remember { mutableStateOf("") }
-
-    LaunchedEffect(spotDetails, isEditingArtists) {
-        if (isEditingArtists && spotDetails != null) {
-            localArtistsList.clear()
-            localArtistsList.addAll(spotDetails!!.spot.artists)
-        }
-    }
-
-    LaunchedEffect(spotDetails, isEditingPhotographer) {
-        if (isEditingPhotographer && spotDetails != null) {
-            photographerEditInput = spotDetails!!.spot.photographer
-        }
-    }
 
     // Launcher to add another image to this spot
     val pickMedia = rememberLauncherForActivityResult(
@@ -205,649 +189,138 @@ fun DetailScreen(
         val sortedImages = details.images.sortedBy { it.timestamp }
         val sortedNotes = details.notes.sortedBy { it.timestamp }
 
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            // Photo Timeline Carousel Header
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+        if (isLandscape) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Photo Timeline",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-
-                IconButton(
-                    onClick = {
-                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AddPhotoAlternate,
-                        contentDescription = "Add image",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Horizontally Scrollable Timeline Images
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(end = 64.dp),
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(sortedImages, key = { it.id }) { image ->
-                    SpotTimelineCard(
-                        image = image,
-                        onClick = { zoomImagePath = image.imagePath }
+                // Left Pane: Photo Timeline
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    DetailPhotoTimeline(
+                        sortedImages = sortedImages,
+                        onAddPhotoClick = {
+                            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        onImageClick = { zoomImagePath = it }
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Info Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Category & Status
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    color = when (details.spot.category) {
-                                        "graffiti" -> MaterialTheme.colorScheme.tertiary
-                                        "sculpture" -> MaterialTheme.colorScheme.secondary
-                                        "tree" -> MaterialTheme.colorScheme.primary
-                                        "architecture" -> Color(0xFFBF5AF2)
-                                        "public_place" -> Color(0xFFFF9F0A)
-                                        else -> Color.DarkGray
-                                    },
-                                    shape = RoundedCornerShape(4.dp)
-                               )
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = details.spot.category.replace("_", " ").uppercase(),
-                                color = Color.Black,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        // Erased Status Toggle Switch
-                        Button(
-                            onClick = {
-                                val nextStatus = if (isErased) "active" else "erased"
-                                scope.launch(Dispatchers.IO) {
-                                    repository.updateSpotStatus(details.spot.id, nextStatus)
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                                contentColor = if (isErased) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.error
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text(if (isErased) "Mark Active" else "Mark as Erased")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Date & GPS
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.EditCalendar,
-                            contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        val sdf = SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault())
-                        Text(
-                            text = "Created: ${sdf.format(Date(details.spot.createdAt))}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.LightGray
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Map,
-                                contentDescription = null,
-                                tint = Color.Gray,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = String.format("GPS: %.6f, %.6f", details.spot.latitude, details.spot.longitude),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.LightGray
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { isMapPickerDialogVisible = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit location",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    // Artists Section
-                    Spacer(modifier = Modifier.height(16.dp))
-                    if (isEditingArtists) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Edit Artist(s) / Writer(s)",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Row {
-                                    IconButton(
-                                        onClick = {
-                                            scope.launch(Dispatchers.IO) {
-                                                repository.updateSpotArtists(spotId, localArtistsList.toList())
-                                                withContext(Dispatchers.Main) {
-                                                    isEditingArtists = false
-                                                }
-                                            }
-                                        },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Save artists",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    IconButton(
-                                        onClick = { isEditingArtists = false },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Cancel edit",
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
+                // Right Pane: Info Card and Notes Section
+                Column(
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    DetailInfoCard(
+                        details = details,
+                        defaultPhotographer = defaultPhotographer,
+                        onUpdateStatus = { nextStatus ->
+                            scope.launch(Dispatchers.IO) {
+                                repository.updateSpotStatus(details.spot.id, nextStatus)
                             }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = artistEditInput,
-                                    onValueChange = { artistEditInput = it },
-                                    label = { Text("Artist Name") },
-                                    placeholder = { Text("e.g. Banksy") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f),
-                                    keyboardOptions = KeyboardOptions(
-                                        imeAction = ImeAction.Done
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onDone = {
-                                            val cleaned = artistEditInput.trim()
-                                            if (cleaned.isNotEmpty()) {
-                                                if (!localArtistsList.contains(cleaned)) {
-                                                    localArtistsList.add(cleaned)
-                                                }
-                                                artistEditInput = ""
-                                            }
-                                        }
-                                    ),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                                        unfocusedBorderColor = Color.Gray,
-                                        focusedLabelColor = MaterialTheme.colorScheme.secondary
-                                    )
-                                )
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                IconButton(
-                                    onClick = {
-                                        val cleaned = artistEditInput.trim()
-                                        if (cleaned.isNotEmpty()) {
-                                            if (!localArtistsList.contains(cleaned)) {
-                                                localArtistsList.add(cleaned)
-                                            }
-                                            artistEditInput = ""
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Add artist",
-                                        tint = MaterialTheme.colorScheme.background
-                                    )
-                                }
+                        },
+                        onUpdateArtists = { list ->
+                            scope.launch(Dispatchers.IO) {
+                                repository.updateSpotArtists(details.spot.id, list)
                             }
-
-                            if (localArtistsList.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                FlowRow(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    localArtistsList.forEach { artist ->
-                                        Row(
-                                            modifier = Modifier
-                                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-                                                .border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = artist,
-                                                color = MaterialTheme.colorScheme.onBackground,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Icon(
-                                                imageVector = Icons.Default.Close,
-                                                contentDescription = "Remove artist",
-                                                tint = MaterialTheme.colorScheme.tertiary,
-                                                modifier = Modifier
-                                                    .size(14.dp)
-                                                    .clickable { localArtistsList.remove(artist) }
-                                            )
-                                        }
-                                    }
-                                }
+                        },
+                        onUpdatePhotographer = { name ->
+                            scope.launch(Dispatchers.IO) {
+                                repository.updateSpotPhotographer(details.spot.id, name)
                             }
-                        }
-                    } else {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Artist(s) / Writer(s)",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = Color.Gray
-                                )
-                                IconButton(
-                                    onClick = { isEditingArtists = true },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit artists",
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            if (details.spot.artists.isEmpty()) {
-                                Text(
-                                    text = "Unknown Artist",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.LightGray
-                                )
-                            } else {
-                                FlowRow(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    details.spot.artists.forEach { artist ->
-                                        Box(
-                                            modifier = Modifier
-                                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-                                                .border(1.5.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(16.dp))
-                                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(
-                                                text = artist,
-                                                color = MaterialTheme.colorScheme.onBackground,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Photographer Section
-                    Spacer(modifier = Modifier.height(16.dp))
-                    if (isEditingPhotographer) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Edit Photographer",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Row {
-                                    IconButton(
-                                        onClick = {
-                                            scope.launch(Dispatchers.IO) {
-                                                repository.updateSpotPhotographer(spotId, photographerEditInput.trim())
-                                                withContext(Dispatchers.Main) {
-                                                    isEditingPhotographer = false
-                                                }
-                                            }
-                                        },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Save photographer",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    IconButton(
-                                        onClick = { isEditingPhotographer = false },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Cancel edit",
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            OutlinedTextField(
-                                value = photographerEditInput,
-                                onValueChange = { photographerEditInput = it },
-                                label = { Text("Photographer Name") },
-                                placeholder = { Text("e.g. Jane Doe") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                                    unfocusedBorderColor = Color.Gray,
-                                    focusedLabelColor = MaterialTheme.colorScheme.secondary
-                                )
-                            )
-
-                            if (defaultPhotographer.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    androidx.compose.material3.TextButton(
-                                        onClick = { photographerEditInput = defaultPhotographer },
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "Use Profile Name ($defaultPhotographer)",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Photographer",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = Color.Gray
-                                )
-                                IconButton(
-                                    onClick = { isEditingPhotographer = true },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit photographer",
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = details.spot.photographer.ifEmpty { "Unknown Photographer" },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    // Description text
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Original Description",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = details.spot.description.ifEmpty { "No description given." },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
+                        },
+                        onMapPickerClick = { isMapPickerDialogVisible = true }
                     )
 
-                    // Display all tags
-                    if (details.spot.tags.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            details.spot.tags.forEach { tag ->
-                                Text(
-                                    text = "#$tag",
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Notes Timeline section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Notes,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Observations & Notes Log",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // List of chronological notes
-            if (sortedNotes.isEmpty()) {
-                Text(
-                    text = "No notes written at this spot yet.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            } else {
-                sortedNotes.forEach { note ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            val sdf = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault())
-                            Text(
-                                text = sdf.format(Date(note.timestamp)),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = note.noteText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Write Note Form
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = noteInput,
-                    onValueChange = { noteInput = it },
-                    label = { Text("Write a note at this spot...") },
-                    placeholder = { Text("e.g. Tag faded, style details...") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Send,
-                        capitalization = KeyboardCapitalization.Sentences
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
+                    DetailNotesSection(
+                        sortedNotes = sortedNotes,
+                        noteInput = noteInput,
+                        onNoteInputChange = { noteInput = it },
+                        onSendNote = {
                             val noteText = noteInput.trim()
                             if (noteText.isNotEmpty()) {
                                 scope.launch(Dispatchers.IO) {
-                                    repository.addNoteToSpot(spotId, noteText, System.currentTimeMillis())
+                                    repository.addNoteToSpot(details.spot.id, noteText, System.currentTimeMillis())
                                     withContext(Dispatchers.Main) {
                                         noteInput = ""
                                     }
                                 }
                             }
                         }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
                     )
+                }
+            }
+        } else {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                DetailPhotoTimeline(
+                    sortedImages = sortedImages,
+                    onAddPhotoClick = {
+                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onImageClick = { zoomImagePath = it }
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                IconButton(
-                    onClick = {
+                DetailInfoCard(
+                    details = details,
+                    defaultPhotographer = defaultPhotographer,
+                    onUpdateStatus = { nextStatus ->
+                        scope.launch(Dispatchers.IO) {
+                            repository.updateSpotStatus(details.spot.id, nextStatus)
+                        }
+                    },
+                    onUpdateArtists = { list ->
+                        scope.launch(Dispatchers.IO) {
+                            repository.updateSpotArtists(details.spot.id, list)
+                        }
+                    },
+                    onUpdatePhotographer = { name ->
+                        scope.launch(Dispatchers.IO) {
+                            repository.updateSpotPhotographer(details.spot.id, name)
+                        }
+                    },
+                    onMapPickerClick = { isMapPickerDialogVisible = true }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                DetailNotesSection(
+                    sortedNotes = sortedNotes,
+                    noteInput = noteInput,
+                    onNoteInputChange = { noteInput = it },
+                    onSendNote = {
                         val noteText = noteInput.trim()
                         if (noteText.isNotEmpty()) {
                             scope.launch(Dispatchers.IO) {
-                                repository.addNoteToSpot(spotId, noteText, System.currentTimeMillis())
+                                repository.addNoteToSpot(details.spot.id, noteText, System.currentTimeMillis())
                                 withContext(Dispatchers.Main) {
                                     noteInput = ""
                                 }
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = "Send note",
-                        tint = MaterialTheme.colorScheme.background
-                    )
-                }
+                    }
+                )
             }
         }
     }
@@ -1039,6 +512,649 @@ fun SpotTimelineCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.LightGray,
                     fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailPhotoTimeline(
+    sortedImages: List<SpotImage>,
+    onAddPhotoClick: () -> Unit,
+    onImageClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Photo Timeline",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            IconButton(
+                onClick = onAddPhotoClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AddPhotoAlternate,
+                    contentDescription = "Add image",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(end = 64.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(sortedImages, key = { it.id }) { image ->
+                SpotTimelineCard(
+                    image = image,
+                    onClick = { onImageClick(image.imagePath) }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DetailInfoCard(
+    details: SpotDetails,
+    defaultPhotographer: String,
+    onUpdateStatus: (String) -> Unit,
+    onUpdateArtists: (List<String>) -> Unit,
+    onUpdatePhotographer: (String) -> Unit,
+    onMapPickerClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isErased = details.spot.status == "erased"
+
+    var isEditingArtists by remember { mutableStateOf(false) }
+    var artistEditInput by remember { mutableStateOf("") }
+    val localArtistsList = remember { mutableStateListOf<String>() }
+
+    var isEditingPhotographer by remember { mutableStateOf(false) }
+    var photographerEditInput by remember { mutableStateOf("") }
+
+    LaunchedEffect(isEditingArtists) {
+        if (isEditingArtists) {
+            localArtistsList.clear()
+            localArtistsList.addAll(details.spot.artists)
+        }
+    }
+
+    LaunchedEffect(isEditingPhotographer) {
+        if (isEditingPhotographer) {
+            photographerEditInput = details.spot.photographer
+        }
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = when (details.spot.category) {
+                                "graffiti" -> MaterialTheme.colorScheme.tertiary
+                                "sculpture" -> MaterialTheme.colorScheme.secondary
+                                "tree" -> MaterialTheme.colorScheme.primary
+                                "architecture" -> Color(0xFFBF5AF2)
+                                "public_place" -> Color(0xFFFF9F0A)
+                                else -> Color.DarkGray
+                            },
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = details.spot.category.replace("_", " ").uppercase(),
+                        color = Color.Black,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        val nextStatus = if (isErased) "active" else "erased"
+                        onUpdateStatus(nextStatus)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                        contentColor = if (isErased) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.error
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(if (isErased) "Mark Active" else "Mark as Erased")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.EditCalendar,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                val sdf = SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault())
+                Text(
+                    text = "Created: ${sdf.format(Date(details.spot.createdAt))}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.LightGray
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Map,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = String.format("GPS: %.6f, %.6f", details.spot.latitude, details.spot.longitude),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.LightGray
+                    )
+                }
+
+                IconButton(
+                    onClick = onMapPickerClick,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit location",
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            if (isEditingArtists) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Edit Artist(s) / Writer(s)",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    onUpdateArtists(localArtistsList.toList())
+                                    isEditingArtists = false
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save artists",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { isEditingArtists = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel edit",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = artistEditInput,
+                            onValueChange = { artistEditInput = it },
+                            label = { Text("Artist Name") },
+                            placeholder = { Text("e.g. Banksy") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    val cleaned = artistEditInput.trim()
+                                    if (cleaned.isNotEmpty()) {
+                                        if (!localArtistsList.contains(cleaned)) {
+                                            localArtistsList.add(cleaned)
+                                        }
+                                        artistEditInput = ""
+                                    }
+                                }
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                                unfocusedBorderColor = Color.Gray,
+                                focusedLabelColor = MaterialTheme.colorScheme.secondary
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        IconButton(
+                            onClick = {
+                                val cleaned = artistEditInput.trim()
+                                if (cleaned.isNotEmpty()) {
+                                    if (!localArtistsList.contains(cleaned)) {
+                                        localArtistsList.add(cleaned)
+                                    }
+                                    artistEditInput = ""
+                                }
+                            },
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add artist",
+                                tint = MaterialTheme.colorScheme.background
+                            )
+                        }
+                    }
+
+                    if (localArtistsList.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            localArtistsList.forEach { artist ->
+                                Row(
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = artist,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove artist",
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clickable { localArtistsList.remove(artist) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Artist(s) / Writer(s)",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.Gray
+                        )
+                        IconButton(
+                            onClick = { isEditingArtists = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit artists",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (details.spot.artists.isEmpty()) {
+                        Text(
+                            text = "Unknown Artist",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.LightGray
+                        )
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            details.spot.artists.forEach { artist ->
+                                Box(
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                                        .border(1.5.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(16.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = artist,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            if (isEditingPhotographer) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Edit Photographer",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    onUpdatePhotographer(photographerEditInput.trim())
+                                    isEditingPhotographer = false
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save photographer",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { isEditingPhotographer = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel edit",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = photographerEditInput,
+                        onValueChange = { photographerEditInput = it },
+                        label = { Text("Photographer Name") },
+                        placeholder = { Text("e.g. Jane Doe") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedLabelColor = MaterialTheme.colorScheme.secondary
+                        )
+                    )
+
+                    if (defaultPhotographer.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { photographerEditInput = defaultPhotographer },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Use Profile Name ($defaultPhotographer)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Photographer",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.Gray
+                        )
+                        IconButton(
+                            onClick = { isEditingPhotographer = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit photographer",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = details.spot.photographer.ifEmpty { "Unknown Photographer" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Original Description",
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = details.spot.description.ifEmpty { "No description given." },
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            if (details.spot.tags.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    details.spot.tags.forEach { tag ->
+                        Text(
+                            text = "#$tag",
+                            color = MaterialTheme.colorScheme.secondary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailNotesSection(
+    sortedNotes: List<com.example.tagspotter.data.SpotNote>,
+    noteInput: String,
+    onNoteInputChange: (String) -> Unit,
+    onSendNote: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notes,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Observations & Notes Log",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (sortedNotes.isEmpty()) {
+            Text(
+                text = "No notes written at this spot yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            sortedNotes.forEach { note ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        val sdf = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault())
+                        Text(
+                            text = sdf.format(Date(note.timestamp)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = note.noteText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = noteInput,
+                onValueChange = onNoteInputChange,
+                label = { Text("Write a note...") },
+                placeholder = { Text("e.g. Tag faded, style details...") },
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Send,
+                    capitalization = KeyboardCapitalization.Sentences
+                ),
+                keyboardActions = KeyboardActions(
+                    onSend = { onSendNote() }
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = Color.Gray,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary
+                )
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(
+                onClick = onSendNote,
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Send note",
+                    tint = MaterialTheme.colorScheme.background
                 )
             }
         }

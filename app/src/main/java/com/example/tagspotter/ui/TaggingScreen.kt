@@ -1,5 +1,6 @@
 package com.example.tagspotter.ui
 
+import android.content.res.Configuration
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -126,509 +128,347 @@ fun TaggingScreen(
 
     val categories = listOf("graffiti", "sculpture", "tree", "architecture", "public_place")
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val onCancelClick = {
+        val file = File(imagePath)
+        if (file.exists()) {
+            file.delete()
+        }
+        onBack()
+    }
+
+    val onSaveClick: () -> Unit = {
+        scope.launch(Dispatchers.IO) {
+            val spot = Spot(
+                latitude = currentLat,
+                longitude = currentLng,
+                createdAt = System.currentTimeMillis(),
+                description = description.trim(),
+                tags = selectedTags.toList(),
+                category = selectedCategory,
+                status = "active",
+                artists = selectedArtists.toList(),
+                photographer = photographer.trim()
+            )
+            repository.saveSpot(spot, imagePath)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Spot Saved!", Toast.LENGTH_SHORT).show()
+                onBack()
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 72.dp)
-        ) {
-            // Screen Title
-            Text(
-                text = "New Urban Spot",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            // Image Preview (Coil)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                    .background(Color.DarkGray)
-            ) {
-                AsyncImage(
-                    model = File(imagePath),
-                    contentDescription = "Captured spot preview",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                // GPS Warning Badge
-                if (isFallback) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp)
-                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "GPS Signal Weak",
-                            color = MaterialTheme.colorScheme.tertiary,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Location Refinement
+        if (isLandscape) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Column {
-                    Text(
-                        text = "Location Coordinates",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = String.format("%.6f, %.6f", currentLat, currentLng),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = { isMapPickerDialogVisible = true },
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
-                        width = 1.dp
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.secondary
-                    )
+                // Left Column: Visuals, location and primary actions
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(Icons.Default.EditLocationAlt, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Refine")
-                }
-            }
+                    Column {
+                        // Screen Title
+                        Text(
+                            text = "New Urban Spot",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Category Selection Dropdown
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = selectedCategory.replace("_", " ").capitalize(),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Category") },
-                    leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
-                    trailingIcon = {
+                        // Image Preview (Coil)
                         Box(
                             modifier = Modifier
-                                .clickable { showCategoryMenu = !showCategoryMenu }
-                                .padding(8.dp)
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                                .background(Color.DarkGray)
                         ) {
-                            Text("▼", color = MaterialTheme.colorScheme.primary)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
-                    )
-                )
+                            AsyncImage(
+                                model = File(imagePath),
+                                contentDescription = "Captured spot preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
 
-                DropdownMenu(
-                    expanded = showCategoryMenu,
-                    onDismissRequest = { showCategoryMenu = false },
-                    modifier = Modifier.fillMaxWidth(0.9f)
-                ) {
-                    categories.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category.replace("_", " ").capitalize()) },
-                            onClick = {
-                                selectedCategory = category
-                                showCategoryMenu = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Description Input
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Description / Details") },
-                placeholder = { Text("e.g. Artist info, style, notes...") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 3,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Gray,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Photographer Input
-            OutlinedTextField(
-                value = photographer,
-                onValueChange = { photographer = it },
-                label = { Text("Photographer") },
-                placeholder = { Text("e.g. Jane Doe") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Gray,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Artists Input Section
-            Text(
-                text = "Artists / Writers",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = artistInput,
-                    onValueChange = { artistInput = it },
-                    label = { Text("Add Artist / Writer") },
-                    placeholder = { Text("e.g. Banksy, Retna, Cope2...") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            val cleaned = artistInput.trim()
-                            if (cleaned.isNotEmpty()) {
-                                if (!selectedArtists.contains(cleaned)) {
-                                    selectedArtists.add(cleaned)
+                            // GPS Warning Badge
+                            if (isFallback) {
+                                Row(
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(8.dp)
+                                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "GPS Signal Weak",
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
                                 }
-                                artistInput = ""
                             }
                         }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.tertiary,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = MaterialTheme.colorScheme.tertiary
-                    )
-                )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                IconButton(
-                    onClick = {
-                        val cleaned = artistInput.trim()
-                        if (cleaned.isNotEmpty()) {
-                            if (!selectedArtists.contains(cleaned)) {
-                                selectedArtists.add(cleaned)
-                            }
-                            artistInput = ""
-                        }
-                    },
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add artist",
-                        tint = MaterialTheme.colorScheme.background
-                    )
-                }
-            }
-
-            if (selectedArtists.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    selectedArtists.forEach { artist ->
+                        // Location Refinement
                         Row(
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-                                .border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = artist,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold
+                            Column {
+                                Text(
+                                    text = "Location Coordinates",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = String.format("%.6f, %.6f", currentLat, currentLng),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = { isMapPickerDialogVisible = true },
+                                border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Icon(Icons.Default.EditLocationAlt, contentDescription = null)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Refine")
+                            }
+                        }
+                    }
+
+                    // Save / Cancel actions row at the bottom of the left column
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Button(
+                            onClick = onCancelClick,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.DarkGray,
+                                contentColor = Color.White
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove artist",
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier
-                                    .size(14.dp)
-                                    .clickable { selectedArtists.remove(artist) }
+                        ) {
+                            Text("Cancel")
+                        }
+
+                        Button(
+                            onClick = onSaveClick,
+                            modifier = Modifier.weight(1.5f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.background
                             )
+                        ) {
+                            Text("Save Spot")
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Predefined Quick Tags
-            Text(
-                text = "Quick Select Tags",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                predefinedTags.forEach { tag ->
-                    val isSelected = selectedTags.contains(tag)
-                    InputChip(
-                        selected = isSelected,
-                        onClick = {
-                            if (isSelected) selectedTags.remove(tag) else selectedTags.add(tag)
-                        },
-                        label = { Text("#$tag") },
-                        colors = InputChipDefaults.inputChipColors(
-                            selectedLabelColor = MaterialTheme.colorScheme.background,
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            labelColor = Color.Gray,
-                            containerColor = Color.Transparent
-                        ),
-                        border = InputChipDefaults.inputChipBorder(
-                            enabled = true,
-                            selected = isSelected,
-                            borderColor = if (isSelected) Color.Transparent else Color.Gray,
-                            selectedBorderColor = Color.Transparent
-                        )
+                // Right Column: Form Inputs
+                Column(
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(end = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    FormFields(
+                        selectedCategory = selectedCategory,
+                        onCategoryChange = { selectedCategory = it },
+                        showCategoryMenu = showCategoryMenu,
+                        onShowCategoryMenuChange = { showCategoryMenu = it },
+                        categories = categories,
+                        description = description,
+                        onDescriptionChange = { description = it },
+                        photographer = photographer,
+                        onPhotographerChange = { photographer = it },
+                        artistInput = artistInput,
+                        onArtistInputChange = { artistInput = it },
+                        selectedArtists = selectedArtists,
+                        predefinedTags = predefinedTags,
+                        selectedTags = selectedTags,
+                        recentCustomTags = recentCustomTags,
+                        customTagInput = customTagInput,
+                        onCustomTagInputChange = { customTagInput = it }
                     )
                 }
             }
-
-            // Dynamic Recent Custom Tags
-            if (recentCustomTags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
+        } else {
+            // Portrait view
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 72.dp)
+            ) {
+                // Screen Title
                 Text(
-                    text = "Recent Custom Tags",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    text = "New Urban Spot",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    recentCustomTags.forEach { tag ->
-                        val isSelected = selectedTags.contains(tag)
-                        InputChip(
-                            selected = isSelected,
-                            onClick = {
-                                if (isSelected) selectedTags.remove(tag) else selectedTags.add(tag)
-                            },
-                            label = { Text("#$tag") },
-                            colors = InputChipDefaults.inputChipColors(
-                                selectedLabelColor = MaterialTheme.colorScheme.background,
-                                selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                                labelColor = Color.LightGray,
-                                containerColor = Color.Transparent
-                            ),
-                            border = InputChipDefaults.inputChipBorder(
-                                enabled = true,
-                                selected = isSelected,
-                                borderColor = if (isSelected) Color.Transparent else Color.DarkGray,
-                                selectedBorderColor = Color.Transparent
-                            )
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Add Custom Tags Input
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = customTagInput,
-                    onValueChange = { customTagInput = it.filter { char -> !char.isWhitespace() } },
-                    label = { Text("Add Custom Tag") },
-                    placeholder = { Text("e.g. stencil") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            val cleaned = customTagInput.trim().lowercase().removePrefix("#")
-                            if (cleaned.isNotEmpty()) {
-                                if (!selectedTags.contains(cleaned)) {
-                                    selectedTags.add(cleaned)
-                                }
-                                customTagInput = ""
-                            }
-                        }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedLabelColor = MaterialTheme.colorScheme.secondary
-                    )
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(
-                    onClick = {
-                        val cleaned = customTagInput.trim().lowercase().removePrefix("#")
-                        if (cleaned.isNotEmpty()) {
-                            if (!selectedTags.contains(cleaned)) {
-                                selectedTags.add(cleaned)
-                            }
-                            customTagInput = ""
-                        }
-                    },
+                // Image Preview (Coil)
+                Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                        .background(Color.DarkGray)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add custom tag",
-                        tint = MaterialTheme.colorScheme.background
+                    AsyncImage(
+                        model = File(imagePath),
+                        contentDescription = "Captured spot preview",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-                }
-            }
 
-            // Display current selected tags
-            if (selectedTags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    selectedTags.forEach { tag ->
+                    // GPS Warning Badge
+                    if (isFallback) {
                         Row(
                             modifier = Modifier
-                                .background(Color.DarkGray, RoundedCornerShape(16.dp))
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .align(Alignment.TopStart)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "#$tag",
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodySmall
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove tag",
-                                tint = Color.LightGray,
-                                modifier = Modifier
-                                    .size(14.dp)
-                                    .clickable { selectedTags.remove(tag) }
+                            Text(
+                                text = "GPS Signal Weak",
+                                color = MaterialTheme.colorScheme.tertiary,
+                                style = MaterialTheme.typography.labelSmall
                             )
                         }
                     }
                 }
-            }
-        }
 
-        // Bottom Actions Row (Floaters)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .background(MaterialTheme.colorScheme.background)
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Button(
-                onClick = {
-                    val file = File(imagePath)
-                    if (file.exists()) {
-                        file.delete()
-                    }
-                    onBack()
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray,
-                    contentColor = Color.White
-                )
-            ) {
-                Text("Cancel")
-            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    scope.launch(Dispatchers.IO) {
-                        val spot = Spot(
-                            latitude = currentLat,
-                            longitude = currentLng,
-                            createdAt = System.currentTimeMillis(),
-                            description = description.trim(),
-                            tags = selectedTags.toList(),
-                            category = selectedCategory,
-                            status = "active",
-                            artists = selectedArtists.toList(),
-                            photographer = photographer.trim()
+                // Location Refinement
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "Location Coordinates",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
-                        repository.saveSpot(spot, imagePath)
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "Spot Saved!", Toast.LENGTH_SHORT).show()
-                            onBack()
-                        }
+                        Text(
+                            text = String.format("%.6f, %.6f", currentLat, currentLng),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
                     }
-                },
-                modifier = Modifier.weight(1.5f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.background
+
+                    OutlinedButton(
+                        onClick = { isMapPickerDialogVisible = true },
+                        border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Icon(Icons.Default.EditLocationAlt, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Refine")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                FormFields(
+                    selectedCategory = selectedCategory,
+                    onCategoryChange = { selectedCategory = it },
+                    showCategoryMenu = showCategoryMenu,
+                    onShowCategoryMenuChange = { showCategoryMenu = it },
+                    categories = categories,
+                    description = description,
+                    onDescriptionChange = { description = it },
+                    photographer = photographer,
+                    onPhotographerChange = { photographer = it },
+                    artistInput = artistInput,
+                    onArtistInputChange = { artistInput = it },
+                    selectedArtists = selectedArtists,
+                    predefinedTags = predefinedTags,
+                    selectedTags = selectedTags,
+                    recentCustomTags = recentCustomTags,
+                    customTagInput = customTagInput,
+                    onCustomTagInputChange = { customTagInput = it }
                 )
+            }
+
+            // Floating actions at the bottom in portrait
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Save Spot")
+                Button(
+                    onClick = onCancelClick,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.DarkGray,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    onClick = onSaveClick,
+                    modifier = Modifier.weight(1.5f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.background
+                    )
+                ) {
+                    Text("Save Spot")
+                }
             }
         }
     }
@@ -750,6 +590,376 @@ fun TaggingScreen(
                             Text("Confirm Location")
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun FormFields(
+    selectedCategory: String,
+    onCategoryChange: (String) -> Unit,
+    showCategoryMenu: Boolean,
+    onShowCategoryMenuChange: (Boolean) -> Unit,
+    categories: List<String>,
+    description: String,
+    onDescriptionChange: (String) -> Unit,
+    photographer: String,
+    onPhotographerChange: (String) -> Unit,
+    artistInput: String,
+    onArtistInputChange: (String) -> Unit,
+    selectedArtists: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    predefinedTags: Set<String>,
+    selectedTags: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    recentCustomTags: List<String>,
+    customTagInput: String,
+    onCustomTagInputChange: (String) -> Unit
+) {
+    // Category Selection Dropdown
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selectedCategory.replace("_", " ").replaceFirstChar { it.uppercase() },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Category") },
+            leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
+            trailingIcon = {
+                Box(
+                    modifier = Modifier
+                        .clickable { onShowCategoryMenuChange(!showCategoryMenu) }
+                        .padding(8.dp)
+                ) {
+                    Text("▼", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = Color.Gray,
+                focusedLabelColor = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        DropdownMenu(
+            expanded = showCategoryMenu,
+            onDismissRequest = { onShowCategoryMenuChange(false) },
+            modifier = Modifier.fillMaxWidth(0.9f)
+        ) {
+            categories.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.replace("_", " ").replaceFirstChar { it.uppercase() }) },
+                    onClick = {
+                        onCategoryChange(category)
+                        onShowCategoryMenuChange(false)
+                    }
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Description Input
+    OutlinedTextField(
+        value = description,
+        onValueChange = onDescriptionChange,
+        label = { Text("Description / Details") },
+        placeholder = { Text("e.g. Artist info, style, notes...") },
+        modifier = Modifier.fillMaxWidth(),
+        maxLines = 3,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = Color.Gray,
+            focusedLabelColor = MaterialTheme.colorScheme.primary
+        )
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Photographer Input
+    OutlinedTextField(
+        value = photographer,
+        onValueChange = onPhotographerChange,
+        label = { Text("Photographer") },
+        placeholder = { Text("e.g. Jane Doe") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = Color.Gray,
+            focusedLabelColor = MaterialTheme.colorScheme.primary
+        )
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Artists Input Section
+    Text(
+        text = "Artists / Writers",
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(bottom = 8.dp)
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedTextField(
+            value = artistInput,
+            onValueChange = onArtistInputChange,
+            label = { Text("Add Artist / Writer") },
+            placeholder = { Text("e.g. Banksy, Retna, Cope2...") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    val cleaned = artistInput.trim()
+                    if (cleaned.isNotEmpty()) {
+                        if (!selectedArtists.contains(cleaned)) {
+                            selectedArtists.add(cleaned)
+                        }
+                        onArtistInputChange("")
+                    }
+                }
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.tertiary,
+                unfocusedBorderColor = Color.Gray,
+                focusedLabelColor = MaterialTheme.colorScheme.tertiary
+            )
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        IconButton(
+            onClick = {
+                val cleaned = artistInput.trim()
+                if (cleaned.isNotEmpty()) {
+                    if (!selectedArtists.contains(cleaned)) {
+                        selectedArtists.add(cleaned)
+                    }
+                    onArtistInputChange("")
+                }
+            },
+            modifier = Modifier
+                .size(56.dp)
+                .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(8.dp))
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add artist",
+                tint = MaterialTheme.colorScheme.background
+            )
+        }
+    }
+
+    if (selectedArtists.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            selectedArtists.forEach { artist ->
+                Row(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = artist,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove artist",
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clickable { selectedArtists.remove(artist) }
+                    )
+                }
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(20.dp))
+
+    // Predefined Quick Tags
+    Text(
+        text = "Quick Select Tags",
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(bottom = 8.dp)
+    )
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        predefinedTags.forEach { tag ->
+            val isSelected = selectedTags.contains(tag)
+            InputChip(
+                selected = isSelected,
+                onClick = {
+                    if (isSelected) selectedTags.remove(tag) else selectedTags.add(tag)
+                },
+                label = { Text("#$tag") },
+                colors = InputChipDefaults.inputChipColors(
+                    selectedLabelColor = MaterialTheme.colorScheme.background,
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    labelColor = Color.Gray,
+                    containerColor = Color.Transparent
+                ),
+                border = InputChipDefaults.inputChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = if (isSelected) Color.Transparent else Color.Gray,
+                    selectedBorderColor = Color.Transparent
+                )
+            )
+        }
+    }
+
+    // Dynamic Recent Custom Tags
+    if (recentCustomTags.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Recent Custom Tags",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            recentCustomTags.forEach { tag ->
+                val isSelected = selectedTags.contains(tag)
+                InputChip(
+                    selected = isSelected,
+                    onClick = {
+                        if (isSelected) selectedTags.remove(tag) else selectedTags.add(tag)
+                    },
+                    label = { Text("#$tag") },
+                    colors = InputChipDefaults.inputChipColors(
+                        selectedLabelColor = MaterialTheme.colorScheme.background,
+                        selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                        labelColor = Color.LightGray,
+                        containerColor = Color.Transparent
+                    ),
+                    border = InputChipDefaults.inputChipBorder(
+                        enabled = true,
+                        selected = isSelected,
+                        borderColor = if (isSelected) Color.Transparent else Color.DarkGray,
+                        selectedBorderColor = Color.Transparent
+                    )
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Add Custom Tags Input
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedTextField(
+            value = customTagInput,
+            onValueChange = onCustomTagInputChange,
+            label = { Text("Add Custom Tag") },
+            placeholder = { Text("e.g. stencil") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    val cleaned = customTagInput.trim().lowercase().removePrefix("#")
+                    if (cleaned.isNotEmpty()) {
+                        if (!selectedTags.contains(cleaned)) {
+                            selectedTags.add(cleaned)
+                        }
+                        onCustomTagInputChange("")
+                    }
+                }
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                unfocusedBorderColor = Color.Gray,
+                focusedLabelColor = MaterialTheme.colorScheme.secondary
+            )
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        IconButton(
+            onClick = {
+                val cleaned = customTagInput.trim().lowercase().removePrefix("#")
+                if (cleaned.isNotEmpty()) {
+                    if (!selectedTags.contains(cleaned)) {
+                        selectedTags.add(cleaned)
+                    }
+                    onCustomTagInputChange("")
+                }
+            },
+            modifier = Modifier
+                .size(56.dp)
+                .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add custom tag",
+                tint = MaterialTheme.colorScheme.background
+            )
+        }
+    }
+
+    // Display current selected tags
+    if (selectedTags.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(12.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            selectedTags.forEach { tag ->
+                Row(
+                    modifier = Modifier
+                        .background(Color.DarkGray, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "#$tag",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove tag",
+                        tint = Color.LightGray,
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clickable { selectedTags.remove(tag) }
+                    )
                 }
             }
         }
