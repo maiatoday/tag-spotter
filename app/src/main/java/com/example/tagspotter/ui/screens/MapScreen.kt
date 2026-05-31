@@ -66,6 +66,7 @@ fun MapScreen(
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()
     val selectedSpot by viewModel.selectedSpot.collectAsStateWithLifecycle()
+    val initialCenter by viewModel.initialMapCenter.collectAsStateWithLifecycle()
 
     var mapViewInstance: MapView? by remember { mutableStateOf(null) }
 
@@ -87,27 +88,28 @@ fun MapScreen(
         )
     }
 
-    val initialLat = spots.firstOrNull()?.spot?.latitude ?: 45.0
-    val initialLng = spots.firstOrNull()?.spot?.longitude ?: 9.0
+    val initialCenterState = initialCenter
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        OsmMapView(
-            latitude = initialLat,
-            longitude = initialLng,
-            zoomLevel = 14.0,
-            markers = markers,
-            modifier = Modifier.fillMaxSize(),
-            onMapClick = {
-                viewModel.selectSpot(null)
-            },
-            onMapReady = { map ->
-                mapViewInstance = map
-            }
-        )
+        if (initialCenterState != null) {
+            OsmMapView(
+                latitude = initialCenterState.latitude,
+                longitude = initialCenterState.longitude,
+                zoomLevel = 14.0,
+                markers = markers,
+                modifier = Modifier.fillMaxSize(),
+                onMapClick = {
+                    viewModel.selectSpot(null)
+                },
+                onMapReady = { map ->
+                    mapViewInstance = map
+                }
+            )
+        }
 
         // Floating Category Filter Overlay Row
         LazyRow(
