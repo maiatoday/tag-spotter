@@ -7,10 +7,16 @@ import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -38,9 +44,30 @@ fun OsmMapView(
     onMapClick: ((GeoPoint) -> Unit)? = null,
     onMapReady: ((MapView) -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val mapView = remember(context) {
+        MapView(context)
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, mapView) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            mapView.onDetach()
+        }
+    }
+
     AndroidView(
-        factory = { context ->
-            MapView(context).apply {
+        factory = {
+            mapView.apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 controller.setZoom(zoomLevel)
@@ -62,16 +89,16 @@ fun OsmMapView(
                 onMapReady?.invoke(this)
             }
         },
-        update = { mapView ->
+        update = { map ->
             // Clear existing markers
-            mapView.overlays.filterIsInstance<Marker>().forEach { mapView.overlays.remove(it) }
+            map.overlays.filterIsInstance<Marker>().forEach { map.overlays.remove(it) }
 
             // Add pins
             markers.forEach { osmMarker ->
                 val markerColor = getMarkerColor(osmMarker.category, osmMarker.status)
-                val marker = Marker(mapView).apply {
+                val marker = Marker(map).apply {
                     position = GeoPoint(osmMarker.latitude, osmMarker.longitude)
-                    icon = createPinDrawable(mapView.context, markerColor)
+                    icon = createPinDrawable(map.context, markerColor)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     title = osmMarker.title
                     
@@ -80,10 +107,10 @@ fun OsmMapView(
                         true
                     }
                 }
-                mapView.overlays.add(marker)
+                map.overlays.add(marker)
             }
 
-            mapView.invalidate()
+            map.invalidate()
         },
         modifier = modifier
     )
