@@ -32,24 +32,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -63,7 +60,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -76,28 +72,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.MapEventsOverlay
-import org.osmdroid.views.overlay.Marker
-import com.example.tagspotter.ui.screens.ZoomableImageOverlay
 import com.example.tagspotter.TagSpotterApplication
 import com.example.tagspotter.data.SpotDetails
 import com.example.tagspotter.data.SpotImage
+import com.example.tagspotter.ui.components.OsmMapView
+import com.example.tagspotter.ui.components.OsmMarker
+import com.example.tagspotter.ui.screens.ZoomableImageOverlay
+import com.example.tagspotter.ui.viewmodel.DetailViewModel
 import com.example.tagspotter.utils.ImageOptimizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.util.Log
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -112,17 +108,18 @@ fun DetailScreen(
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as TagSpotterApplication
-    val repository = app.repository
     val scope = rememberCoroutineScope()
 
-    // Fetch the spot detail flow
-    val spotDetailsFlow = remember(spotId) { repository.getSpotById(spotId) }
-    val spotDetails by spotDetailsFlow.collectAsState(initial = null)
+    val viewModel: DetailViewModel = viewModel(
+        factory = DetailViewModel.provideFactory(spotId, app.repository, app.settingsRepository),
+        key = spotId.toString()
+    )
+
+    val spotDetails by viewModel.spotDetails.collectAsStateWithLifecycle()
+    val defaultPhotographer by viewModel.defaultPhotographer.collectAsStateWithLifecycle()
+
     var noteInput by remember { mutableStateOf("") }
     var zoomImagePath by remember { mutableStateOf<String?>(null) }
-    val defaultPhotographerFlow = remember { app.settingsRepository.photographerName }
-    val defaultPhotographer by defaultPhotographerFlow.collectAsState(initial = "")
-
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
 
     // Launcher to add another image to this spot
@@ -133,7 +130,7 @@ fun DetailScreen(
             scope.launch(Dispatchers.Default) {
                 val optimizedPath = ImageOptimizer.optimizeAndSaveImage(context, uri)
                 if (optimizedPath != null) {
-                    repository.addImageToSpot(spotId, optimizedPath, System.currentTimeMillis())
+                    viewModel.addImage(optimizedPath, System.currentTimeMillis())
                 }
             }
         }
@@ -145,7 +142,7 @@ fun DetailScreen(
                 title = { Text("Spot Details") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -153,13 +150,12 @@ fun DetailScreen(
                         onClick = {
                             val details = spotDetails
                             if (details != null) {
-                                scope.launch(Dispatchers.IO) {
-                                    repository.deleteSpot(details)
-                                    withContext(Dispatchers.Main) {
+                                viewModel.deleteSpot(details, onDeleted = {
+                                    scope.launch(Dispatchers.Main) {
                                         Toast.makeText(context, "Spot deleted successfully", Toast.LENGTH_SHORT).show()
                                         onBack()
                                     }
-                                }
+                                })
                             }
                         }
                     ) {
@@ -187,7 +183,6 @@ fun DetailScreen(
             }
             return@Scaffold
         }
-        Log.d("TagSpotter", "details emitted: id=${details.spot.id}, artists=${details.spot.artists}")
 
         val isErased = details.spot.status == "erased"
         val sortedImages = details.images.sortedBy { it.timestamp }
@@ -229,27 +224,10 @@ fun DetailScreen(
                     DetailInfoCard(
                         details = details,
                         defaultPhotographer = defaultPhotographer,
-                        onUpdateStatus = { nextStatus ->
-                            scope.launch(Dispatchers.IO) {
-                                repository.updateSpotStatus(details.spot.id, nextStatus)
-                            }
-                        },
-                        onUpdateArtists = { list ->
-                            Log.d("TagSpotter", "onUpdateArtists (landscape) called with: $list")
-                            scope.launch(Dispatchers.IO) {
-                                repository.updateSpotArtists(details.spot.id, list)
-                            }
-                        },
-                        onUpdatePhotographer = { name ->
-                            scope.launch(Dispatchers.IO) {
-                                repository.updateSpotPhotographer(details.spot.id, name)
-                            }
-                        },
-                        onUpdateDescription = { desc ->
-                            scope.launch(Dispatchers.IO) {
-                                repository.updateSpotDescription(details.spot.id, desc)
-                            }
-                        },
+                        onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
+                        onUpdateArtists = { list -> viewModel.updateArtists(list) },
+                        onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
+                        onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
                         onMapPickerClick = { isMapPickerDialogVisible = true }
                     )
 
@@ -262,12 +240,8 @@ fun DetailScreen(
                         onSendNote = {
                             val noteText = noteInput.trim()
                             if (noteText.isNotEmpty()) {
-                                scope.launch(Dispatchers.IO) {
-                                    repository.addNoteToSpot(details.spot.id, noteText, System.currentTimeMillis())
-                                    withContext(Dispatchers.Main) {
-                                        noteInput = ""
-                                    }
-                                }
+                                viewModel.addNote(noteText, System.currentTimeMillis())
+                                noteInput = ""
                             }
                         }
                     )
@@ -295,27 +269,10 @@ fun DetailScreen(
                 DetailInfoCard(
                     details = details,
                     defaultPhotographer = defaultPhotographer,
-                    onUpdateStatus = { nextStatus ->
-                        scope.launch(Dispatchers.IO) {
-                            repository.updateSpotStatus(details.spot.id, nextStatus)
-                        }
-                    },
-                    onUpdateArtists = { list ->
-                        Log.d("TagSpotter", "onUpdateArtists (portrait) called with: $list")
-                        scope.launch(Dispatchers.IO) {
-                            repository.updateSpotArtists(details.spot.id, list)
-                        }
-                    },
-                    onUpdatePhotographer = { name ->
-                        scope.launch(Dispatchers.IO) {
-                            repository.updateSpotPhotographer(details.spot.id, name)
-                        }
-                    },
-                    onUpdateDescription = { desc ->
-                        scope.launch(Dispatchers.IO) {
-                            repository.updateSpotDescription(details.spot.id, desc)
-                        }
-                    },
+                    onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
+                    onUpdateArtists = { list -> viewModel.updateArtists(list) },
+                    onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
+                    onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
                     onMapPickerClick = { isMapPickerDialogVisible = true }
                 )
 
@@ -328,12 +285,8 @@ fun DetailScreen(
                     onSendNote = {
                         val noteText = noteInput.trim()
                         if (noteText.isNotEmpty()) {
-                            scope.launch(Dispatchers.IO) {
-                                repository.addNoteToSpot(details.spot.id, noteText, System.currentTimeMillis())
-                                withContext(Dispatchers.Main) {
-                                    noteInput = ""
-                                }
-                            }
+                            viewModel.addNote(noteText, System.currentTimeMillis())
+                            noteInput = ""
                         }
                     }
                 )
@@ -368,7 +321,6 @@ fun DetailScreen(
             ) {
                 var tempLat by remember { mutableDoubleStateOf(spotDetails?.spot?.latitude ?: 0.0) }
                 var tempLng by remember { mutableDoubleStateOf(spotDetails?.spot?.longitude ?: 0.0) }
-                var mapInstance: MapView? by remember { mutableStateOf(null) }
 
                 Column(
                     modifier = Modifier
@@ -393,7 +345,7 @@ fun DetailScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    // OpenStreetMap AndroidView
+                    // OpenStreetMap via shared OsmMapView
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -401,44 +353,26 @@ fun DetailScreen(
                             .clip(RoundedCornerShape(8.dp))
                             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                     ) {
-                        AndroidView(
-                            factory = { ctx ->
-                                MapView(ctx).apply {
-                                    setTileSource(TileSourceFactory.MAPNIK)
-                                    setMultiTouchControls(true)
-                                    controller.setZoom(17.0)
-                                    controller.setCenter(GeoPoint(tempLat, tempLng))
+                        val mapMarker = OsmMarker(
+                            id = 0L,
+                            latitude = tempLat,
+                            longitude = tempLng,
+                            category = spotDetails?.spot?.category ?: "graffiti",
+                            status = "active",
+                            title = "Spot Location",
+                            onClick = {}
+                        )
 
-                                    // Add marker overlay
-                                    val marker = Marker(this).apply {
-                                        position = GeoPoint(tempLat, tempLng)
-                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                        title = "Graffiti Spot"
-                                    }
-                                    overlays.add(marker)
-                                    
-                                    // Tap to move marker
-                                    val receiver = object : MapEventsReceiver {
-                                        override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                                            if (p != null) {
-                                                tempLat = p.latitude
-                                                tempLng = p.longitude
-                                                marker.position = p
-                                                invalidate()
-                                            }
-                                            return true
-                                        }
-
-                                        override fun longPressHelper(p: GeoPoint?): Boolean = false
-                                    }
-                                    overlays.add(MapEventsOverlay(receiver))
-                                    mapInstance = this
-                                }
-                            },
-                            update = { map ->
-                                map.controller.setCenter(GeoPoint(tempLat, tempLng))
-                            },
-                            modifier = Modifier.fillMaxSize()
+                        OsmMapView(
+                            latitude = tempLat,
+                            longitude = tempLng,
+                            zoomLevel = 17.0,
+                            markers = listOf(mapMarker),
+                            modifier = Modifier.fillMaxSize(),
+                            onMapClick = { gp ->
+                                tempLat = gp.latitude
+                                tempLng = gp.longitude
+                            }
                         )
                     }
 
@@ -460,13 +394,9 @@ fun DetailScreen(
 
                         Button(
                             onClick = {
-                                scope.launch(Dispatchers.IO) {
-                                    repository.updateSpotLocation(spotId, tempLat, tempLng)
-                                    withContext(Dispatchers.Main) {
-                                        isMapPickerDialogVisible = false
-                                        Toast.makeText(context, "Location Updated!", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+                                viewModel.updateLocation(tempLat, tempLng)
+                                isMapPickerDialogVisible = false
+                                Toast.makeText(context, "Location Updated!", Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1.5f),
                             colors = ButtonDefaults.buttonColors(
@@ -1174,7 +1104,7 @@ private fun DetailNotesSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Notes,
+                imageVector = Icons.AutoMirrored.Filled.Notes,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
@@ -1264,7 +1194,7 @@ private fun DetailNotesSection(
                     .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send note",
                     tint = MaterialTheme.colorScheme.background
                 )

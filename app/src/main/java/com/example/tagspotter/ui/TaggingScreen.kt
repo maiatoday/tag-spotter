@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,18 +24,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditLocationAlt
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -49,13 +44,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,24 +60,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.tagspotter.TagSpotterApplication
-import com.example.tagspotter.data.Spot
-import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.MapEventsOverlay
-import org.osmdroid.views.overlay.Marker
-import kotlinx.coroutines.Dispatchers
+import com.example.tagspotter.ui.components.OsmMapView
+import com.example.tagspotter.ui.components.OsmMarker
+import com.example.tagspotter.ui.viewmodel.TaggingViewModel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -98,39 +90,34 @@ fun TaggingScreen(
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as TagSpotterApplication
-    val repository = app.repository
     val scope = rememberCoroutineScope()
 
-    var currentLat by remember { mutableDoubleStateOf(latitude) }
-    var currentLng by remember { mutableDoubleStateOf(longitude) }
-    var description by remember { mutableStateOf("") }
-    
-    val initialCategory = if (defaultCategory == "All") "graffiti" else defaultCategory
-    var selectedCategory by remember { mutableStateOf(initialCategory) }
-    var customTagInput by remember { mutableStateOf("") }
-    
-    val selectedArtists = remember { mutableStateListOf<String>() }
-    var artistInput by remember { mutableStateOf("") }
+    val viewModel: TaggingViewModel = viewModel(
+        factory = TaggingViewModel.provideFactory(
+            repository = app.repository,
+            settingsRepository = app.settingsRepository,
+            initialLat = latitude,
+            initialLng = longitude,
+            initialCategory = if (defaultCategory == "All") "graffiti" else defaultCategory
+        ),
+        key = imagePath
+    )
 
-    val selectedTags = remember { mutableStateListOf<String>() }
+    val currentLat by viewModel.currentLat.collectAsStateWithLifecycle()
+    val currentLng by viewModel.currentLng.collectAsStateWithLifecycle()
+    val description by viewModel.description.collectAsStateWithLifecycle()
+    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val photographer by viewModel.photographer.collectAsStateWithLifecycle()
+    val selectedArtists by viewModel.selectedArtists.collectAsStateWithLifecycle()
+    val selectedTags by viewModel.selectedTags.collectAsStateWithLifecycle()
+    val artistInput by viewModel.artistInput.collectAsStateWithLifecycle()
+    val customTagInput by viewModel.customTagInput.collectAsStateWithLifecycle()
+    val recentCustomTags by viewModel.recentCustomTags.collectAsStateWithLifecycle()
+
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
     var showCategoryMenu by remember { mutableStateOf(false) }
 
-    val defaultPhotographerFlow = remember { app.settingsRepository.photographerName }
-    val defaultPhotographer by defaultPhotographerFlow.collectAsState(initial = "")
-    var photographer by remember { mutableStateOf("") }
-    var isFirstLoad by remember { mutableStateOf(true) }
-    if (isFirstLoad && defaultPhotographer.isNotEmpty()) {
-        photographer = defaultPhotographer
-        isFirstLoad = false
-    }
-
     val predefinedTags = remember { setOf("mural", "stencil", "throwup", "pasteup", "sticker") }
-    
-    // Collect dynamic custom tags from repository
-    val recentCustomTagsFlow = remember { repository.getRecentCustomTags(predefinedTags) }
-    val recentCustomTags by recentCustomTagsFlow.collectAsState(initial = emptyList())
-
     val categories = listOf("graffiti", "sculpture", "tree", "architecture", "public_place")
 
     val configuration = LocalConfiguration.current
@@ -145,24 +132,12 @@ fun TaggingScreen(
     }
 
     val onSaveClick: () -> Unit = {
-        scope.launch(Dispatchers.IO) {
-            val spot = Spot(
-                latitude = currentLat,
-                longitude = currentLng,
-                createdAt = System.currentTimeMillis(),
-                description = description.trim(),
-                tags = selectedTags.toList(),
-                category = selectedCategory,
-                status = "active",
-                artists = selectedArtists.toList(),
-                photographer = photographer.trim()
-            )
-            repository.saveSpot(spot, imagePath)
-            withContext(Dispatchers.Main) {
+        viewModel.saveSpot(imagePath, onSaved = {
+            scope.launch {
                 Toast.makeText(context, "Spot Saved!", Toast.LENGTH_SHORT).show()
                 onBack()
             }
-        }
+        })
     }
 
     Scaffold(
@@ -190,299 +165,307 @@ fun TaggingScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp)
         ) {
-        if (isLandscape) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Left Column: Visuals, location and primary actions
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
+            if (isLandscape) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Column {
-                        // Image Preview (Coil)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                                .background(Color.DarkGray)
-                        ) {
-                            AsyncImage(
-                                model = File(imagePath),
-                                contentDescription = "Captured spot preview",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                    // Left Column: Visuals, location and primary actions
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            // Image Preview
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(160.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                                    .background(Color.DarkGray)
+                            ) {
+                                AsyncImage(
+                                    model = File(imagePath),
+                                    contentDescription = "Captured spot preview",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
 
-                            // GPS Warning Badge
-                            if (isFallback) {
-                                Row(
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .padding(8.dp)
-                                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                // GPS Warning Badge
+                                if (isFallback) {
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .padding(8.dp)
+                                            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "GPS Signal Weak",
+                                            color = MaterialTheme.colorScheme.tertiary,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Location Refinement
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
                                     Text(
-                                        text = "GPS Signal Weak",
-                                        color = MaterialTheme.colorScheme.tertiary,
-                                        style = MaterialTheme.typography.labelSmall
+                                        text = "Location Coordinates",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onBackground
                                     )
+                                    Text(
+                                        text = String.format("%.6f, %.6f", currentLat, currentLng),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = { isMapPickerDialogVisible = true },
+                                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.secondary
+                                    )
+                                ) {
+                                    Icon(Icons.Default.EditLocationAlt, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Refine")
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Location Refinement
+                        // Save / Cancel actions row
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Column {
-                                Text(
-                                    text = "Location Coordinates",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                                Text(
-                                    text = String.format("%.6f, %.6f", currentLat, currentLng),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
-                            }
-
-                            OutlinedButton(
-                                onClick = { isMapPickerDialogVisible = true },
-                                border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.secondary
+                            Button(
+                                onClick = onCancelClick,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.DarkGray,
+                                    contentColor = Color.White
                                 )
                             ) {
-                                Icon(Icons.Default.EditLocationAlt, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Refine")
+                                Text("Cancel")
+                            }
+
+                            Button(
+                                onClick = onSaveClick,
+                                modifier = Modifier.weight(1.5f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.background
+                                )
+                            ) {
+                                Text("Save Spot")
                             }
                         }
                     }
 
-                    // Save / Cancel actions row at the bottom of the left column
-                    Row(
+                    // Right Column: Form Inputs
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            .weight(1.2f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(end = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Button(
-                            onClick = onCancelClick,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.DarkGray,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("Cancel")
-                        }
-
-                        Button(
-                            onClick = onSaveClick,
-                            modifier = Modifier.weight(1.5f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.background
-                            )
-                        ) {
-                            Text("Save Spot")
-                        }
+                        FormFields(
+                            selectedCategory = selectedCategory,
+                            onCategoryChange = { viewModel.updateCategory(it) },
+                            showCategoryMenu = showCategoryMenu,
+                            onShowCategoryMenuChange = { showCategoryMenu = it },
+                            categories = categories,
+                            description = description,
+                            onDescriptionChange = { viewModel.updateDescription(it) },
+                            photographer = photographer,
+                            onPhotographerChange = { viewModel.updatePhotographer(it) },
+                            artistInput = artistInput,
+                            onArtistInputChange = { viewModel.updateArtistInput(it) },
+                            selectedArtists = selectedArtists,
+                            onAddArtist = { viewModel.addArtist(it) },
+                            onRemoveArtist = { viewModel.removeArtist(it) },
+                            predefinedTags = predefinedTags,
+                            selectedTags = selectedTags,
+                            onAddTag = { viewModel.addTag(it) },
+                            onRemoveTag = { viewModel.removeTag(it) },
+                            recentCustomTags = recentCustomTags,
+                            customTagInput = customTagInput,
+                            onCustomTagInputChange = { viewModel.updateCustomTagInput(it) }
+                        )
                     }
                 }
-
-                // Right Column: Form Inputs
+            } else {
+                // Portrait view
                 Column(
                     modifier = Modifier
-                        .weight(1.2f)
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(end = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(bottom = 72.dp)
                 ) {
+                    // Image Preview
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                            .background(Color.DarkGray)
+                    ) {
+                        AsyncImage(
+                            model = File(imagePath),
+                            contentDescription = "Captured spot preview",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        // GPS Warning Badge
+                        if (isFallback) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(8.dp)
+                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "GPS Signal Weak",
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Location Refinement
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Location Coordinates",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = String.format("%.6f, %.6f", currentLat, currentLng),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { isMapPickerDialogVisible = true },
+                            border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Icon(Icons.Default.EditLocationAlt, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Refine")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     FormFields(
                         selectedCategory = selectedCategory,
-                        onCategoryChange = { selectedCategory = it },
+                        onCategoryChange = { viewModel.updateCategory(it) },
                         showCategoryMenu = showCategoryMenu,
                         onShowCategoryMenuChange = { showCategoryMenu = it },
                         categories = categories,
                         description = description,
-                        onDescriptionChange = { description = it },
+                        onDescriptionChange = { viewModel.updateDescription(it) },
                         photographer = photographer,
-                        onPhotographerChange = { photographer = it },
+                        onPhotographerChange = { viewModel.updatePhotographer(it) },
                         artistInput = artistInput,
-                        onArtistInputChange = { artistInput = it },
+                        onArtistInputChange = { viewModel.updateArtistInput(it) },
                         selectedArtists = selectedArtists,
+                        onAddArtist = { viewModel.addArtist(it) },
+                        onRemoveArtist = { viewModel.removeArtist(it) },
                         predefinedTags = predefinedTags,
                         selectedTags = selectedTags,
+                        onAddTag = { viewModel.addTag(it) },
+                        onRemoveTag = { viewModel.removeTag(it) },
                         recentCustomTags = recentCustomTags,
                         customTagInput = customTagInput,
-                        onCustomTagInputChange = { customTagInput = it }
+                        onCustomTagInputChange = { viewModel.updateCustomTagInput(it) }
                     )
                 }
-            }
-        } else {
-            // Portrait view
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 72.dp)
-            ) {
-                // Image Preview (Coil)
-                Box(
+
+                // Floating actions at the bottom in portrait
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                        .background(Color.DarkGray)
+                        .align(Alignment.BottomCenter)
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    AsyncImage(
-                        model = File(imagePath),
-                        contentDescription = "Captured spot preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    // GPS Warning Badge
-                    if (isFallback) {
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(8.dp)
-                                .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "GPS Signal Weak",
-                                color = MaterialTheme.colorScheme.tertiary,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Location Refinement
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Location Coordinates",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            text = String.format("%.6f, %.6f", currentLat, currentLng),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = { isMapPickerDialogVisible = true },
-                        border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.secondary
+                    Button(
+                        onClick = onCancelClick,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.DarkGray,
+                            contentColor = Color.White
                         )
                     ) {
-                        Icon(Icons.Default.EditLocationAlt, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Refine")
+                        Text("Cancel")
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                FormFields(
-                    selectedCategory = selectedCategory,
-                    onCategoryChange = { selectedCategory = it },
-                    showCategoryMenu = showCategoryMenu,
-                    onShowCategoryMenuChange = { showCategoryMenu = it },
-                    categories = categories,
-                    description = description,
-                    onDescriptionChange = { description = it },
-                    photographer = photographer,
-                    onPhotographerChange = { photographer = it },
-                    artistInput = artistInput,
-                    onArtistInputChange = { artistInput = it },
-                    selectedArtists = selectedArtists,
-                    predefinedTags = predefinedTags,
-                    selectedTags = selectedTags,
-                    recentCustomTags = recentCustomTags,
-                    customTagInput = customTagInput,
-                    onCustomTagInputChange = { customTagInput = it }
-                )
-            }
-
-            // Floating actions at the bottom in portrait
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Button(
-                    onClick = onCancelClick,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("Cancel")
-                }
-
-                Button(
-                    onClick = onSaveClick,
-                    modifier = Modifier.weight(1.5f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.background
-                    )
-                ) {
-                    Text("Save Spot")
+                    Button(
+                        onClick = onSaveClick,
+                        modifier = Modifier.weight(1.5f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.background
+                        )
+                    ) {
+                        Text("Save Spot")
+                    }
                 }
             }
         }
     }
-}
 
-    // Map Picker Dialog
+    // Map Picker Dialog using OsmMapView
     if (isMapPickerDialogVisible) {
         Dialog(
             onDismissRequest = { isMapPickerDialogVisible = false },
@@ -495,7 +478,6 @@ fun TaggingScreen(
             ) {
                 var tempLat by remember { mutableDoubleStateOf(currentLat) }
                 var tempLng by remember { mutableDoubleStateOf(currentLng) }
-                var mapInstance: MapView? by remember { mutableStateOf(null) }
 
                 Column(
                     modifier = Modifier
@@ -520,7 +502,6 @@ fun TaggingScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    // OpenStreetMap AndroidView
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -528,43 +509,26 @@ fun TaggingScreen(
                             .clip(RoundedCornerShape(8.dp))
                             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                     ) {
-                        AndroidView(
-                            factory = { ctx ->
-                                MapView(ctx).apply {
-                                    setTileSource(TileSourceFactory.MAPNIK)
-                                    setMultiTouchControls(true)
-                                    controller.setZoom(17.0)
-                                    controller.setCenter(GeoPoint(tempLat, tempLng))
+                        val mapMarker = OsmMarker(
+                            id = 0L,
+                            latitude = tempLat,
+                            longitude = tempLng,
+                            category = selectedCategory,
+                            status = "active",
+                            title = "New Spot Location",
+                            onClick = {}
+                        )
 
-                                    // Add marker overlay
-                                    val marker = Marker(this).apply {
-                                        position = GeoPoint(tempLat, tempLng)
-                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                        title = "Graffiti Spot"
-                                    }
-                                    overlays.add(marker)
-                                    // Tap to move marker
-                                    val receiver = object : MapEventsReceiver {
-                                        override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                                            if (p != null) {
-                                                tempLat = p.latitude
-                                                tempLng = p.longitude
-                                                marker.position = p
-                                                invalidate()
-                                            }
-                                            return true
-                                        }
-
-                                        override fun longPressHelper(p: GeoPoint?): Boolean = false
-                                    }
-                                    overlays.add(MapEventsOverlay(receiver))
-                                    mapInstance = this
-                                }
-                            },
-                            update = { map ->
-                                map.controller.setCenter(GeoPoint(tempLat, tempLng))
-                            },
-                            modifier = Modifier.fillMaxSize()
+                        OsmMapView(
+                            latitude = tempLat,
+                            longitude = tempLng,
+                            zoomLevel = 17.0,
+                            markers = listOf(mapMarker),
+                            modifier = Modifier.fillMaxSize(),
+                            onMapClick = { gp ->
+                                tempLat = gp.latitude
+                                tempLng = gp.longitude
+                            }
                         )
                     }
 
@@ -586,8 +550,7 @@ fun TaggingScreen(
 
                         Button(
                             onClick = {
-                                currentLat = tempLat
-                                currentLng = tempLng
+                                viewModel.updateCoordinates(tempLat, tempLng)
                                 isMapPickerDialogVisible = false
                             },
                             modifier = Modifier.weight(1.5f),
@@ -619,9 +582,13 @@ private fun FormFields(
     onPhotographerChange: (String) -> Unit,
     artistInput: String,
     onArtistInputChange: (String) -> Unit,
-    selectedArtists: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    selectedArtists: List<String>,
+    onAddArtist: (String) -> Unit,
+    onRemoveArtist: (String) -> Unit,
     predefinedTags: Set<String>,
-    selectedTags: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    selectedTags: List<String>,
+    onAddTag: (String) -> Unit,
+    onRemoveTag: (String) -> Unit,
     recentCustomTags: List<String>,
     customTagInput: String,
     onCustomTagInputChange: (String) -> Unit
@@ -730,10 +697,7 @@ private fun FormFields(
                 onDone = {
                     val cleaned = artistInput.trim()
                     if (cleaned.isNotEmpty()) {
-                        if (!selectedArtists.contains(cleaned)) {
-                            selectedArtists.add(cleaned)
-                        }
-                        onArtistInputChange("")
+                        onAddArtist(cleaned)
                     }
                 }
             ),
@@ -750,10 +714,7 @@ private fun FormFields(
             onClick = {
                 val cleaned = artistInput.trim()
                 if (cleaned.isNotEmpty()) {
-                    if (!selectedArtists.contains(cleaned)) {
-                        selectedArtists.add(cleaned)
-                    }
-                    onArtistInputChange("")
+                    onAddArtist(cleaned)
                 }
             },
             modifier = Modifier
@@ -796,7 +757,7 @@ private fun FormFields(
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier
                             .size(14.dp)
-                            .clickable { selectedArtists.remove(artist) }
+                            .clickable { onRemoveArtist(artist) }
                     )
                 }
             }
@@ -823,7 +784,7 @@ private fun FormFields(
             InputChip(
                 selected = isSelected,
                 onClick = {
-                    if (isSelected) selectedTags.remove(tag) else selectedTags.add(tag)
+                    if (isSelected) onRemoveTag(tag) else onAddTag(tag)
                 },
                 label = { Text("#$tag") },
                 colors = InputChipDefaults.inputChipColors(
@@ -862,7 +823,7 @@ private fun FormFields(
                 InputChip(
                     selected = isSelected,
                     onClick = {
-                        if (isSelected) selectedTags.remove(tag) else selectedTags.add(tag)
+                        if (isSelected) onRemoveTag(tag) else onAddTag(tag)
                     },
                     label = { Text("#$tag") },
                     colors = InputChipDefaults.inputChipColors(
@@ -903,9 +864,7 @@ private fun FormFields(
                 onDone = {
                     val cleaned = customTagInput.trim().lowercase().removePrefix("#")
                     if (cleaned.isNotEmpty()) {
-                        if (!selectedTags.contains(cleaned)) {
-                            selectedTags.add(cleaned)
-                        }
+                        onAddTag(cleaned)
                         onCustomTagInputChange("")
                     }
                 }
@@ -923,9 +882,7 @@ private fun FormFields(
             onClick = {
                 val cleaned = customTagInput.trim().lowercase().removePrefix("#")
                 if (cleaned.isNotEmpty()) {
-                    if (!selectedTags.contains(cleaned)) {
-                        selectedTags.add(cleaned)
-                    }
+                    onAddTag(cleaned)
                     onCustomTagInputChange("")
                 }
             },
@@ -967,7 +924,7 @@ private fun FormFields(
                         tint = Color.LightGray,
                         modifier = Modifier
                             .size(14.dp)
-                            .clickable { selectedTags.remove(tag) }
+                            .clickable { onRemoveTag(tag) }
                     )
                 }
             }
