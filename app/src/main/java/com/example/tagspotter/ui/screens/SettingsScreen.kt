@@ -34,11 +34,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,17 +44,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tagspotter.TagSpotterApplication
-import kotlinx.coroutines.launch
+import com.example.tagspotter.ui.viewmodel.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.provideFactory(
+            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository
+        )
+    )
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as TagSpotterApplication
-    val settingsRepository = app.settingsRepository
-    val scope = rememberCoroutineScope()
 
     val versionName = remember {
         try {
@@ -67,10 +69,10 @@ fun SettingsScreen(
         }
     }
 
-    val savedName by settingsRepository.photographerName.collectAsState(initial = "")
+    val savedName by viewModel.photographerName.collectAsStateWithLifecycle()
     var photographerNameInput by remember(savedName) { mutableStateOf(savedName) }
 
-    val savedHomeCity by settingsRepository.homeCity.collectAsState(initial = "Milan")
+    val savedHomeCity by viewModel.homeCity.collectAsStateWithLifecycle()
     val isInitiallyCustom = savedHomeCity.startsWith("Custom:")
     var homeCityInput by remember(savedHomeCity) {
         mutableStateOf(if (isInitiallyCustom) "Custom" else savedHomeCity)
@@ -269,21 +271,19 @@ fun SettingsScreen(
 
                     Button(
                         onClick = {
-                            scope.launch {
-                                settingsRepository.updatePhotographerName(photographerNameInput.trim())
-                                if (homeCityInput == "Custom") {
-                                    val lat = customLatInput.trim().toDoubleOrNull()
-                                    val lng = customLngInput.trim().toDoubleOrNull()
-                                    if (lat != null && lng != null) {
-                                        settingsRepository.updateHomeCity("Custom: $lat, $lng")
-                                        Toast.makeText(context, "Settings Saved!", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Please enter valid coordinates", Toast.LENGTH_LONG).show()
-                                    }
-                                } else {
-                                    settingsRepository.updateHomeCity(homeCityInput)
+                            viewModel.updatePhotographerName(photographerNameInput.trim())
+                            if (homeCityInput == "Custom") {
+                                val lat = customLatInput.trim().toDoubleOrNull()
+                                val lng = customLngInput.trim().toDoubleOrNull()
+                                if (lat != null && lng != null) {
+                                    viewModel.updateHomeCity("Custom: $lat, $lng")
                                     Toast.makeText(context, "Settings Saved!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Please enter valid coordinates", Toast.LENGTH_LONG).show()
                                 }
+                            } else {
+                                viewModel.updateHomeCity(homeCityInput)
+                                Toast.makeText(context, "Settings Saved!", Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
