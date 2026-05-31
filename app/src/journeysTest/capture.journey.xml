@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<journey name="Capture">
+    <description>Capture interface test</description>
+    <actions xml:space="preserve">
+        <action></action>
+    </actions>
+</journey>

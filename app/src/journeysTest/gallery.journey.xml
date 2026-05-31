@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<journey name="Gallery">
+    <description>Use test data to test the gallery screen</description>
+    <actions xml:space="preserve">
+        <action></action>
+    </actions>
+</journey>
