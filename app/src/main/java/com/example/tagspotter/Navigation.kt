@@ -19,8 +19,8 @@ fun MainNavigation() {
             entry<Main> {
                 MainContainer(
                     onSpotClick = { spotId -> backStack.add(DetailKey(spotId)) },
-                    onPhotoCaptured = { path, lat, lng, isFallback, defaultCategory ->
-                        backStack.add(TaggingKey(path, lat, lng, isFallback, defaultCategory))
+                    onPhotoCaptured = { imagePath, thumbnailPath, lat, lng, isFallback, defaultCategory, captureTime ->
+                        backStack.add(TaggingKey(imagePath, thumbnailPath, lat, lng, isFallback, defaultCategory, captureTime))
                     }
                 )
             }
@@ -33,10 +33,12 @@ fun MainNavigation() {
             entry<TaggingKey> { key ->
                 TaggingScreen(
                     imagePath = key.imagePath,
+                    thumbnailPath = key.thumbnailPath,
                     latitude = key.latitude,
                     longitude = key.longitude,
                     isFallback = key.isFallback,
                     defaultCategory = key.defaultCategory,
+                    captureTime = key.captureTime,
                     onBack = { backStack.removeLastOrNull() }
                 )
             }

@@ -44,7 +44,7 @@ enum class Tab {
 @Composable
 fun MainContainer(
     onSpotClick: (Long) -> Unit,
-    onPhotoCaptured: (String, Double, Double, Boolean, String) -> Unit,
+    onPhotoCaptured: (String, String, Double, Double, Boolean, String, Long?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(Tab.Gallery) }
@@ -122,8 +122,8 @@ fun MainContainer(
                 TabContent(
                     selectedTab = selectedTab,
                     onSpotClick = onSpotClick,
-                    onPhotoCaptured = { path, lat, lng, isFallback ->
-                        onPhotoCaptured(path, lat, lng, isFallback, "All")
+                    onPhotoCaptured = { imagePath, thumbnailPath, lat, lng, isFallback, captureTime ->
+                        onPhotoCaptured(imagePath, thumbnailPath, lat, lng, isFallback, "All", captureTime)
                     }
                 )
             }
@@ -199,8 +199,8 @@ fun MainContainer(
                 TabContent(
                     selectedTab = selectedTab,
                     onSpotClick = onSpotClick,
-                    onPhotoCaptured = { path, lat, lng, isFallback ->
-                        onPhotoCaptured(path, lat, lng, isFallback, "All")
+                    onPhotoCaptured = { imagePath, thumbnailPath, lat, lng, isFallback, captureTime ->
+                        onPhotoCaptured(imagePath, thumbnailPath, lat, lng, isFallback, "All", captureTime)
                     }
                 )
             }
@@ -212,7 +212,7 @@ fun MainContainer(
 private fun TabContent(
     selectedTab: Tab,
     onSpotClick: (Long) -> Unit,
-    onPhotoCaptured: (String, Double, Double, Boolean) -> Unit
+    onPhotoCaptured: (String, String, Double, Double, Boolean, Long?) -> Unit
 ) {
     when (selectedTab) {
         Tab.Gallery -> GalleryScreen(

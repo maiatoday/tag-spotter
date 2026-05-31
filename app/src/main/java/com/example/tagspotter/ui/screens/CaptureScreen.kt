@@ -52,6 +52,7 @@ import androidx.core.content.FileProvider
 import com.example.tagspotter.utils.ExifLocationExtractor
 import com.example.tagspotter.utils.ImageOptimizer
 import com.example.tagspotter.utils.LocationHelper
+import com.example.tagspotter.utils.MediaStorageHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,7 +61,7 @@ import java.util.UUID
 
 @Composable
 fun CaptureScreen(
-    onPhotoCaptured: (String, Double, Double, Boolean) -> Unit,
+    onPhotoCaptured: (String, String, Double, Double, Boolean, Long?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -119,14 +120,18 @@ fun CaptureScreen(
                         }
                     }
 
-                    val optimizedPath = ImageOptimizer.optimizeAndSaveImage(context, file)
+                    // Save original to public MediaStore gallery
+                    val publicUri = MediaStorageHelper.saveImageToPublicGallery(context, file)
+                    // Create thumbnail
+                    val thumbnailPath = ImageOptimizer.createThumbnail(context, file)
+                    
                     // Clean temp cache file
                     try { file.delete() } catch (e: Exception) {}
 
-                    if (optimizedPath != null) {
+                    if (publicUri != null && thumbnailPath != null) {
                         withContext(Dispatchers.Main) {
                             isLoading = false
-                            onPhotoCaptured(optimizedPath, lat, lng, isFallback)
+                            onPhotoCaptured(publicUri.toString(), thumbnailPath, lat, lng, isFallback, null)
                         }
                     } else {
                         withContext(Dispatchers.Main) {
@@ -146,15 +151,26 @@ fun CaptureScreen(
         if (uri != null) {
             isLoading = true
             scope.launch(Dispatchers.Default) {
-                val exifLoc = ExifLocationExtractor.getPhotoLocation(context, uri)
+                val exifMeta = ExifLocationExtractor.getPhotoMetadata(context, uri)
                 var lat = 0.0
                 var lng = 0.0
                 var isFallback = true
+                var captureTime: Long? = null
 
-                if (exifLoc != null) {
-                    lat = exifLoc.latitude
-                    lng = exifLoc.longitude
-                    isFallback = false
+                if (exifMeta != null) {
+                    if (exifMeta.latitude != null && exifMeta.longitude != null) {
+                        lat = exifMeta.latitude
+                        lng = exifMeta.longitude
+                        isFallback = false
+                    } else if (hasLocationPermission) {
+                        val currentLoc = LocationHelper.getCurrentLocation(context)
+                        if (currentLoc != null) {
+                            lat = currentLoc.latitude
+                            lng = currentLoc.longitude
+                            isFallback = currentLoc.isFallback
+                        }
+                    }
+                    captureTime = exifMeta.timestamp
                 } else if (hasLocationPermission) {
                     val currentLoc = LocationHelper.getCurrentLocation(context)
                     if (currentLoc != null) {
@@ -164,11 +180,12 @@ fun CaptureScreen(
                     }
                 }
 
-                val optimizedPath = ImageOptimizer.optimizeAndSaveImage(context, uri)
-                if (optimizedPath != null) {
+                // Create thumbnail
+                val thumbnailPath = ImageOptimizer.createThumbnail(context, uri)
+                if (thumbnailPath != null) {
                     withContext(Dispatchers.Main) {
                         isLoading = false
-                        onPhotoCaptured(optimizedPath, lat, lng, isFallback)
+                        onPhotoCaptured(uri.toString(), thumbnailPath, lat, lng, isFallback, captureTime)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -178,6 +195,15 @@ fun CaptureScreen(
                 }
             }
         }
+    }
+
+    // Permission Launcher for ACCESS_MEDIA_LOCATION (Android 10+)
+    val mediaLocationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        // Proceed with pickMedia regardless of whether permission is granted.
+        // If not granted, EXIF extraction will just fail to retrieve redacted location data.
+        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
     val onTakePhotoClick = {
@@ -191,6 +217,16 @@ fun CaptureScreen(
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(context, "Failed to launch device camera.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val onChooseFromGalleryClick = {
+        val permission = Manifest.permission.ACCESS_MEDIA_LOCATION
+        val isGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        if (isGranted) {
+            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        } else {
+            mediaLocationPermissionLauncher.launch(permission)
         }
     }
 
@@ -291,9 +327,7 @@ fun CaptureScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(90.dp)
-                            .clickable {
-                                pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            }
+                            .clickable { onChooseFromGalleryClick() }
                             .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(12.dp)),
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
@@ -409,9 +443,7 @@ fun CaptureScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(110.dp)
-                        .clickable {
-                            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
+                        .clickable { onChooseFromGalleryClick() }
                         .border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(12.dp)),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(

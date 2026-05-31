@@ -1,7 +1,9 @@
 package com.example.tagspotter.ui
 
 import android.content.res.Configuration
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -81,16 +83,32 @@ import java.io.File
 @Composable
 fun TaggingScreen(
     imagePath: String,
+    thumbnailPath: String,
     latitude: Double,
     longitude: Double,
     isFallback: Boolean,
     defaultCategory: String = "graffiti",
+    captureTime: Long? = null,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as TagSpotterApplication
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(imagePath) {
+        if (imagePath.startsWith("content://")) {
+            try {
+                val uri = Uri.parse(imagePath)
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     val viewModel: TaggingViewModel = viewModel(
         factory = TaggingViewModel.provideFactory(
@@ -124,7 +142,7 @@ fun TaggingScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val onCancelClick = {
-        val file = File(imagePath)
+        val file = File(thumbnailPath)
         if (file.exists()) {
             file.delete()
         }
@@ -132,7 +150,7 @@ fun TaggingScreen(
     }
 
     val onSaveClick: () -> Unit = {
-        viewModel.saveSpot(imagePath, onSaved = {
+        viewModel.saveSpot(imagePath, thumbnailPath, captureTime, onSaved = {
             scope.launch {
                 Toast.makeText(context, "Spot Saved!", Toast.LENGTH_SHORT).show()
                 onBack()
@@ -188,7 +206,7 @@ fun TaggingScreen(
                                     .background(Color.DarkGray)
                             ) {
                                 AsyncImage(
-                                    model = File(imagePath),
+                                    model = File(thumbnailPath),
                                     contentDescription = "Captured spot preview",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
@@ -337,7 +355,7 @@ fun TaggingScreen(
                             .background(Color.DarkGray)
                     ) {
                         AsyncImage(
-                            model = File(imagePath),
+                            model = File(thumbnailPath),
                             contentDescription = "Captured spot preview",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop

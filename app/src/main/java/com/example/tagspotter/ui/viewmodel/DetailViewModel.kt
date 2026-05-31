@@ -70,9 +70,9 @@ class DetailViewModel(
         }
     }
 
-    fun addImage(imagePath: String, timestamp: Long) {
+    fun addImage(imagePath: String, thumbnailPath: String, timestamp: Long) {
         viewModelScope.launch {
-            repository.addImageToSpot(spotId, imagePath, timestamp)
+            repository.addImageToSpot(spotId, imagePath, thumbnailPath, timestamp)
         }
     }
 

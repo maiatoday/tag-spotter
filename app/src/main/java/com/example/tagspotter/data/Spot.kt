@@ -37,7 +37,8 @@ data class SpotImage(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val spotId: Long,
     val imagePath: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val thumbnailPath: String = ""
 )
 
 @Entity(

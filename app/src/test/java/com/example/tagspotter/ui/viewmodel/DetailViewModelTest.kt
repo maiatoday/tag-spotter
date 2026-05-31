@@ -90,10 +90,11 @@ class DetailViewModelTest {
         assertEquals(2000L, notes?.first()?.timestamp)
 
         // Add image
-        viewModel.addImage("/path/to/image.png", 3000L)
+        viewModel.addImage("/path/to/image.png", "/path/to/thumbnail.png", 3000L)
         val images = viewModel.spotDetails.value?.images
         assertEquals(1, images?.size)
         assertEquals("/path/to/image.png", images?.first()?.imagePath)
+        assertEquals("/path/to/thumbnail.png", images?.first()?.thumbnailPath)
         assertEquals(3000L, images?.first()?.timestamp)
 
         // Delete spot

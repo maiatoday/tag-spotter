@@ -195,10 +195,18 @@ fun MapScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Thumbnail Preview
                             if (latestImage != null) {
+                                val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath) {
+                                    if (latestImage.thumbnailPath.isNotEmpty()) {
+                                        File(latestImage.thumbnailPath)
+                                    } else if (latestImage.imagePath.startsWith("content://")) {
+                                        android.net.Uri.parse(latestImage.imagePath)
+                                    } else {
+                                        File(latestImage.imagePath)
+                                    }
+                                }
                                 AsyncImage(
-                                    model = File(latestImage.imagePath),
+                                    model = imageModel,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(90.dp)

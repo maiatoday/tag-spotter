@@ -40,7 +40,8 @@ class DetailScreenTest {
                 status = "active",
                 artists = listOf("Artist X")
             ),
-            imagePath = "/fake/path"
+            imagePath = "/fake/path",
+            thumbnailPath = "/fake/thumbnail/path"
         )
         
         // Now set the content using the real app's repository (which DetailScreen will look up)
@@ -94,7 +95,8 @@ class DetailScreenTest {
                 artists = emptyList(),
                 photographer = "Jane Doe"
             ),
-            imagePath = "/fake/path"
+            imagePath = "/fake/path",
+            thumbnailPath = "/fake/thumbnail/path"
         )
         
         composeTestRule.runOnUiThread {

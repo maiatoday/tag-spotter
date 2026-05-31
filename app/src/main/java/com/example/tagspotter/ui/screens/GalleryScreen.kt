@@ -156,8 +156,17 @@ fun SpotGridCard(
                     .background(Color.DarkGray)
             ) {
                 if (latestImage != null) {
+                    val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath) {
+                        if (latestImage.thumbnailPath.isNotEmpty()) {
+                            File(latestImage.thumbnailPath)
+                        } else if (latestImage.imagePath.startsWith("content://")) {
+                            android.net.Uri.parse(latestImage.imagePath)
+                        } else {
+                            File(latestImage.imagePath)
+                        }
+                    }
                     AsyncImage(
-                        model = File(latestImage.imagePath),
+                        model = imageModel,
                         contentDescription = "Spot photo",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop

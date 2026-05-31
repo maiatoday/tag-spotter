@@ -8,8 +8,8 @@ interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>
     fun getSpotsByCategory(category: String): Flow<List<SpotDetails>>
     fun getSpotById(id: Long): Flow<SpotDetails?>
-    suspend fun saveSpot(spot: Spot, imagePath: String): Long
-    suspend fun addImageToSpot(spotId: Long, imagePath: String, timestamp: Long): Long
+    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String): Long
+    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long): Long
     suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long
     suspend fun updateSpotStatus(spotId: Long, status: String)
     suspend fun updateSpotArtists(spotId: Long, artists: List<String>)
@@ -37,23 +37,25 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
         return spotDao.getSpotDetails(id)
     }
 
-    override suspend fun saveSpot(spot: Spot, imagePath: String): Long {
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String): Long {
         val spotId = spotDao.insertSpot(spot)
         spotDao.insertImage(
             SpotImage(
                 spotId = spotId,
                 imagePath = imagePath,
+                thumbnailPath = thumbnailPath,
                 timestamp = spot.createdAt
             )
         )
         return spotId
     }
 
-    override suspend fun addImageToSpot(spotId: Long, imagePath: String, timestamp: Long): Long {
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long): Long {
         return spotDao.insertImage(
             SpotImage(
                 spotId = spotId,
                 imagePath = imagePath,
+                thumbnailPath = thumbnailPath,
                 timestamp = timestamp
             )
         )
@@ -90,12 +92,14 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
-        // Delete all local image files
+        // Delete all local thumbnail files (original public gallery photos are NOT deleted)
         spotDetails.images.forEach { image ->
             try {
-                val file = File(image.imagePath)
-                if (file.exists()) {
-                    file.delete()
+                if (image.thumbnailPath.isNotEmpty()) {
+                    val file = File(image.thumbnailPath)
+                    if (file.exists()) {
+                        file.delete()
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -119,7 +119,7 @@ fun DetailScreen(
     val defaultPhotographer by viewModel.defaultPhotographer.collectAsStateWithLifecycle()
 
     var noteInput by remember { mutableStateOf("") }
-    var zoomImagePath by remember { mutableStateOf<String?>(null) }
+    var zoomImage by remember { mutableStateOf<SpotImage?>(null) }
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
 
     // Launcher to add another image to this spot
@@ -127,10 +127,18 @@ fun DetailScreen(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             scope.launch(Dispatchers.Default) {
-                val optimizedPath = ImageOptimizer.optimizeAndSaveImage(context, uri)
-                if (optimizedPath != null) {
-                    viewModel.addImage(optimizedPath, System.currentTimeMillis())
+                val thumbnailPath = ImageOptimizer.createThumbnail(context, uri)
+                if (thumbnailPath != null) {
+                    viewModel.addImage(uri.toString(), thumbnailPath, System.currentTimeMillis())
                 }
             }
         }
@@ -211,7 +219,7 @@ fun DetailScreen(
                         onAddPhotoClick = {
                             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
-                        onImageClick = { zoomImagePath = it }
+                        onImageClick = { zoomImage = it }
                     )
                 }
 
@@ -261,7 +269,7 @@ fun DetailScreen(
                     onAddPhotoClick = {
                         pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
-                    onImageClick = { zoomImagePath = it }
+                    onImageClick = { zoomImage = it }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -294,17 +302,18 @@ fun DetailScreen(
         }
     }
 
-    if (zoomImagePath != null) {
+    if (zoomImage != null) {
         Dialog(
-            onDismissRequest = { zoomImagePath = null },
+            onDismissRequest = { zoomImage = null },
             properties = DialogProperties(
                 usePlatformDefaultWidth = false,
                 decorFitsSystemWindows = false
             )
         ) {
             ZoomableImageOverlay(
-                imagePath = zoomImagePath!!,
-                onClose = { zoomImagePath = null }
+                imagePath = zoomImage!!.imagePath,
+                thumbnailPath = zoomImage!!.thumbnailPath,
+                onClose = { zoomImage = null }
             )
         }
     }
@@ -430,6 +439,15 @@ fun SpotTimelineCard(
         )
     ) {
         Column {
+            val imageModel = remember(image.imagePath, image.thumbnailPath) {
+                if (image.thumbnailPath.isNotEmpty()) {
+                    File(image.thumbnailPath)
+                } else if (image.imagePath.startsWith("content://")) {
+                    Uri.parse(image.imagePath)
+                } else {
+                    File(image.imagePath)
+                }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -437,7 +455,7 @@ fun SpotTimelineCard(
                     .background(Color.Black)
             ) {
                 AsyncImage(
-                    model = File(image.imagePath),
+                    model = imageModel,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -468,7 +486,7 @@ fun SpotTimelineCard(
 private fun DetailPhotoTimeline(
     sortedImages: List<SpotImage>,
     onAddPhotoClick: () -> Unit,
-    onImageClick: (String) -> Unit,
+    onImageClick: (SpotImage) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -509,7 +527,7 @@ private fun DetailPhotoTimeline(
             items(sortedImages, key = { it.id }) { image ->
                 SpotTimelineCard(
                     image = image,
-                    onClick = { onImageClick(image.imagePath) }
+                    onClick = { onImageClick(image) }
                 )
             }
         }

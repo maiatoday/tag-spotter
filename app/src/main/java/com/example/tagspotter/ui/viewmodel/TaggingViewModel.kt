@@ -131,12 +131,12 @@ class TaggingViewModel(
         _selectedTags.value = _selectedTags.value - tag
     }
 
-    fun saveSpot(imagePath: String, onSaved: () -> Unit) {
+    fun saveSpot(imagePath: String, thumbnailPath: String, captureTime: Long?, onSaved: () -> Unit) {
         viewModelScope.launch {
             val spot = Spot(
                 latitude = _currentLat.value,
                 longitude = _currentLng.value,
-                createdAt = System.currentTimeMillis(),
+                createdAt = captureTime ?: System.currentTimeMillis(),
                 description = _description.value.trim(),
                 tags = _selectedTags.value,
                 category = _selectedCategory.value,
@@ -144,7 +144,7 @@ class TaggingViewModel(
                 artists = _selectedArtists.value,
                 photographer = _photographer.value.trim()
             )
-            repository.saveSpot(spot, imagePath)
+            repository.saveSpot(spot, imagePath, thumbnailPath)
             onSaved()
         }
     }

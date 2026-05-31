@@ -23,7 +23,7 @@ class Converters {
 
 @Database(
     entities = [Spot::class, SpotImage::class, SpotNote::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -47,17 +47,21 @@ abstract class SpotDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE spot_images ADD COLUMN thumbnailPath TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getDatabase(context: Context): SpotDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     SpotDatabase::class.java,
                     "spot_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                .build()
-                INSTANCE = instance
-                instance
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .build().also { INSTANCE = it }
             }
         }
     }
