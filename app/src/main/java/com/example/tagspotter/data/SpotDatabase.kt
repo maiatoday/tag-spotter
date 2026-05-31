@@ -8,16 +8,24 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 
 class Converters {
     @TypeConverter
     fun fromStringList(value: List<String>): String {
-        return value.joinToString(",")
+        return Json.encodeToString(value)
     }
 
     @TypeConverter
     fun toStringList(value: String): List<String> {
-        return if (value.isEmpty()) emptyList() else value.split(",")
+        if (value.isEmpty()) return emptyList()
+        return try {
+            Json.decodeFromString<List<String>>(value)
+        } catch (e: Exception) {
+            value.split(",")
+        }
     }
 }
 
