@@ -1,11 +1,5 @@
 package com.example.tagspotter.ui.screens
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -31,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PinDrop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,7 +33,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,114 +41,72 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.tagspotter.TagSpotterApplication
 import com.example.tagspotter.data.SpotDetails
-import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import com.example.tagspotter.ui.components.OsmMapView
+import com.example.tagspotter.ui.components.OsmMarker
+import com.example.tagspotter.ui.viewmodel.MapViewModel
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.MapEventsOverlay
-import org.osmdroid.views.overlay.Marker
 import java.io.File
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(
-    selectedCategory: String,
-    onCategoryChange: (String) -> Unit,
     onSpotClick: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: MapViewModel = viewModel(factory = MapViewModel.Factory)
 ) {
-    val context = LocalContext.current
-    val app = context.applicationContext as TagSpotterApplication
-    val repository = app.repository
+    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val spots by viewModel.spots.collectAsStateWithLifecycle()
+    val selectedSpot by viewModel.selectedSpot.collectAsStateWithLifecycle()
 
-    // Fetch spots by category to map pins
-    val spots by repository.getSpotsByCategory(selectedCategory).collectAsState(initial = emptyList())
-    var selectedSpot by remember { mutableStateOf<SpotDetails?>(null) }
-    var mapView: MapView? by remember { mutableStateOf(null) }
+    var mapViewInstance: MapView? by remember { mutableStateOf(null) }
 
-    // Constants for marker icons
-    val colorGraffiti = MaterialTheme.colorScheme.tertiary.toArgb()     // Neon Hot Pink
-    val colorSculpture = MaterialTheme.colorScheme.secondary.toArgb()  // Neon Cyan
-    val colorTree = MaterialTheme.colorScheme.primary.toArgb()         // Neon Green
-    val colorArchitecture = Color(0xFFBF5AF2).toArgb()                 // Neon Purple
-    val colorPublicPlace = Color(0xFFFF9F0A).toArgb()                  // Neon Orange
-    val colorErased = Color.Gray.toArgb()
+    // Map spots to OsmMarkers
+    val markers = spots.map { spotDetails ->
+        OsmMarker(
+            id = spotDetails.spot.id,
+            latitude = spotDetails.spot.latitude,
+            longitude = spotDetails.spot.longitude,
+            category = spotDetails.spot.category,
+            status = spotDetails.spot.status,
+            title = spotDetails.spot.category.replace("_", " ").replaceFirstChar { it.titlecase() },
+            onClick = {
+                viewModel.selectSpot(spotDetails)
+                mapViewInstance?.controller?.animateTo(
+                    GeoPoint(spotDetails.spot.latitude, spotDetails.spot.longitude)
+                )
+            }
+        )
+    }
+
+    val initialLat = spots.firstOrNull()?.spot?.latitude ?: 45.0
+    val initialLng = spots.firstOrNull()?.spot?.longitude ?: 9.0
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        AndroidView(
-            factory = { ctx ->
-                MapView(ctx).apply {
-                    setTileSource(TileSourceFactory.MAPNIK)
-                    setMultiTouchControls(true)
-                    
-                    // Default centering on City Center (approximate)
-                    controller.setZoom(14.0)
-                    controller.setCenter(GeoPoint(45.0, 9.0)) // Fallback center
-
-                    val receiver = object : MapEventsReceiver {
-                        override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                            selectedSpot = null
-                            return true
-                        }
-                        override fun longPressHelper(p: GeoPoint?): Boolean = false
-                    }
-                    overlays.add(MapEventsOverlay(receiver))
-                    mapView = this
-                }
+        OsmMapView(
+            latitude = initialLat,
+            longitude = initialLng,
+            zoomLevel = 14.0,
+            markers = markers,
+            modifier = Modifier.fillMaxSize(),
+            onMapClick = {
+                viewModel.selectSpot(null)
             },
-            update = { map ->
-                map.overlays.filterIsInstance<Marker>().forEach { map.overlays.remove(it) }
-
-                // Add pins for all spots
-                spots.forEach { spotDetails ->
-                    val isErased = spotDetails.spot.status == "erased"
-                    val markerColor = when {
-                        isErased -> colorErased
-                        spotDetails.spot.category == "graffiti" -> colorGraffiti
-                        spotDetails.spot.category == "sculpture" -> colorSculpture
-                        spotDetails.spot.category == "tree" -> colorTree
-                        spotDetails.spot.category == "architecture" -> colorArchitecture
-                        spotDetails.spot.category == "public_place" -> colorPublicPlace
-                        else -> colorGraffiti
-                    }
-
-                    val marker = Marker(map).apply {
-                        position = GeoPoint(spotDetails.spot.latitude, spotDetails.spot.longitude)
-                        icon = createPinDrawable(context, markerColor)
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        title = spotDetails.spot.category.capitalize()
-                        
-                        setOnMarkerClickListener { _, _ ->
-                            selectedSpot = spotDetails
-                            map.controller.animateTo(position)
-                            true
-                        }
-                    }
-                    map.overlays.add(marker)
-                }
-
-                // If spots are loaded, auto-center on the latest spot
-                if (spots.isNotEmpty() && selectedSpot == null) {
-                    val latest = spots.first().spot
-                    map.controller.setCenter(GeoPoint(latest.latitude, latest.longitude))
-                }
-                map.invalidate()
-            },
-            modifier = Modifier.fillMaxSize()
+            onMapReady = { map ->
+                mapViewInstance = map
+            }
         )
 
         // Floating Category Filter Overlay Row
@@ -200,11 +150,11 @@ fun MapScreen(
                             color = if (isSelected) categoryColor else Color.DarkGray,
                             shape = RoundedCornerShape(20.dp)
                         )
-                        .clickable { onCategoryChange(category) }
+                        .clickable { viewModel.selectCategory(category) }
                         .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = category.replace("_", " ").capitalize(),
+                        text = category.replace("_", " ").replaceFirstChar { it.titlecase() },
                         color = if (isSelected) categoryColor else Color.LightGray,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
@@ -265,7 +215,7 @@ fun MapScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
-                                        text = spot.spot.category.replace("_", " ").capitalize(),
+                                        text = spot.spot.category.replace("_", " ").replaceFirstChar { it.titlecase() },
                                         color = if (isErased) Color.Gray else MaterialTheme.colorScheme.primary,
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
@@ -331,47 +281,11 @@ fun MapScreen(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .size(20.dp)
-                                .clickable { selectedSpot = null }
+                                .clickable { viewModel.selectSpot(null) }
                         )
                     }
                 }
             }
         }
     }
-}
-
-// Programmatic Pin drawing helper to avoid precompiled drawable assets
-private fun createPinDrawable(context: Context, colorArgb: Int): Drawable {
-    val density = context.resources.displayMetrics.density
-    val size = (36 * density).toInt()
-    
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    
-    val paint = Paint().apply {
-        isAntiAlias = true
-        color = colorArgb
-        style = Paint.Style.FILL
-    }
-
-    // Draw main pin bubble (circle)
-    val centerX = size / 2f
-    val centerY = size / 2.5f
-    val radius = size / 3.5f
-    canvas.drawCircle(centerX, centerY, radius, paint)
-
-    // Draw bottom arrow point
-    val path = android.graphics.Path().apply {
-        moveTo(centerX - radius * 0.8f, centerY + radius * 0.5f)
-        lineTo(centerX, size * 0.9f)
-        lineTo(centerX + radius * 0.8f, centerY + radius * 0.5f)
-        close()
-    }
-    canvas.drawPath(path, paint)
-
-    // Draw white center dot
-    paint.color = android.graphics.Color.WHITE
-    canvas.drawCircle(centerX, centerY, radius / 2.5f, paint)
-
-    return BitmapDrawable(context.resources, bitmap)
 }

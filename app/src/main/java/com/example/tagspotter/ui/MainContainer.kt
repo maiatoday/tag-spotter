@@ -48,7 +48,6 @@ fun MainContainer(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(Tab.Gallery) }
-    var currentCategory by rememberSaveable { mutableStateOf("All") }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -122,11 +121,9 @@ fun MainContainer(
             ) {
                 TabContent(
                     selectedTab = selectedTab,
-                    currentCategory = currentCategory,
-                    onCategoryChange = { currentCategory = it },
                     onSpotClick = onSpotClick,
                     onPhotoCaptured = { path, lat, lng, isFallback ->
-                        onPhotoCaptured(path, lat, lng, isFallback, currentCategory)
+                        onPhotoCaptured(path, lat, lng, isFallback, "All")
                     }
                 )
             }
@@ -201,11 +198,9 @@ fun MainContainer(
             ) {
                 TabContent(
                     selectedTab = selectedTab,
-                    currentCategory = currentCategory,
-                    onCategoryChange = { currentCategory = it },
                     onSpotClick = onSpotClick,
                     onPhotoCaptured = { path, lat, lng, isFallback ->
-                        onPhotoCaptured(path, lat, lng, isFallback, currentCategory)
+                        onPhotoCaptured(path, lat, lng, isFallback, "All")
                     }
                 )
             }
@@ -216,20 +211,14 @@ fun MainContainer(
 @Composable
 private fun TabContent(
     selectedTab: Tab,
-    currentCategory: String,
-    onCategoryChange: (String) -> Unit,
     onSpotClick: (Long) -> Unit,
     onPhotoCaptured: (String, Double, Double, Boolean) -> Unit
 ) {
     when (selectedTab) {
         Tab.Gallery -> GalleryScreen(
-            selectedCategory = currentCategory,
-            onCategoryChange = onCategoryChange,
             onSpotClick = onSpotClick
         )
         Tab.Map -> MapScreen(
-            selectedCategory = currentCategory,
-            onCategoryChange = onCategoryChange,
             onSpotClick = onSpotClick
         )
         Tab.Camera -> CaptureScreen(
@@ -238,4 +227,3 @@ private fun TabContent(
         Tab.Settings -> SettingsScreen()
     }
 }
-

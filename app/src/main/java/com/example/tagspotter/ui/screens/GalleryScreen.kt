@@ -34,7 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,9 +47,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.tagspotter.TagSpotterApplication
 import com.example.tagspotter.data.SpotDetails
+import com.example.tagspotter.ui.viewmodel.GalleryViewModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,18 +59,12 @@ import java.util.Locale
 
 @Composable
 fun GalleryScreen(
-    selectedCategory: String,
-    onCategoryChange: (String) -> Unit,
     onSpotClick: (Long) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
 ) {
-    val context = LocalContext.current
-    val app = context.applicationContext as TagSpotterApplication
-    val repository = app.repository
-    
-    // Fetch spots by category flow
-    val spots by repository.getSpotsByCategory(selectedCategory)
-        .collectAsState(initial = emptyList())
+    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val spots by viewModel.spots.collectAsStateWithLifecycle()
 
     val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
 
@@ -90,8 +85,8 @@ fun GalleryScreen(
                 val isSelected = selectedCategory == category
                 FilterChip(
                     selected = isSelected,
-                    onClick = { onCategoryChange(category) },
-                    label = { Text(category.replace("_", " ").capitalize()) },
+                    onClick = { viewModel.selectCategory(category) },
+                    label = { Text(category.replace("_", " ").replaceFirstChar { it.titlecase() }) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = when (category) {
                             "graffiti" -> MaterialTheme.colorScheme.primary
