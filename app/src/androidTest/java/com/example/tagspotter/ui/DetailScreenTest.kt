@@ -75,4 +75,48 @@ class DetailScreenTest {
         // Verify "Artist Y" is displayed
         composeTestRule.onNodeWithText("Artist Y").assertExists()
     }
+
+    @Test
+    fun testStatusUpdateOnRealAppDatabase() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val app = context.applicationContext as TagSpotterApplication
+        val repository = app.repository
+        
+        val spotId = repository.saveSpot(
+            Spot(
+                latitude = 12.34,
+                longitude = 56.78,
+                createdAt = System.currentTimeMillis(),
+                description = "Status Test Spot",
+                tags = emptyList(),
+                category = "sculpture",
+                status = "active",
+                artists = emptyList(),
+                photographer = "Jane Doe"
+            ),
+            imagePath = "/fake/path"
+        )
+        
+        composeTestRule.runOnUiThread {
+            composeTestRule.setContent {
+                DetailScreen(
+                    spotId = spotId,
+                    onBack = {}
+                )
+            }
+        }
+        
+        composeTestRule.waitForIdle()
+
+        // Verify initial status is active by looking for "Mark as Erased" button
+        composeTestRule.onNodeWithText("Mark as Erased").assertExists()
+        
+        // Click "Mark as Erased" button
+        composeTestRule.onNodeWithText("Mark as Erased").performClick()
+        
+        composeTestRule.waitForIdle()
+
+        // Verify status changed to erased by looking for "Mark Active" button
+        composeTestRule.onNodeWithText("Mark Active").assertExists()
+    }
 }
