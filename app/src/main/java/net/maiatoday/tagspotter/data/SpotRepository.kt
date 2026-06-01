@@ -1,0 +1,205 @@
+package net.maiatoday.tagspotter.data
+
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.io.File
+
+interface SpotRepository {
+    fun getAllSpots(): Flow<List<SpotDetails>>
+    fun getSpotsByCategory(category: String): Flow<List<SpotDetails>>
+    fun getSpotById(id: Long): Flow<SpotDetails?>
+    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String): Long
+    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long): Long
+    suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long
+    suspend fun updateSpotStatus(spotId: Long, status: String)
+    suspend fun updateSpotArtists(spotId: Long, artists: List<String>)
+    suspend fun updateSpotPhotographer(spotId: Long, photographer: String)
+    suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double)
+    suspend fun updateSpotDescription(spotId: Long, description: String)
+    suspend fun deleteSpot(spotDetails: SpotDetails)
+    fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>>
+    suspend fun loadTestData()
+    suspend fun unloadTestData()
+}
+
+class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
+
+    override fun getAllSpots(): Flow<List<SpotDetails>> {
+        return spotDao.getAllSpotsDetails()
+    }
+
+    override fun getSpotsByCategory(category: String): Flow<List<SpotDetails>> {
+        if (category == "All") {
+            return spotDao.getAllSpotsDetails()
+        }
+        return spotDao.getAllSpotsDetailsByCategory(category)
+    }
+
+    override fun getSpotById(id: Long): Flow<SpotDetails?> {
+        return spotDao.getSpotDetails(id)
+    }
+
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String): Long {
+        val spotId = spotDao.insertSpot(spot)
+        spotDao.insertImage(
+            SpotImage(
+                spotId = spotId,
+                imagePath = imagePath,
+                thumbnailPath = thumbnailPath,
+                timestamp = spot.createdAt
+            )
+        )
+        return spotId
+    }
+
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long): Long {
+        return spotDao.insertImage(
+            SpotImage(
+                spotId = spotId,
+                imagePath = imagePath,
+                thumbnailPath = thumbnailPath,
+                timestamp = timestamp
+            )
+        )
+    }
+
+    override suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long {
+        return spotDao.insertNote(
+            SpotNote(
+                spotId = spotId,
+                noteText = noteText,
+                timestamp = timestamp
+            )
+        )
+    }
+
+    override suspend fun updateSpotStatus(spotId: Long, status: String) {
+        spotDao.updateSpotStatus(spotId, status)
+    }
+
+    override suspend fun updateSpotArtists(spotId: Long, artists: List<String>) {
+        spotDao.updateSpotArtists(spotId, artists)
+    }
+
+    override suspend fun updateSpotPhotographer(spotId: Long, photographer: String) {
+        spotDao.updateSpotPhotographer(spotId, photographer)
+    }
+
+    override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {
+        spotDao.updateSpotLocation(spotId, latitude, longitude)
+    }
+
+    override suspend fun updateSpotDescription(spotId: Long, description: String) {
+        spotDao.updateSpotDescription(spotId, description)
+    }
+
+    override suspend fun deleteSpot(spotDetails: SpotDetails) {
+        // Delete all local thumbnail files (original public gallery photos are NOT deleted)
+        spotDetails.images.forEach { image ->
+            try {
+                if (image.thumbnailPath.isNotEmpty()) {
+                    val file = File(image.thumbnailPath)
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        // Room cascading delete will clean the images and notes in the database
+        spotDao.deleteSpotById(spotDetails.spot.id)
+    }
+
+    override fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>> {
+        return spotDao.getAllUsedTags().map { rawTagsList ->
+            rawTagsList.flatMap { rawTags ->
+                Converters().toStringList(rawTags)
+            }
+                .map { it.trim().lowercase() }
+                .filter { it.isNotEmpty() && !predefinedTags.contains(it) }
+                .distinct()
+                .take(15) // Limit to top 15 suggestions
+        }
+    }
+
+    override suspend fun loadTestData() {
+        val now = System.currentTimeMillis()
+        val spot1 = Spot(
+            id = 9001L,
+            latitude = 45.4642,
+            longitude = 9.1899,
+            createdAt = now - 86400000 * 2, // 2 days ago
+            description = "Stunning street art stencil near the Duomo in Milan.",
+            tags = listOf("milan", "stencil", "duomo"),
+            category = "graffiti",
+            status = "active",
+            artists = listOf("Mr. Brainwash"),
+            photographer = "Mock Photographer"
+        )
+        val image1 = SpotImage(
+            id = 9001L,
+            spotId = 9001L,
+            imagePath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now - 86400000 * 2
+        )
+
+        val spot2 = Spot(
+            id = 9002L,
+            latitude = 51.5074,
+            longitude = -0.1278,
+            createdAt = now - 86400000 * 1, // 1 day ago
+            description = "Statue of a famous historical figure in central London.",
+            tags = listOf("london", "statue", "history"),
+            category = "sculpture",
+            status = "active",
+            artists = listOf("Famous Sculptor"),
+            photographer = "Mock Photographer"
+        )
+        val image2 = SpotImage(
+            id = 9002L,
+            spotId = 9002L,
+            imagePath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now - 86400000 * 1
+        )
+
+        val spot3 = Spot(
+            id = 9003L,
+            latitude = 40.7128,
+            longitude = -74.0060,
+            createdAt = now,
+            description = "Modern architectural masterpiece in New York City.",
+            tags = listOf("nyc", "modern", "design"),
+            category = "architecture",
+            status = "active",
+            artists = listOf("Star Architect"),
+            photographer = "Mock Photographer"
+        )
+        val image3 = SpotImage(
+            id = 9003L,
+            spotId = 9003L,
+            imagePath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now
+        )
+
+        spotDao.insertSpot(spot1)
+        spotDao.insertImage(image1)
+        spotDao.insertSpot(spot2)
+        spotDao.insertImage(image2)
+        spotDao.insertSpot(spot3)
+        spotDao.insertImage(image3)
+    }
+
+    override suspend fun unloadTestData() {
+        MOCK_SPOT_IDS.forEach { id ->
+            spotDao.deleteSpotById(id)
+        }
+    }
+
+    companion object {
+        val MOCK_SPOT_IDS = listOf(9001L, 9002L, 9003L)
+    }
+}

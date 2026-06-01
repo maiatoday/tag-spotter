@@ -6,15 +6,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.tagspotter"
+    namespace = "net.maiatoday.tagspotter"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.example.tagspotter"
+        applicationId = "net.maiatoday.tagspotter"
         minSdk = 29
         targetSdk = 36
         versionCode = 3
         versionName = "0.0.3"
-        testInstrumentationRunner = "com.example.tagspotter.TagSpotterTestRunner"
+        testInstrumentationRunner = "net.maiatoday.tagspotter.TagSpotterTestRunner"
     }
 
     buildTypes {

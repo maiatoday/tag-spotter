@@ -1,0 +1,76 @@
+package net.maiatoday.tagspotter.data
+
+import android.content.Context
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverter
+import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+
+class Converters {
+    @TypeConverter
+    fun fromStringList(value: List<String>): String {
+        return Json.encodeToString(value)
+    }
+
+    @TypeConverter
+    fun toStringList(value: String): List<String> {
+        if (value.isEmpty()) return emptyList()
+        return try {
+            Json.decodeFromString<List<String>>(value)
+        } catch (e: Exception) {
+            value.split(",")
+        }
+    }
+}
+
+@Database(
+    entities = [Spot::class, SpotImage::class, SpotNote::class],
+    version = 4,
+    exportSchema = false
+)
+@TypeConverters(Converters::class)
+abstract class SpotDatabase : RoomDatabase() {
+
+    abstract fun spotDao(): SpotDao
+
+    companion object {
+        @Volatile
+        private var INSTANCE: SpotDatabase? = null
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE spots ADD COLUMN artists TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE spots ADD COLUMN photographer TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE spot_images ADD COLUMN thumbnailPath TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        fun getDatabase(context: Context): SpotDatabase {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    SpotDatabase::class.java,
+                    "spot_database"
+                )
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .build().also { INSTANCE = it }
+            }
+        }
+    }
+}
