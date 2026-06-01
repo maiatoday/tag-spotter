@@ -51,7 +51,9 @@ fun ZoomableImageOverlay(
     var isOriginalDeleted by remember { mutableStateOf(false) }
 
     LaunchedEffect(imagePath) {
-        if (imagePath.startsWith("content://")) {
+        if (imagePath.startsWith("android.resource://") || imagePath.startsWith("http")) {
+            isOriginalDeleted = false
+        } else if (imagePath.startsWith("content://")) {
             val uri = Uri.parse(imagePath)
             try {
                 context.contentResolver.openInputStream(uri)?.use { }
@@ -67,8 +69,12 @@ fun ZoomableImageOverlay(
     }
 
     val imageModel = remember(imagePath, thumbnailPath, isOriginalDeleted) {
-        if (isOriginalDeleted && thumbnailPath.isNotEmpty()) {
+        if (imagePath.startsWith("android.resource://") || imagePath.startsWith("http")) {
+            Uri.parse(imagePath)
+        } else if (isOriginalDeleted && thumbnailPath.isNotEmpty() && !thumbnailPath.startsWith("android.resource://") && !thumbnailPath.startsWith("http")) {
             File(thumbnailPath)
+        } else if (isOriginalDeleted && thumbnailPath.isNotEmpty() && (thumbnailPath.startsWith("android.resource://") || thumbnailPath.startsWith("http"))) {
+            Uri.parse(thumbnailPath)
         } else if (imagePath.startsWith("content://")) {
             Uri.parse(imagePath)
         } else {

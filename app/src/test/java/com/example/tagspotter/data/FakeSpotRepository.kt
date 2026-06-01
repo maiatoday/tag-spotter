@@ -108,4 +108,79 @@ class FakeSpotRepository : SpotRepository {
                 .distinct()
         }
     }
+
+    override suspend fun loadTestData() {
+        val now = System.currentTimeMillis()
+        val spot1 = Spot(
+            id = 9001L,
+            latitude = 45.4642,
+            longitude = 9.1899,
+            createdAt = now - 86400000 * 2,
+            description = "Stunning street art stencil near the Duomo in Milan.",
+            tags = listOf("milan", "stencil", "duomo"),
+            category = "graffiti",
+            status = "active",
+            artists = listOf("Mr. Brainwash"),
+            photographer = "Mock Photographer"
+        )
+        val image1 = SpotImage(
+            id = 9001L,
+            spotId = 9001L,
+            imagePath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now - 86400000 * 2
+        )
+        spotsMap[9001L] = SpotDetails(spot1, listOf(image1), emptyList())
+
+        val spot2 = Spot(
+            id = 9002L,
+            latitude = 51.5074,
+            longitude = -0.1278,
+            createdAt = now - 86400000 * 1,
+            description = "Statue of a famous historical figure in central London.",
+            tags = listOf("london", "statue", "history"),
+            category = "sculpture",
+            status = "active",
+            artists = listOf("Famous Sculptor"),
+            photographer = "Mock Photographer"
+        )
+        val image2 = SpotImage(
+            id = 9002L,
+            spotId = 9002L,
+            imagePath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now - 86400000 * 1
+        )
+        spotsMap[9002L] = SpotDetails(spot2, listOf(image2), emptyList())
+
+        val spot3 = Spot(
+            id = 9003L,
+            latitude = 40.7128,
+            longitude = -74.0060,
+            createdAt = now,
+            description = "Modern architectural masterpiece in New York City.",
+            tags = listOf("nyc", "modern", "design"),
+            category = "architecture",
+            status = "active",
+            artists = listOf("Star Architect"),
+            photographer = "Mock Photographer"
+        )
+        val image3 = SpotImage(
+            id = 9003L,
+            spotId = 9003L,
+            imagePath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now
+        )
+        spotsMap[9003L] = SpotDetails(spot3, listOf(image3), emptyList())
+
+        updateFlow()
+    }
+
+    override suspend fun unloadTestData() {
+        spotsMap.remove(9001L)
+        spotsMap.remove(9002L)
+        spotsMap.remove(9003L)
+        updateFlow()
+    }
 }

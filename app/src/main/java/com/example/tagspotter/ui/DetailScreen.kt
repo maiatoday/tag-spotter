@@ -440,9 +440,11 @@ fun SpotTimelineCard(
     ) {
         Column {
             val imageModel = remember(image.imagePath, image.thumbnailPath) {
-                if (image.thumbnailPath.isNotEmpty()) {
+                if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("android.resource://") && !image.thumbnailPath.startsWith("http")) {
                     File(image.thumbnailPath)
-                } else if (image.imagePath.startsWith("content://")) {
+                } else if (image.thumbnailPath.isNotEmpty() && (image.thumbnailPath.startsWith("android.resource://") || image.thumbnailPath.startsWith("http"))) {
+                    Uri.parse(image.thumbnailPath)
+                } else if (image.imagePath.startsWith("content://") || image.imagePath.startsWith("android.resource://") || image.imagePath.startsWith("http")) {
                     Uri.parse(image.imagePath)
                 } else {
                     File(image.imagePath)

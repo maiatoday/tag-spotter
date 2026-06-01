@@ -2,11 +2,14 @@ package com.example.tagspotter.ui.viewmodel
 
 import com.example.tagspotter.MainDispatcherRule
 import com.example.tagspotter.data.FakeSettingsRepository
+import com.example.tagspotter.data.FakeSpotRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -17,10 +20,11 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val settingsRepository = FakeSettingsRepository("Initial Photographer", "Milan")
+    private val spotRepository = FakeSpotRepository()
 
     @Test
     fun getAndSetPreferencesWorkCorrectly() = runTest {
-        val viewModel = SettingsViewModel(settingsRepository)
+        val viewModel = SettingsViewModel(settingsRepository, spotRepository)
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
         val collectJobName = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -29,10 +33,14 @@ class SettingsViewModelTest {
         val collectJobCity = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.homeCity.collect {}
         }
+        val collectJobShowTest = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.showTestData.collect {}
+        }
 
         // Verify initial state
         assertEquals("Initial Photographer", viewModel.photographerName.value)
         assertEquals("Milan", viewModel.homeCity.value)
+        assertFalse(viewModel.showTestData.value)
 
         // Update photographer name
         viewModel.updatePhotographerName("New Photographer")
@@ -41,5 +49,13 @@ class SettingsViewModelTest {
         // Update home city
         viewModel.updateHomeCity("London")
         assertEquals("London", viewModel.homeCity.value)
+
+        // Toggle mock data on
+        viewModel.updateShowTestData(true)
+        assertTrue(viewModel.showTestData.value)
+
+        // Toggle mock data off
+        viewModel.updateShowTestData(false)
+        assertFalse(viewModel.showTestData.value)
     }
 }

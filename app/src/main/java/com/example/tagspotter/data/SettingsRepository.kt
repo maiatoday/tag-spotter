@@ -10,6 +10,8 @@ interface SettingsRepository {
     suspend fun updatePhotographerName(name: String)
     val homeCity: Flow<String>
     suspend fun updateHomeCity(city: String)
+    val showTestData: Flow<Boolean>
+    suspend fun updateShowTestData(show: Boolean)
 }
 
 class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository {
@@ -21,12 +23,19 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     private val _homeCity = MutableStateFlow(getSavedHomeCity())
     override val homeCity: Flow<String> = _homeCity.asStateFlow()
 
+    private val _showTestData = MutableStateFlow(getSavedShowTestData())
+    override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
+
     private fun getSavedName(): String {
         return sharedPreferences.getString("photographer_name", "") ?: ""
     }
 
     private fun getSavedHomeCity(): String {
         return sharedPreferences.getString("home_city", "Milan") ?: "Milan"
+    }
+
+    private fun getSavedShowTestData(): Boolean {
+        return sharedPreferences.getBoolean("show_test_data", false)
     }
 
     override suspend fun updatePhotographerName(name: String) {
@@ -37,5 +46,10 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     override suspend fun updateHomeCity(city: String) {
         sharedPreferences.edit().putString("home_city", city).apply()
         _homeCity.value = city
+    }
+
+    override suspend fun updateShowTestData(show: Boolean) {
+        sharedPreferences.edit().putBoolean("show_test_data", show).apply()
+        _showTestData.value = show
     }
 }

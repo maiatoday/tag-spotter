@@ -11,11 +11,18 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
     private val _homeCity = MutableStateFlow(initialHomeCity)
     override val homeCity: Flow<String> = _homeCity.asStateFlow()
 
+    private val _showTestData = MutableStateFlow(false)
+    override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
+
     override suspend fun updatePhotographerName(name: String) {
         _photographerName.value = name
     }
 
     override suspend fun updateHomeCity(city: String) {
         _homeCity.value = city
+    }
+
+    override suspend fun updateShowTestData(show: Boolean) {
+        _showTestData.value = show
     }
 }

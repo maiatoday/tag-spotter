@@ -48,13 +48,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tagspotter.TagSpotterApplication
 import com.example.tagspotter.ui.viewmodel.SettingsViewModel
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModel.provideFactory(
-            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository
+            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository,
+            (LocalContext.current.applicationContext as TagSpotterApplication).repository
         )
     )
 ) {
@@ -73,6 +76,7 @@ fun SettingsScreen(
     var photographerNameInput by remember(savedName) { mutableStateOf(savedName) }
 
     val savedHomeCity by viewModel.homeCity.collectAsStateWithLifecycle()
+    val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
     val isInitiallyCustom = savedHomeCity.startsWith("Custom:")
     var homeCityInput by remember(savedHomeCity) {
         mutableStateOf(if (isInitiallyCustom) "Custom" else savedHomeCity)
@@ -303,6 +307,62 @@ fun SettingsScreen(
                             text = "Save Settings",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Demo & Testing Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = "Demo & Testing",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Load a set of sample spots into the database for demonstration and testing purposes.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Load Mock Test Data",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Switch(
+                            checked = showTestData,
+                            onCheckedChange = { isChecked ->
+                                viewModel.updateShowTestData(isChecked)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                uncheckedThumbColor = Color.Gray,
+                                uncheckedTrackColor = Color.DarkGray
+                            )
                         )
                     }
                 }

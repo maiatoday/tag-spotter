@@ -157,9 +157,11 @@ fun SpotGridCard(
             ) {
                 if (latestImage != null) {
                     val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath) {
-                        if (latestImage.thumbnailPath.isNotEmpty()) {
+                        if (latestImage.thumbnailPath.isNotEmpty() && !latestImage.thumbnailPath.startsWith("android.resource://") && !latestImage.thumbnailPath.startsWith("http")) {
                             File(latestImage.thumbnailPath)
-                        } else if (latestImage.imagePath.startsWith("content://")) {
+                        } else if (latestImage.thumbnailPath.isNotEmpty() && (latestImage.thumbnailPath.startsWith("android.resource://") || latestImage.thumbnailPath.startsWith("http"))) {
+                            android.net.Uri.parse(latestImage.thumbnailPath)
+                        } else if (latestImage.imagePath.startsWith("content://") || latestImage.imagePath.startsWith("android.resource://") || latestImage.imagePath.startsWith("http")) {
                             android.net.Uri.parse(latestImage.imagePath)
                         } else {
                             File(latestImage.imagePath)

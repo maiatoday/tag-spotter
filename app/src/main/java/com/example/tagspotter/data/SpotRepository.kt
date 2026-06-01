@@ -18,6 +18,8 @@ interface SpotRepository {
     suspend fun updateSpotDescription(spotId: Long, description: String)
     suspend fun deleteSpot(spotDetails: SpotDetails)
     fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>>
+    suspend fun loadTestData()
+    suspend fun unloadTestData()
 }
 
 class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
@@ -112,12 +114,92 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
     override fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>> {
         return spotDao.getAllUsedTags().map { rawTagsList ->
             rawTagsList.flatMap { rawTags ->
-                if (rawTags.isEmpty()) emptyList() else rawTags.split(",")
+                Converters().toStringList(rawTags)
             }
                 .map { it.trim().lowercase() }
                 .filter { it.isNotEmpty() && !predefinedTags.contains(it) }
                 .distinct()
                 .take(15) // Limit to top 15 suggestions
         }
+    }
+
+    override suspend fun loadTestData() {
+        val now = System.currentTimeMillis()
+        val spot1 = Spot(
+            id = 9001L,
+            latitude = 45.4642,
+            longitude = 9.1899,
+            createdAt = now - 86400000 * 2, // 2 days ago
+            description = "Stunning street art stencil near the Duomo in Milan.",
+            tags = listOf("milan", "stencil", "duomo"),
+            category = "graffiti",
+            status = "active",
+            artists = listOf("Mr. Brainwash"),
+            photographer = "Mock Photographer"
+        )
+        val image1 = SpotImage(
+            id = 9001L,
+            spotId = 9001L,
+            imagePath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now - 86400000 * 2
+        )
+
+        val spot2 = Spot(
+            id = 9002L,
+            latitude = 51.5074,
+            longitude = -0.1278,
+            createdAt = now - 86400000 * 1, // 1 day ago
+            description = "Statue of a famous historical figure in central London.",
+            tags = listOf("london", "statue", "history"),
+            category = "sculpture",
+            status = "active",
+            artists = listOf("Famous Sculptor"),
+            photographer = "Mock Photographer"
+        )
+        val image2 = SpotImage(
+            id = 9002L,
+            spotId = 9002L,
+            imagePath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now - 86400000 * 1
+        )
+
+        val spot3 = Spot(
+            id = 9003L,
+            latitude = 40.7128,
+            longitude = -74.0060,
+            createdAt = now,
+            description = "Modern architectural masterpiece in New York City.",
+            tags = listOf("nyc", "modern", "design"),
+            category = "architecture",
+            status = "active",
+            artists = listOf("Star Architect"),
+            photographer = "Mock Photographer"
+        )
+        val image3 = SpotImage(
+            id = 9003L,
+            spotId = 9003L,
+            imagePath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            thumbnailPath = "android.resource://com.example.tagspotter/drawable/ic_launcher_foreground",
+            timestamp = now
+        )
+
+        spotDao.insertSpot(spot1)
+        spotDao.insertImage(image1)
+        spotDao.insertSpot(spot2)
+        spotDao.insertImage(image2)
+        spotDao.insertSpot(spot3)
+        spotDao.insertImage(image3)
+    }
+
+    override suspend fun unloadTestData() {
+        MOCK_SPOT_IDS.forEach { id ->
+            spotDao.deleteSpotById(id)
+        }
+    }
+
+    companion object {
+        val MOCK_SPOT_IDS = listOf(9001L, 9002L, 9003L)
     }
 }

@@ -2,6 +2,9 @@
 <journey name="Gallery">
     <description>Use test data to test the gallery screen</description>
     <actions xml:space="preserve">
-        <action></action>
+        <action>Verify that the Gallery screen is shown.</action>
+        <action>Verify that 'Stunning street art stencil near the Duomo in Milan.' is visible.</action>
+        <action>Verify that 'Statue of a famous historical figure in central London.' is visible.</action>
+        <action>Verify that 'Modern architectural masterpiece in New York City.' is visible.</action>
     </actions>
 </journey>

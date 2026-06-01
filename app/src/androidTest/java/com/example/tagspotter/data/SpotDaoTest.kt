@@ -157,7 +157,9 @@ class SpotDaoTest {
 
         // Test getAllUsedTags
         val allTags = dao.getAllUsedTags().first()
-        assertTrue(allTags.contains("tag1,tag2"))
-        assertTrue(allTags.contains("tag2,tag3"))
+        val expected1 = Converters().fromStringList(listOf("tag1", "tag2"))
+        val expected2 = Converters().fromStringList(listOf("tag2", "tag3"))
+        assertTrue(allTags.contains(expected1))
+        assertTrue(allTags.contains(expected2))
     }
 }

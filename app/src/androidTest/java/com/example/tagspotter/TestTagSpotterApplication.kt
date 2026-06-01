@@ -17,4 +17,11 @@ class TestTagSpotterApplication : TagSpotterApplication() {
     override val repository: LocalSpotRepository by lazy {
         LocalSpotRepository(inMemoryDatabase.spotDao())
     }
+
+    override fun onCreate() {
+        super.onCreate()
+        kotlinx.coroutines.runBlocking {
+            repository.loadTestData()
+        }
+    }
 }
