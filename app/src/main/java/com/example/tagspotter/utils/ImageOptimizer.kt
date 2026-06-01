@@ -3,7 +3,9 @@ package com.example.tagspotter.utils
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
+import androidx.exifinterface.media.ExifInterface
 import java.io.File
 import java.io.InputStream
 import java.util.UUID
@@ -61,20 +63,46 @@ object ImageOptimizer {
             val subSampledBitmap = BitmapFactory.decodeStream(inputStream, null, decodeOptions) ?: return null
             inputStream.close()
 
+            // 3b. Read EXIF orientation and rotate if needed
+            val exifInterface = inputStreamProvider()?.use { stream ->
+                ExifInterface(stream)
+            }
+            val orientation = exifInterface?.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            ) ?: ExifInterface.ORIENTATION_NORMAL
+            val degrees = when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
+            }
+
+            val rotatedBitmap = if (degrees != 0f) {
+                val matrix = Matrix().apply { postRotate(degrees) }
+                val rotated = Bitmap.createBitmap(subSampledBitmap, 0, 0, subSampledBitmap.width, subSampledBitmap.height, matrix, true)
+                if (rotated != subSampledBitmap) {
+                    subSampledBitmap.recycle()
+                }
+                rotated
+            } else {
+                subSampledBitmap
+            }
+
             // 4. Scale down precisely to fit maxDimension
-            val currentWidth = subSampledBitmap.width
-            val currentHeight = subSampledBitmap.height
+            val currentWidth = rotatedBitmap.width
+            val currentHeight = rotatedBitmap.height
             val scale = maxDimension.toFloat() / maxOf(currentWidth, currentHeight)
             val finalBitmap = if (scale < 1.0f) {
                 val destWidth = (currentWidth * scale).toInt()
                 val destHeight = (currentHeight * scale).toInt()
-                val scaled = Bitmap.createScaledBitmap(subSampledBitmap, destWidth, destHeight, true)
-                if (scaled != subSampledBitmap) {
-                    subSampledBitmap.recycle()
+                val scaled = Bitmap.createScaledBitmap(rotatedBitmap, destWidth, destHeight, true)
+                if (scaled != rotatedBitmap) {
+                    rotatedBitmap.recycle()
                 }
                 scaled
             } else {
-                subSampledBitmap
+                rotatedBitmap
             }
 
             // 5. Save compressed thumbnail to private directory
@@ -93,7 +121,7 @@ object ImageOptimizer {
             e.printStackTrace()
             return null
         } finally {
-            try { inputStream?.close() } catch (e: Exception) {}
+            try { inputStream.close() } catch (e: Exception) {}
         }
     }
 }
