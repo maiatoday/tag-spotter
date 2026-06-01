@@ -22,6 +22,12 @@ An Android application designed for city walkers to capture, tag, and geolocate 
           +-------------------------------------------------+
 ```
 
+## Screenshots
+
+| Gallery | Map | Detail | Tagging / Detail 2 |
+| :---: | :---: | :---: | :---: |
+| ![Gallery](docs/tagSpotterGallery.png) | ![Map](docs/tagSpotterMap.png) | ![Detail](docs/tagSpotterDetail.png) | ![Tagging / Detail 2](docs/tagSpotterDetail2.png) |
+
 ## Features
 
 - **Local-First & Privacy-Focused**: Stores all information locally on-device. No accounts, API keys, or cloud storage required by default.
