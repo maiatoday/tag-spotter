@@ -203,7 +203,9 @@ fun CaptureScreen(
     ) { _ ->
         // Proceed with pickMedia regardless of whether permission is granted.
         // If not granted, EXIF extraction will just fail to retrieve redacted location data.
-        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        scope.launch {
+            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
     }
 
     val onTakePhotoClick = {
