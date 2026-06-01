@@ -3,7 +3,7 @@ name: Android CI
 on:
   pull_request:
     branches:
-      - develop
+      - main
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
