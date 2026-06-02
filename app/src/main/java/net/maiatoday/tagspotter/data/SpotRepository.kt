@@ -113,13 +113,13 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
 
     override fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>> {
         return spotDao.getAllUsedTags().map { rawTagsList ->
-            rawTagsList.flatMap { rawTags ->
+            rawTagsList.asSequence().flatMap { rawTags ->
                 Converters().toStringList(rawTags)
             }
                 .map { it.trim().lowercase() }
                 .filter { it.isNotEmpty() && !predefinedTags.contains(it) }
                 .distinct()
-                .take(15) // Limit to top 15 suggestions
+                .take(15).toList() // Limit to top 15 suggestions
         }
     }
 

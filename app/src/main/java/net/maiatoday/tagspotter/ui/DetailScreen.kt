@@ -93,11 +93,11 @@ import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
 import net.maiatoday.tagspotter.utils.ImageOptimizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -443,9 +443,9 @@ fun SpotTimelineCard(
                 if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("android.resource://") && !image.thumbnailPath.startsWith("http")) {
                     File(image.thumbnailPath)
                 } else if (image.thumbnailPath.isNotEmpty() && (image.thumbnailPath.startsWith("android.resource://") || image.thumbnailPath.startsWith("http"))) {
-                    Uri.parse(image.thumbnailPath)
+                    image.thumbnailPath.toUri()
                 } else if (image.imagePath.startsWith("content://") || image.imagePath.startsWith("android.resource://") || image.imagePath.startsWith("http")) {
-                    Uri.parse(image.imagePath)
+                    image.imagePath.toUri()
                 } else {
                     File(image.imagePath)
                 }
@@ -668,7 +668,7 @@ private fun DetailInfoCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = String.format("GPS: %.6f, %.6f", details.spot.latitude, details.spot.longitude),
+                        text = String.format(Locale.US, "GPS: %.6f, %.6f", details.spot.latitude, details.spot.longitude),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.LightGray
                     )

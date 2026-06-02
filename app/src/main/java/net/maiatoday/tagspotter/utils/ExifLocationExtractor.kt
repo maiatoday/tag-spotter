@@ -28,7 +28,7 @@ object ExifLocationExtractor {
                     try {
                         val sdf = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
                         sdf.parse(it)?.time
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         null
                     }
                 }

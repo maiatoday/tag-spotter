@@ -1,10 +1,8 @@
 package net.maiatoday.tagspotter.ui.components
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,6 +21,8 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
 
 data class OsmMarker(
     val id: Long,
@@ -134,7 +134,7 @@ private fun createPinDrawable(context: Context, colorSource: Int): Drawable {
     val density = context.resources.displayMetrics.density
     val size = (36 * density).toInt()
     
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(size, size)
     val canvas = Canvas(bitmap)
     
     val paint = Paint().apply {
@@ -159,5 +159,5 @@ private fun createPinDrawable(context: Context, colorSource: Int): Drawable {
     paint.color = android.graphics.Color.WHITE
     canvas.drawCircle(centerX, centerY, radius / 2.5f, paint)
 
-    return BitmapDrawable(context.resources, bitmap)
+    return bitmap.toDrawable(context.resources)
 }

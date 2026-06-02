@@ -5,16 +5,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import net.maiatoday.tagspotter.TagSpotterApplication
-import net.maiatoday.tagspotter.data.SettingsRepository
-import net.maiatoday.tagspotter.data.Spot
-import net.maiatoday.tagspotter.data.SpotRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import net.maiatoday.tagspotter.data.SettingsRepository
+import net.maiatoday.tagspotter.data.Spot
+import net.maiatoday.tagspotter.data.SpotRepository
 
 class TaggingViewModel(
     private val repository: SpotRepository,

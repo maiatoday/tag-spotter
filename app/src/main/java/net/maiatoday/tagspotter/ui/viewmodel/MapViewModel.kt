@@ -17,10 +17,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import org.osmdroid.util.GeoPoint
+import kotlin.math.roundToInt
 
 class MapViewModel(
     private val repository: SpotRepository,
-    private val settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow("All")
@@ -69,8 +70,8 @@ class MapViewModel(
             if (allSpots.isNotEmpty()) {
                 val groups = allSpots.groupBy { spotDetails ->
                     Pair(
-                        Math.round(spotDetails.spot.latitude * 10) / 10.0,
-                        Math.round(spotDetails.spot.longitude * 10) / 10.0
+                        (spotDetails.spot.latitude * 10).roundToInt() / 10.0,
+                        (spotDetails.spot.longitude * 10).roundToInt() / 10.0
                     )
                 }
                 val mostPopulatedGroup = groups.maxByOrNull { it.value.size }

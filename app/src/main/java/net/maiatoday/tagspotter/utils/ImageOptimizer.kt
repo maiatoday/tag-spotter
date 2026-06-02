@@ -9,6 +9,7 @@ import androidx.exifinterface.media.ExifInterface
 import java.io.File
 import java.io.InputStream
 import java.util.UUID
+import androidx.core.graphics.scale
 
 object ImageOptimizer {
 
@@ -96,7 +97,7 @@ object ImageOptimizer {
             val finalBitmap = if (scale < 1.0f) {
                 val destWidth = (currentWidth * scale).toInt()
                 val destHeight = (currentHeight * scale).toInt()
-                val scaled = Bitmap.createScaledBitmap(rotatedBitmap, destWidth, destHeight, true)
+                val scaled = rotatedBitmap.scale(destWidth, destHeight)
                 if (scaled != rotatedBitmap) {
                     rotatedBitmap.recycle()
                 }
@@ -121,7 +122,7 @@ object ImageOptimizer {
             e.printStackTrace()
             return null
         } finally {
-            try { inputStream.close() } catch (e: Exception) {}
+            try { inputStream.close() } catch (_: Exception) {}
         }
     }
 }

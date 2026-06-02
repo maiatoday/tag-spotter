@@ -1,6 +1,5 @@
 package net.maiatoday.tagspotter.ui.screens
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -35,6 +34,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import java.io.File
 
@@ -54,10 +54,10 @@ fun ZoomableImageOverlay(
         if (imagePath.startsWith("android.resource://") || imagePath.startsWith("http")) {
             isOriginalDeleted = false
         } else if (imagePath.startsWith("content://")) {
-            val uri = Uri.parse(imagePath)
+            val uri = imagePath.toUri()
             try {
                 context.contentResolver.openInputStream(uri)?.use { }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 isOriginalDeleted = true
             }
         } else {
@@ -70,13 +70,13 @@ fun ZoomableImageOverlay(
 
     val imageModel = remember(imagePath, thumbnailPath, isOriginalDeleted) {
         if (imagePath.startsWith("android.resource://") || imagePath.startsWith("http")) {
-            Uri.parse(imagePath)
+            imagePath.toUri()
         } else if (isOriginalDeleted && thumbnailPath.isNotEmpty() && !thumbnailPath.startsWith("android.resource://") && !thumbnailPath.startsWith("http")) {
             File(thumbnailPath)
         } else if (isOriginalDeleted && thumbnailPath.isNotEmpty() && (thumbnailPath.startsWith("android.resource://") || thumbnailPath.startsWith("http"))) {
-            Uri.parse(thumbnailPath)
+            thumbnailPath.toUri()
         } else if (imagePath.startsWith("content://")) {
-            Uri.parse(imagePath)
+            imagePath.toUri()
         } else {
             File(imagePath)
         }

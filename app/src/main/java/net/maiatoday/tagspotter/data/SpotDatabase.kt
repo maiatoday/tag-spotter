@@ -8,9 +8,8 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 
 class Converters {
     @TypeConverter
@@ -23,7 +22,7 @@ class Converters {
         if (value.isEmpty()) return emptyList()
         return try {
             Json.decodeFromString<List<String>>(value)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             value.split(",")
         }
     }

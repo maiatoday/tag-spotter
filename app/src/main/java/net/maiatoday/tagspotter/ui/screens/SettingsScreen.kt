@@ -67,7 +67,7 @@ fun SettingsScreen(
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             packageInfo.versionName ?: "1.0"
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             "1.0"
         }
     }

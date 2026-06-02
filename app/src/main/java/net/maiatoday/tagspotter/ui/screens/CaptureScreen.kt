@@ -1,7 +1,6 @@
 package net.maiatoday.tagspotter.ui.screens
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
@@ -49,13 +48,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.utils.ExifLocationExtractor
 import net.maiatoday.tagspotter.utils.ImageOptimizer
 import net.maiatoday.tagspotter.utils.LocationHelper
 import net.maiatoday.tagspotter.utils.MediaStorageHelper
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 
@@ -126,7 +125,7 @@ fun CaptureScreen(
                     val thumbnailPath = ImageOptimizer.createThumbnail(context, file)
                     
                     // Clean temp cache file
-                    try { file.delete() } catch (e: Exception) {}
+                    try { file.delete() } catch (_: Exception) {}
 
                     if (publicUri != null && thumbnailPath != null) {
                         withContext(Dispatchers.Main) {

@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import net.maiatoday.tagspotter.TagSpotterApplication
 import net.maiatoday.tagspotter.data.SettingsRepository
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotRepository
@@ -17,7 +16,7 @@ import kotlinx.coroutines.launch
 class DetailViewModel(
     private val spotId: Long,
     private val repository: SpotRepository,
-    private val settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     val spotDetails: StateFlow<SpotDetails?> = repository.getSpotById(spotId)

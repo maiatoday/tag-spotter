@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.data
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,17 +40,17 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     }
 
     override suspend fun updatePhotographerName(name: String) {
-        sharedPreferences.edit().putString("photographer_name", name).apply()
+        sharedPreferences.edit { putString("photographer_name", name) }
         _photographerName.value = name
     }
 
     override suspend fun updateHomeCity(city: String) {
-        sharedPreferences.edit().putString("home_city", city).apply()
+        sharedPreferences.edit { putString("home_city", city) }
         _homeCity.value = city
     }
 
     override suspend fun updateShowTestData(show: Boolean) {
-        sharedPreferences.edit().putBoolean("show_test_data", show).apply()
+        sharedPreferences.edit { putBoolean("show_test_data", show) }
         _showTestData.value = show
     }
 }

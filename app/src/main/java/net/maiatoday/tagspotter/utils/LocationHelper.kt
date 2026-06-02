@@ -8,6 +8,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
+import kotlin.time.Duration.Companion.milliseconds
 
 object LocationHelper {
 
@@ -22,8 +23,8 @@ object LocationHelper {
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
         // 1. Try to get a high-accuracy current location with a timeout of 4 seconds
-        val location = withTimeoutOrNull(4000) {
-            suspendCancellableCoroutine<android.location.Location?> { continuation ->
+        val location = withTimeoutOrNull(4000.milliseconds) {
+            suspendCancellableCoroutine { continuation ->
                 val cts = CancellationTokenSource()
                 fusedLocationClient.getCurrentLocation(
                     Priority.PRIORITY_HIGH_ACCURACY,
@@ -46,7 +47,7 @@ object LocationHelper {
         }
 
         // 2. Fallback: try to get last known location
-        val lastLocation = suspendCancellableCoroutine<android.location.Location?> { continuation ->
+        val lastLocation = suspendCancellableCoroutine { continuation ->
             fusedLocationClient.lastLocation.addOnCompleteListener { task ->
                 if (continuation.isActive) {
                     if (task.isSuccessful) {

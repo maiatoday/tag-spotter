@@ -78,6 +78,8 @@ import net.maiatoday.tagspotter.ui.components.OsmMarker
 import net.maiatoday.tagspotter.ui.viewmodel.TaggingViewModel
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.Locale
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -87,10 +89,10 @@ fun TaggingScreen(
     latitude: Double,
     longitude: Double,
     isFallback: Boolean,
+    modifier: Modifier = Modifier,
     defaultCategory: String = "graffiti",
     captureTime: Long? = null,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as TagSpotterApplication
@@ -99,7 +101,7 @@ fun TaggingScreen(
     LaunchedEffect(imagePath) {
         if (imagePath.startsWith("content://")) {
             try {
-                val uri = Uri.parse(imagePath)
+                val uri = imagePath.toUri()
                 context.contentResolver.takePersistableUriPermission(
                     uri,
                     android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -253,7 +255,7 @@ fun TaggingScreen(
                                         color = MaterialTheme.colorScheme.onBackground
                                     )
                                     Text(
-                                        text = String.format("%.6f, %.6f", currentLat, currentLng),
+                                        text = String.format(Locale.US, "%.6f, %.6f", currentLat, currentLng),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = Color.Gray
                                     )
@@ -261,7 +263,7 @@ fun TaggingScreen(
 
                                 OutlinedButton(
                                     onClick = { isMapPickerDialogVisible = true },
-                                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+                                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         contentColor = MaterialTheme.colorScheme.secondary
                                     )
@@ -402,7 +404,7 @@ fun TaggingScreen(
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
-                                text = String.format("%.6f, %.6f", currentLat, currentLng),
+                                text = String.format(Locale.US, "%.6f, %.6f", currentLat, currentLng),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color.Gray
                             )
@@ -410,7 +412,7 @@ fun TaggingScreen(
 
                         OutlinedButton(
                             onClick = { isMapPickerDialogVisible = true },
-                            border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.secondary
                             )

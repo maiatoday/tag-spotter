@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,13 +47,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.ui.components.OsmMapView
 import net.maiatoday.tagspotter.ui.components.OsmMarker
 import net.maiatoday.tagspotter.ui.viewmodel.MapViewModel
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import java.io.File
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -202,7 +201,7 @@ fun MapScreen(
                                     if (latestImage.thumbnailPath.isNotEmpty()) {
                                         File(latestImage.thumbnailPath)
                                     } else if (latestImage.imagePath.startsWith("content://")) {
-                                        android.net.Uri.parse(latestImage.imagePath)
+                                        latestImage.imagePath.toUri()
                                     } else {
                                         File(latestImage.imagePath)
                                     }
