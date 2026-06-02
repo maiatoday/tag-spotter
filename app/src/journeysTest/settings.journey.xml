@@ -2,6 +2,12 @@
 <journey name="Settings">
     <description>Settings screen</description>
     <actions xml:space="preserve">
-        <action></action>
+        <action>open the settings screen</action>
+        <action>Add a photographer name</action>
+        <action>Set the home city to Berlin</action>
+        <action>scroll down to the bottom and check that a version number is displayed</action>
+        <action>Save the settings</action>
+        <action>Go to gallery screen</action>
+        <action>Go to settings screen and make sure the settings were saved</action>
     </actions>
 </journey>

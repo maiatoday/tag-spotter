@@ -2,6 +2,14 @@
 <journey name="Capture">
     <description>Capture interface test</description>
     <actions xml:space="preserve">
-        <action></action>
-    </actions>
+        <action>open the capture screen</action>
+        <action>accept the permissions if they are presented</action>
+        <action>take  photo and wait for the photo to be processed</action>
+        <action>See the New Urban Spot screen with the photo that was taken</action>
+        <action>Add a description</action>
+        <action>Add a photographer</action>
+        <action>Save the spot</action>
+        <action>Go to the gallery screen</action>
+        <action>Check for the new photo you just took</action>
+        </actions>
 </journey>

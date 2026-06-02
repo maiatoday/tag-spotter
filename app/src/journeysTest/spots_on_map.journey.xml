@@ -4,7 +4,8 @@
     <actions xml:space="preserve">
         <action>Go to the settings screen and make sure the test data is enabled</action>
         <action>Go to the Map screen and select the all category</action>
-        <action>Verify that a pin is visible and you can tap on it</action>
-        <action>Verify that 'Modern architectural masterpiece in New York City.' is visible</action>
+        <action>Verify that a purple pin is visible</action>
+        <action>Tap on on the pin</action>
+        <action>Verify that 'Modern architectural masterpiece in New York City.' card is visible</action>
         </actions>
 </journey>
