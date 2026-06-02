@@ -71,6 +71,12 @@ class FakeSpotRepository : SpotRepository {
         updateFlow()
     }
 
+    override suspend fun updateSpotCategory(spotId: Long, category: String) {
+        val details = spotsMap[spotId] ?: return
+        spotsMap[spotId] = details.copy(spot = details.spot.copy(category = category))
+        updateFlow()
+    }
+
     override suspend fun updateSpotArtists(spotId: Long, artists: List<String>) {
         val details = spotsMap[spotId] ?: return
         spotsMap[spotId] = details.copy(spot = details.spot.copy(artists = artists))

@@ -48,6 +48,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -234,6 +236,7 @@ fun DetailScreen(
                         details = details,
                         defaultPhotographer = defaultPhotographer,
                         onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
+                        onUpdateCategory = { category -> viewModel.updateCategory(category) },
                         onUpdateArtists = { list -> viewModel.updateArtists(list) },
                         onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
                         onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
@@ -279,6 +282,7 @@ fun DetailScreen(
                     details = details,
                     defaultPhotographer = defaultPhotographer,
                     onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
+                    onUpdateCategory = { category -> viewModel.updateCategory(category) },
                     onUpdateArtists = { list -> viewModel.updateArtists(list) },
                     onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
                     onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
@@ -543,6 +547,7 @@ private fun DetailInfoCard(
     details: SpotDetails,
     defaultPhotographer: String,
     onUpdateStatus: (String) -> Unit,
+    onUpdateCategory: (String) -> Unit,
     onUpdateArtists: (List<String>) -> Unit,
     onUpdatePhotographer: (String) -> Unit,
     onUpdateDescription: (String) -> Unit,
@@ -593,12 +598,14 @@ private fun DetailInfoCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
                         .background(
                             color = MaterialTheme.categoryColors.getColorForCategory(details.spot.category),
                             shape = RoundedCornerShape(4.dp)
                         )
+                        .clickable { isCategoryDropdownExpanded = true }
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
@@ -607,6 +614,21 @@ private fun DetailInfoCard(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
+                    DropdownMenu(
+                        expanded = isCategoryDropdownExpanded,
+                        onDismissRequest = { isCategoryDropdownExpanded = false }
+                    ) {
+                        val categories = listOf("graffiti", "sculpture", "tree", "architecture", "public_place")
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category.replace("_", " ").uppercase()) },
+                                onClick = {
+                                    onUpdateCategory(category)
+                                    isCategoryDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
                 }
 
                 Button(
