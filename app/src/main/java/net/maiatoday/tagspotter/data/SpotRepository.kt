@@ -2,6 +2,7 @@ package net.maiatoday.tagspotter.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import java.io.File
 
 interface SpotRepository {
@@ -21,6 +22,7 @@ interface SpotRepository {
     fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>>
     suspend fun loadTestData()
     suspend fun unloadTestData()
+    suspend fun importSpots(spots: List<SpotDetails>): Int
 }
 
 class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
@@ -202,6 +204,31 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
         MOCK_SPOT_IDS.forEach { id ->
             spotDao.deleteSpotById(id)
         }
+    }
+
+    override suspend fun importSpots(spots: List<SpotDetails>): Int {
+        val existingSpots = spotDao.getAllSpotsDetails().first()
+        var importedCount = 0
+        spots.forEach { importedDetail ->
+            val importedSpot = importedDetail.spot
+            val isDuplicate = existingSpots.any { existingDetail ->
+                val e = existingDetail.spot
+                e.createdAt == importedSpot.createdAt &&
+                        e.latitude == importedSpot.latitude &&
+                        e.longitude == importedSpot.longitude
+            }
+            if (!isDuplicate) {
+                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L))
+                importedDetail.images.forEach { image ->
+                    spotDao.insertImage(image.copy(id = 0L, spotId = newSpotId))
+                }
+                importedDetail.notes.forEach { note ->
+                    spotDao.insertNote(note.copy(id = 0L, spotId = newSpotId))
+                }
+                importedCount++
+            }
+        }
+        return importedCount
     }
 
     companion object {

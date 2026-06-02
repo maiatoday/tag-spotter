@@ -189,4 +189,27 @@ class FakeSpotRepository : SpotRepository {
         spotsMap.remove(9003L)
         updateFlow()
     }
+
+    override suspend fun importSpots(spots: List<SpotDetails>): Int {
+        var importedCount = 0
+        spots.forEach { importedDetail ->
+            val importedSpot = importedDetail.spot
+            val isDuplicate = spotsMap.values.any { existingDetail ->
+                val e = existingDetail.spot
+                e.createdAt == importedSpot.createdAt &&
+                        e.latitude == importedSpot.latitude &&
+                        e.longitude == importedSpot.longitude
+            }
+            if (!isDuplicate) {
+                val nextId = (spotsMap.keys.maxOrNull() ?: 0L) + 1L
+                val spotCopy = importedSpot.copy(id = nextId)
+                val imagesCopy = importedDetail.images.mapIndexed { idx, img -> img.copy(id = idx + 1L, spotId = nextId) }
+                val notesCopy = importedDetail.notes.mapIndexed { idx, note -> note.copy(id = idx + 1L, spotId = nextId) }
+                spotsMap[nextId] = SpotDetails(spotCopy, imagesCopy, notesCopy)
+                importedCount++
+            }
+        }
+        updateFlow()
+        return importedCount
+    }
 }
