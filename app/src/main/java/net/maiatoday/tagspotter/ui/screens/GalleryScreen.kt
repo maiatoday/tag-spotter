@@ -1,11 +1,18 @@
 package net.maiatoday.tagspotter.ui.screens
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.core.content.FileProvider
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -25,6 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
@@ -34,6 +44,17 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import net.maiatoday.tagspotter.theme.categoryColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,50 +84,174 @@ fun GalleryScreen(
     modifier: Modifier = Modifier,
     viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
 ) {
+    val context = LocalContext.current
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
+    var isMultiSelectMode by remember { mutableStateOf(false) }
+    val selectedSpotIds = remember { mutableStateListOf<Long>() }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
     val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
+    val sources = listOf("All", "My Spots", "Imported")
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Selected Spots") },
+            text = { Text("Are you sure you want to delete the ${selectedSpotIds.size} selected spot(s)? This action cannot be undone and will delete all associated images and notes.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteSpots(selectedSpotIds.toList()) {
+                            selectedSpotIds.clear()
+                            isMultiSelectMode = false
+                            showDeleteConfirmDialog = false
+                            Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Search Bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { viewModel.setSearchQuery(it) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("Search by tag, artist, or photographer...") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Clear",
-                            tint = Color.Gray
+        if (isMultiSelectMode) {
+            // Multi-Select Action Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = {
+                        selectedSpotIds.clear()
+                        isMultiSelectMode = false
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel Selection")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${selectedSpotIds.size} selected",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
+                            try {
+                                val jsonString = Json.encodeToString(selectedSpots)
+                                val cacheFile = File(context.cacheDir, "spots_export.ts_pack")
+                                cacheFile.writeText(jsonString)
+
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    cacheFile
+                                )
+
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+
+                                context.startActivity(Intent.createChooser(shareIntent, "Share Spots"))
+
+                                selectedSpotIds.clear()
+                                isMultiSelectMode = false
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "Export failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        enabled = selectedSpotIds.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Share")
+                    }
+
+                    Button(
+                        onClick = { showDeleteConfirmDialog = true },
+                        enabled = selectedSpotIds.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Delete")
                     }
                 }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = Color.DarkGray
+            }
+        } else {
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.setSearchQuery(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Search by tag, artist, or photographer...") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = Color.DarkGray
+                )
             )
-        )
+        }
         // Categories Filter Header
         LazyRow(
             modifier = Modifier
@@ -134,6 +279,29 @@ fun GalleryScreen(
             }
         }
 
+        // Sources Filter Header
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(sources) { source ->
+                val isSelected = selectedSource == source
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { viewModel.selectSource(source) },
+                    label = { Text(source) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+                        labelColor = Color.Gray
+                    )
+                )
+            }
+        }
+
         if (spots.isEmpty()) {
             EmptyGalleryState(category = selectedCategory, query = searchQuery)
         } else {
@@ -147,9 +315,28 @@ fun GalleryScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(spots, key = { it.spot.id }) { spotDetails ->
+                    val isSelected = selectedSpotIds.contains(spotDetails.spot.id)
                     SpotGridCard(
                         spotDetails = spotDetails,
-                        onClick = { onSpotClick(spotDetails.spot.id) }
+                        isSelected = isSelected,
+                        isMultiSelectMode = isMultiSelectMode,
+                        onClick = {
+                            if (isMultiSelectMode) {
+                                if (isSelected) {
+                                    selectedSpotIds.remove(spotDetails.spot.id)
+                                } else {
+                                    selectedSpotIds.add(spotDetails.spot.id)
+                                }
+                            } else {
+                                onSpotClick(spotDetails.spot.id)
+                            }
+                        },
+                        onLongClick = {
+                            if (!isMultiSelectMode) {
+                                isMultiSelectMode = true
+                                selectedSpotIds.add(spotDetails.spot.id)
+                            }
+                        }
                     )
                 }
             }
@@ -157,11 +344,14 @@ fun GalleryScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SpotGridCard(
     spotDetails: SpotDetails,
-    onClick: () -> Unit
+    isSelected: Boolean,
+    isMultiSelectMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     // Get latest image based on timestamp
     val latestImage = spotDetails.images.maxByOrNull { it.timestamp }
@@ -170,10 +360,19 @@ fun SpotGridCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .border(
                 1.dp,
-                if (isErased) Color.DarkGray else MaterialTheme.categoryColors.getColorForCategory(spotDetails.spot.category).copy(alpha = 0.4f),
+                if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else if (isErased) {
+                    Color.DarkGray
+                } else {
+                    MaterialTheme.categoryColors.getColorForCategory(spotDetails.spot.category).copy(alpha = 0.4f)
+                },
                 RoundedCornerShape(8.dp)
             ),
         shape = RoundedCornerShape(8.dp),
@@ -244,6 +443,46 @@ fun SpotGridCard(
                             color = Color.Black,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Imported Badge
+                if (spotDetails.spot.isImported) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "IMPORTED",
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Selection Overlay
+                if (isMultiSelectMode) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                if (isSelected) Color.Black.copy(alpha = 0.3f) else Color.Transparent
+                            )
+                    ) {
+                        Checkbox(
+                            checked = isSelected,
+                            onCheckedChange = { onClick() },
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(4.dp)
                         )
                     }
                 }
