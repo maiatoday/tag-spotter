@@ -30,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import net.maiatoday.tagspotter.theme.categoryColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -130,14 +131,10 @@ fun MapScreen(
             val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
             items(categories) { category ->
                 val isSelected = selectedCategory == category
-                val categoryColor = when (category) {
-                    "All" -> MaterialTheme.colorScheme.secondary
-                    "graffiti" -> MaterialTheme.colorScheme.tertiary
-                    "sculpture" -> MaterialTheme.colorScheme.secondary
-                    "tree" -> MaterialTheme.colorScheme.primary
-                    "architecture" -> Color(0xFFBF5AF2)
-                    "public_place" -> Color(0xFFFF9F0A)
-                    else -> MaterialTheme.colorScheme.primary
+                val categoryColor = if (category == "All") {
+                    MaterialTheme.colorScheme.secondary
+                } else {
+                    MaterialTheme.categoryColors.getColorForCategory(category)
                 }
 
                 Box(

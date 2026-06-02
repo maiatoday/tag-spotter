@@ -29,6 +29,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import net.maiatoday.tagspotter.theme.categoryColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -82,10 +83,10 @@ fun GalleryScreen(
                     onClick = { viewModel.selectCategory(category) },
                     label = { Text(category.replace("_", " ").replaceFirstChar { it.titlecase() }) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = when (category) {
-                            "graffiti" -> MaterialTheme.colorScheme.primary
-                            "sculpture" -> MaterialTheme.colorScheme.secondary
-                            else -> MaterialTheme.colorScheme.primary
+                        selectedContainerColor = if (category == "All") {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.categoryColors.getColorForCategory(category)
                         },
                         selectedLabelColor = MaterialTheme.colorScheme.background,
                         labelColor = Color.Gray
@@ -133,7 +134,7 @@ fun SpotGridCard(
             .clickable { onClick() }
             .border(
                 1.dp,
-                if (isErased) Color.DarkGray else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                if (isErased) Color.DarkGray else MaterialTheme.categoryColors.getColorForCategory(spotDetails.spot.category).copy(alpha = 0.4f),
                 RoundedCornerShape(8.dp)
             ),
         shape = RoundedCornerShape(8.dp),
@@ -194,14 +195,7 @@ fun SpotGridCard(
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
                             .background(
-                                color = when (spotDetails.spot.category) {
-                                    "graffiti" -> MaterialTheme.colorScheme.tertiary
-                                    "sculpture" -> MaterialTheme.colorScheme.secondary
-                                    "tree" -> MaterialTheme.colorScheme.primary
-                                    "architecture" -> Color(0xFFBF5AF2)
-                                    "public_place" -> Color(0xFFFF9F0A)
-                                    else -> Color.DarkGray
-                                },
+                                color = MaterialTheme.categoryColors.getColorForCategory(spotDetails.spot.category),
                                 shape = RoundedCornerShape(4.dp)
                             )
                             .padding(horizontal = 6.dp, vertical = 2.dp)

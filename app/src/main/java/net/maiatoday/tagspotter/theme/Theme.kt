@@ -9,6 +9,9 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+
+import androidx.compose.runtime.CompositionLocalProvider
 
 private val UrbanDarkColorScheme = darkColorScheme(
     primary = UrbanPrimary,
@@ -25,16 +28,34 @@ private val UrbanDarkColorScheme = darkColorScheme(
     onError = UrbanOnError
 )
 
+private val UrbanLightColorScheme = lightColorScheme(
+    primary = LightPrimary,
+    secondary = LightSecondary,
+    tertiary = LightTertiary,
+    background = LightBackground,
+    surface = LightSurface,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = LightOnBackground,
+    onSurface = LightOnSurface,
+    error = LightError,
+    onError = LightOnError
+)
+
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = true, // Force Dark mode by default for urban aesthetic
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = UrbanDarkColorScheme
+    val colorScheme = if (darkTheme) UrbanDarkColorScheme else UrbanLightColorScheme
+    val categoryColors = if (darkTheme) DarkCategoryColors else LightCategoryColors
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalCategoryColors provides categoryColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

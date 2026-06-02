@@ -10,6 +10,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.material3.MaterialTheme
+import net.maiatoday.tagspotter.theme.categoryColors
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
@@ -45,6 +47,7 @@ fun OsmMapView(
     onMapReady: ((MapView) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val categoryColors = MaterialTheme.categoryColors
     val mapView = remember(context) {
         MapView(context)
     }
@@ -95,7 +98,11 @@ fun OsmMapView(
 
             // Add pins
             markers.forEach { osmMarker ->
-                val markerColor = getMarkerColor(osmMarker.category, osmMarker.status)
+                val markerColor = if (osmMarker.status == "erased") {
+                    Color.Gray.toArgb()
+                } else {
+                    categoryColors.getColorForCategory(osmMarker.category).toArgb()
+                }
                 val marker = Marker(map).apply {
                     position = GeoPoint(osmMarker.latitude, osmMarker.longitude)
                     icon = createPinDrawable(map.context, markerColor)
@@ -114,20 +121,6 @@ fun OsmMapView(
         },
         modifier = modifier
     )
-}
-
-private fun getMarkerColor(category: String, status: String): Int {
-    if (status == "erased") {
-        return Color.Gray.toArgb()
-    }
-    return when (category) {
-        "graffiti" -> Color(0xFFFF2D55).toArgb() // Neon Pink
-        "sculpture" -> Color(0xFF00C7BE).toArgb() // Neon Cyan
-        "tree" -> Color(0xFF34C759).toArgb() // Neon Green
-        "architecture" -> Color(0xFFBF5AF2).toArgb() // Neon Purple
-        "public_place" -> Color(0xFFFF9F0A).toArgb() // Neon Orange
-        else -> Color(0xFFFF2D55).toArgb()
-    }
 }
 
 private fun createPinDrawable(context: Context, colorSource: Int): Drawable {
