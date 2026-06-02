@@ -12,6 +12,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 
 import androidx.compose.runtime.CompositionLocalProvider
+import android.app.Activity
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val UrbanDarkColorScheme = darkColorScheme(
     primary = UrbanPrimary,
@@ -50,6 +54,16 @@ fun MyApplicationTheme(
 ) {
     val colorScheme = if (darkTheme) UrbanDarkColorScheme else UrbanLightColorScheme
     val categoryColors = if (darkTheme) DarkCategoryColors else LightCategoryColors
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !darkTheme
+            controller.isAppearanceLightNavigationBars = !darkTheme
+        }
+    }
 
     CompositionLocalProvider(LocalCategoryColors provides categoryColors) {
         MaterialTheme(
