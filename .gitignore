@@ -23,3 +23,6 @@ local.properties
 .kotlin
 .kotlin/
 
+# Git Worktrees
+/worktrees/
+/worktrees
