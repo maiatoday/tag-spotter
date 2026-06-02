@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ImportSpotsTest {
@@ -16,6 +17,12 @@ class ImportSpotsTest {
         // 1. Initial state: load test data (3 spots)
         repository.loadTestData()
         
+        // Assert initial spots are NOT marked as imported
+        val initialSpots = repository.getAllSpots().first()
+        initialSpots.forEach {
+            assertTrue(!it.spot.isImported)
+        }
+
         // 2. Prepare imported spots:
         // - Spot A: identical coordinates and createdAt as mock spot 9001 (should be skipped)
         // - Spot B: unique coordinates and createdAt (should be imported)
@@ -64,5 +71,8 @@ class ImportSpotsTest {
         assertEquals(importedSpotDetails.spot.id, importedSpotDetails.images.first().spotId)
         assertEquals("Note B", importedSpotDetails.notes.first().noteText)
         assertEquals(importedSpotDetails.spot.id, importedSpotDetails.notes.first().spotId)
+        
+        // Assert imported spot IS marked as imported
+        assertTrue(importedSpotDetails.spot.isImported)
     }
 }

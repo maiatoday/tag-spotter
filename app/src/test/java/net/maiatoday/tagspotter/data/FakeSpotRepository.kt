@@ -202,7 +202,7 @@ class FakeSpotRepository : SpotRepository {
             }
             if (!isDuplicate) {
                 val nextId = (spotsMap.keys.maxOrNull() ?: 0L) + 1L
-                val spotCopy = importedSpot.copy(id = nextId)
+                val spotCopy = importedSpot.copy(id = nextId, isImported = true)
                 val imagesCopy = importedDetail.images.mapIndexed { idx, img -> img.copy(id = idx + 1L, spotId = nextId) }
                 val notesCopy = importedDetail.notes.mapIndexed { idx, note -> note.copy(id = idx + 1L, spotId = nextId) }
                 spotsMap[nextId] = SpotDetails(spotCopy, imagesCopy, notesCopy)

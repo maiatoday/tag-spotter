@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
@@ -47,6 +48,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -83,13 +86,43 @@ fun GalleryScreen(
 ) {
     val context = LocalContext.current
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     var isMultiSelectMode by remember { mutableStateOf(false) }
     val selectedSpotIds = remember { mutableStateListOf<Long>() }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
+    val sources = listOf("All", "My Spots", "Imported")
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Selected Spots") },
+            text = { Text("Are you sure you want to delete the ${selectedSpotIds.size} selected spot(s)? This action cannot be undone and will delete all associated images and notes.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteSpots(selectedSpotIds.toList()) {
+                            selectedSpotIds.clear()
+                            isMultiSelectMode = false
+                            showDeleteConfirmDialog = false
+                            Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -123,47 +156,65 @@ fun GalleryScreen(
                     )
                 }
 
-                Button(
-                    onClick = {
-                        val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
-                        try {
-                            val jsonString = Json.encodeToString(selectedSpots)
-                            val cacheFile = File(context.cacheDir, "spots_export.ts_pack")
-                            cacheFile.writeText(jsonString)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
+                            try {
+                                val jsonString = Json.encodeToString(selectedSpots)
+                                val cacheFile = File(context.cacheDir, "spots_export.ts_pack")
+                                cacheFile.writeText(jsonString)
 
-                            val uri = FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.fileprovider",
-                                cacheFile
-                            )
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    cacheFile
+                                )
 
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "application/json"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+
+                                context.startActivity(Intent.createChooser(shareIntent, "Share Spots"))
+
+                                selectedSpotIds.clear()
+                                isMultiSelectMode = false
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "Export failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                             }
+                        },
+                        enabled = selectedSpotIds.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Share")
+                    }
 
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Spots"))
-
-                            selectedSpotIds.clear()
-                            isMultiSelectMode = false
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            Toast.makeText(context, "Export failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    enabled = selectedSpotIds.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Share",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Share")
+                    Button(
+                        onClick = { showDeleteConfirmDialog = true },
+                        enabled = selectedSpotIds.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Delete")
+                    }
                 }
             }
         } else {
@@ -222,6 +273,29 @@ fun GalleryScreen(
                             MaterialTheme.categoryColors.getColorForCategory(category)
                         },
                         selectedLabelColor = MaterialTheme.colorScheme.background,
+                        labelColor = Color.Gray
+                    )
+                )
+            }
+        }
+
+        // Sources Filter Header
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(sources) { source ->
+                val isSelected = selectedSource == source
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { viewModel.selectSource(source) },
+                    label = { Text(source) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
                         labelColor = Color.Gray
                     )
                 )
@@ -367,6 +441,27 @@ fun SpotGridCard(
                         Text(
                             text = spotDetails.spot.category.take(3).uppercase(),
                             color = Color.Black,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Imported Badge
+                if (spotDetails.spot.isImported) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "IMPORTED",
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )

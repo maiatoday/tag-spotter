@@ -218,7 +218,7 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
                         e.longitude == importedSpot.longitude
             }
             if (!isDuplicate) {
-                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L))
+                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L, isImported = true))
                 importedDetail.images.forEach { image ->
                     spotDao.insertImage(image.copy(id = 0L, spotId = newSpotId))
                 }
