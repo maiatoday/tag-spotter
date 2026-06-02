@@ -77,6 +77,10 @@ class DetailViewModelTest {
         viewModel.updateDescription("New Description")
         assertEquals("New Description", viewModel.spotDetails.value?.spot?.description)
 
+        // Update category
+        viewModel.updateCategory("sculpture")
+        assertEquals("sculpture", viewModel.spotDetails.value?.spot?.category)
+
         // Update location
         viewModel.updateLocation(43.21, 87.65)
         assertEquals(43.21, viewModel.spotDetails.value?.spot?.latitude)

@@ -39,6 +39,12 @@ class DetailViewModel(
         }
     }
 
+    fun updateCategory(category: String) {
+        viewModelScope.launch {
+            repository.updateSpotCategory(spotId, category)
+        }
+    }
+
     fun updateArtists(artists: List<String>) {
         viewModelScope.launch {
             repository.updateSpotArtists(spotId, artists)
