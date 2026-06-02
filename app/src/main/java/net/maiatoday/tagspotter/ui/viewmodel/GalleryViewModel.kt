@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 
@@ -20,19 +21,40 @@ class GalleryViewModel(private val repository: SpotRepository) : ViewModel() {
     private val _selectedCategory = MutableStateFlow("All")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val spots: StateFlow<List<SpotDetails>> = _selectedCategory
-        .flatMapLatest { category ->
+    val spots: StateFlow<List<SpotDetails>> = combine(
+        _selectedCategory.flatMapLatest { category ->
             repository.getSpotsByCategory(category)
+        },
+        _searchQuery
+    ) { spotsList, query ->
+        if (query.isBlank()) {
+            spotsList
+        } else {
+            val q = query.trim().lowercase()
+            spotsList.filter { detail ->
+                val spot = detail.spot
+                val matchTags = spot.tags.any { it.lowercase().contains(q) }
+                val matchArtists = spot.artists.any { it.lowercase().contains(q) }
+                val matchPhotographer = spot.photographer.lowercase().contains(q)
+                matchTags || matchArtists || matchPhotographer
+            }
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     fun selectCategory(category: String) {
         _selectedCategory.value = category
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
     companion object {

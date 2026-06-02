@@ -22,9 +22,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -60,6 +65,7 @@ fun GalleryScreen(
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
 
@@ -68,6 +74,39 @@ fun GalleryScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { viewModel.setSearchQuery(it) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("Search by tag, artist, or photographer...") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear",
+                            tint = Color.Gray
+                        )
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = Color.DarkGray
+            )
+        )
         // Categories Filter Header
         LazyRow(
             modifier = Modifier
@@ -96,7 +135,7 @@ fun GalleryScreen(
         }
 
         if (spots.isEmpty()) {
-            EmptyGalleryState(category = selectedCategory)
+            EmptyGalleryState(category = selectedCategory, query = searchQuery)
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 160.dp),
@@ -271,7 +310,7 @@ fun SpotGridCard(
 }
 
 @Composable
-fun EmptyGalleryState(category: String) {
+fun EmptyGalleryState(category: String, query: String = "") {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -293,7 +332,9 @@ fun EmptyGalleryState(category: String) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = if (category == "All") {
+            text = if (query.isNotEmpty()) {
+                "No spots match '$query'."
+            } else if (category == "All") {
                 "Document your city walks! Tap the 'Capture' tab below to photograph your first spot."
             } else {
                 "You haven't tagged any items in the '${category.replace("_", " ")}' category yet."

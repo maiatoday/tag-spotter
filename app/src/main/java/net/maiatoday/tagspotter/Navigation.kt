@@ -14,7 +14,11 @@ fun MainNavigation() {
 
     NavDisplay(
         backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
+        onBack = {
+            if (backStack.size > 1) {
+                backStack.removeLastOrNull()
+            }
+        },
         entryProvider = entryProvider {
             entry<Main> {
                 MainContainer(
@@ -27,7 +31,11 @@ fun MainNavigation() {
             entry<DetailKey> { key ->
                 DetailScreen(
                     spotId = key.spotId,
-                    onBack = { backStack.removeLastOrNull() }
+                    onBack = {
+                        if (backStack.size > 1) {
+                            backStack.removeLastOrNull()
+                        }
+                    }
                 )
             }
             entry<TaggingKey> { key ->
@@ -39,7 +47,11 @@ fun MainNavigation() {
                     isFallback = key.isFallback,
                     defaultCategory = key.defaultCategory,
                     captureTime = key.captureTime,
-                    onBack = { backStack.removeLastOrNull() }
+                    onBack = {
+                        if (backStack.size > 1) {
+                            backStack.removeLastOrNull()
+                        }
+                    }
                 )
             }
         }
