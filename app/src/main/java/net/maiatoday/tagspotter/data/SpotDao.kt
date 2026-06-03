@@ -42,6 +42,9 @@ interface SpotDao {
     @Query("UPDATE spots SET photographer = :photographer WHERE id = :spotId")
     suspend fun updateSpotPhotographer(spotId: Long, photographer: String)
 
+    @Query("UPDATE spots SET tags = :tags WHERE id = :spotId")
+    suspend fun updateSpotTags(spotId: Long, tags: List<String>)
+
     @Query("UPDATE spots SET latitude = :latitude, longitude = :longitude WHERE id = :spotId")
     suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double)
 

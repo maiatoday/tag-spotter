@@ -51,6 +51,9 @@ class DetailViewModelTest {
         val collectJobPhotographer = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.defaultPhotographer.collect {}
         }
+        val collectJobRecentTags = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.recentCustomTags.collect {}
+        }
 
         // Verify initial state
         assertEquals("Initial Photographer", viewModel.defaultPhotographer.value)
@@ -85,6 +88,10 @@ class DetailViewModelTest {
         viewModel.updateLocation(43.21, 87.65)
         assertEquals(43.21, viewModel.spotDetails.value?.spot?.latitude)
         assertEquals(87.65, viewModel.spotDetails.value?.spot?.longitude)
+
+        // Update tags
+        viewModel.updateTags(listOf("tagB", "tagC"))
+        assertEquals(listOf("tagB", "tagC"), viewModel.spotDetails.value?.spot?.tags)
 
         // Add note
         viewModel.addNote("Nice spot", 2000L)

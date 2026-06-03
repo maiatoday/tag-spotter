@@ -52,6 +52,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import net.maiatoday.tagspotter.theme.categoryColors
@@ -120,6 +122,7 @@ fun DetailScreen(
 
     val spotDetails by viewModel.spotDetails.collectAsStateWithLifecycle()
     val defaultPhotographer by viewModel.defaultPhotographer.collectAsStateWithLifecycle()
+    val recentCustomTags by viewModel.recentCustomTags.collectAsStateWithLifecycle()
 
     var noteInput by remember { mutableStateOf("") }
     var zoomImage by remember { mutableStateOf<SpotImage?>(null) }
@@ -235,11 +238,13 @@ fun DetailScreen(
                     DetailInfoCard(
                         details = details,
                         defaultPhotographer = defaultPhotographer,
+                        recentCustomTags = recentCustomTags,
                         onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
                         onUpdateCategory = { category -> viewModel.updateCategory(category) },
                         onUpdateArtists = { list -> viewModel.updateArtists(list) },
                         onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
                         onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
+                        onUpdateTags = { tags -> viewModel.updateTags(tags) },
                         onMapPickerClick = { isMapPickerDialogVisible = true }
                     )
 
@@ -281,11 +286,13 @@ fun DetailScreen(
                 DetailInfoCard(
                     details = details,
                     defaultPhotographer = defaultPhotographer,
+                    recentCustomTags = recentCustomTags,
                     onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
                     onUpdateCategory = { category -> viewModel.updateCategory(category) },
                     onUpdateArtists = { list -> viewModel.updateArtists(list) },
                     onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
                     onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
+                    onUpdateTags = { tags -> viewModel.updateTags(tags) },
                     onMapPickerClick = { isMapPickerDialogVisible = true }
                 )
 
@@ -546,11 +553,13 @@ private fun DetailPhotoTimeline(
 private fun DetailInfoCard(
     details: SpotDetails,
     defaultPhotographer: String,
+    recentCustomTags: List<String>,
     onUpdateStatus: (String) -> Unit,
     onUpdateCategory: (String) -> Unit,
     onUpdateArtists: (List<String>) -> Unit,
     onUpdatePhotographer: (String) -> Unit,
     onUpdateDescription: (String) -> Unit,
+    onUpdateTags: (List<String>) -> Unit,
     onMapPickerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -565,6 +574,10 @@ private fun DetailInfoCard(
 
     var isEditingDescription by remember { mutableStateOf(false) }
     var descriptionEditInput by remember { mutableStateOf("") }
+
+    var isEditingTags by remember { mutableStateOf(false) }
+    var customTagEditInput by remember { mutableStateOf("") }
+    val localTagsList = remember { mutableStateListOf<String>() }
 
     LaunchedEffect(isEditingArtists) {
         if (isEditingArtists) {
@@ -582,6 +595,13 @@ private fun DetailInfoCard(
     LaunchedEffect(isEditingDescription) {
         if (isEditingDescription) {
             descriptionEditInput = details.spot.description
+        }
+    }
+
+    LaunchedEffect(isEditingTags) {
+        if (isEditingTags) {
+            localTagsList.clear()
+            localTagsList.addAll(details.spot.tags)
         }
     }
 
@@ -1108,19 +1128,292 @@ private fun DetailInfoCard(
                 }
             }
 
-            if (details.spot.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    details.spot.tags.forEach { tag ->
+            Spacer(modifier = Modifier.height(16.dp))
+            if (isEditingTags) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(
-                            text = "#$tag",
+                            text = "Edit Tags",
+                            style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.secondary,
-                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
+
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    val cleaned = customTagEditInput.trim().lowercase().removePrefix("#")
+                                    val finalTags = if (cleaned.isNotEmpty() && !localTagsList.contains(cleaned)) {
+                                        localTagsList.toList() + cleaned
+                                    } else {
+                                        localTagsList.toList()
+                                    }
+                                    onUpdateTags(finalTags)
+                                    customTagEditInput = ""
+                                    isEditingTags = false
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save tags",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { isEditingTags = false },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel edit",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Predefined Quick Tags
+                    Text(
+                        text = "Quick Select Tags",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+
+                    val predefinedTags = remember { setOf("mural", "stencil", "throwup", "pasteup", "sticker") }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        predefinedTags.forEach { tag ->
+                            val isSelected = localTagsList.contains(tag)
+                            InputChip(
+                                selected = isSelected,
+                                onClick = {
+                                    if (isSelected) {
+                                        localTagsList.remove(tag)
+                                    } else {
+                                        localTagsList.add(tag)
+                                    }
+                                },
+                                label = { Text("#$tag") },
+                                colors = InputChipDefaults.inputChipColors(
+                                    selectedLabelColor = MaterialTheme.colorScheme.background,
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    labelColor = Color.Gray,
+                                    containerColor = Color.Transparent
+                                ),
+                                border = InputChipDefaults.inputChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = if (isSelected) Color.Transparent else Color.Gray,
+                                    selectedBorderColor = Color.Transparent
+                                )
+                            )
+                        }
+                    }
+
+                    // Recent Custom Tags
+                    val recentTagsToShow = recentCustomTags.filter { !predefinedTags.contains(it) }
+                    if (recentTagsToShow.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Recent Custom Tags",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            recentTagsToShow.forEach { tag ->
+                                val isSelected = localTagsList.contains(tag)
+                                InputChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        if (isSelected) {
+                                            localTagsList.remove(tag)
+                                        } else {
+                                            localTagsList.add(tag)
+                                        }
+                                    },
+                                    label = { Text("#$tag") },
+                                    colors = InputChipDefaults.inputChipColors(
+                                        selectedLabelColor = MaterialTheme.colorScheme.background,
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                                        labelColor = Color.LightGray,
+                                        containerColor = Color.Transparent
+                                    ),
+                                    border = InputChipDefaults.inputChipBorder(
+                                        enabled = true,
+                                        selected = isSelected,
+                                        borderColor = if (isSelected) Color.Transparent else Color.DarkGray,
+                                        selectedBorderColor = Color.Transparent
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Add Custom Tag Input
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = customTagEditInput,
+                            onValueChange = { customTagEditInput = it },
+                            label = { Text("Add Custom Tag") },
+                            placeholder = { Text("e.g. stencil") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    val cleaned = customTagEditInput.trim().lowercase().removePrefix("#")
+                                    if (cleaned.isNotEmpty()) {
+                                        if (!localTagsList.contains(cleaned)) {
+                                            localTagsList.add(cleaned)
+                                        }
+                                        customTagEditInput = ""
+                                    }
+                                }
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                                unfocusedBorderColor = Color.Gray,
+                                focusedLabelColor = MaterialTheme.colorScheme.secondary
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        IconButton(
+                            onClick = {
+                                val cleaned = customTagEditInput.trim().lowercase().removePrefix("#")
+                                if (cleaned.isNotEmpty()) {
+                                    if (!localTagsList.contains(cleaned)) {
+                                        localTagsList.add(cleaned)
+                                    }
+                                    customTagEditInput = ""
+                                }
+                            },
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add custom tag",
+                                tint = MaterialTheme.colorScheme.background
+                            )
+                        }
+                    }
+
+                    // Display current local tags list in edit mode
+                    if (localTagsList.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            localTagsList.forEach { tag ->
+                                Row(
+                                    modifier = Modifier
+                                        .background(Color.DarkGray, RoundedCornerShape(16.dp))
+                                        .border(1.dp, Color.Gray, RoundedCornerShape(16.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "#$tag",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove tag",
+                                        tint = Color.LightGray,
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clickable { localTagsList.remove(tag) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Tags",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.Gray
+                        )
+                        IconButton(
+                            onClick = { isEditingTags = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit tags",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (details.spot.tags.isEmpty()) {
+                        Text(
+                            text = "No tags added.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.LightGray
+                        )
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            details.spot.tags.forEach { tag ->
+                                Box(
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                                        .border(1.5.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(16.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = "#$tag",
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

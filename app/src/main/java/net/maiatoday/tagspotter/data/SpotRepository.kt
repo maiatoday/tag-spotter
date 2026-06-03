@@ -16,6 +16,7 @@ interface SpotRepository {
     suspend fun updateSpotCategory(spotId: Long, category: String)
     suspend fun updateSpotArtists(spotId: Long, artists: List<String>)
     suspend fun updateSpotPhotographer(spotId: Long, photographer: String)
+    suspend fun updateSpotTags(spotId: Long, tags: List<String>)
     suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double)
     suspend fun updateSpotDescription(spotId: Long, description: String)
     suspend fun deleteSpot(spotDetails: SpotDetails)
@@ -90,6 +91,10 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
 
     override suspend fun updateSpotPhotographer(spotId: Long, photographer: String) {
         spotDao.updateSpotPhotographer(spotId, photographer)
+    }
+
+    override suspend fun updateSpotTags(spotId: Long, tags: List<String>) {
+        spotDao.updateSpotTags(spotId, tags)
     }
 
     override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {

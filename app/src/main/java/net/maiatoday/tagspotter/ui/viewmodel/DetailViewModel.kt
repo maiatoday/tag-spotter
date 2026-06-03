@@ -33,6 +33,14 @@ class DetailViewModel(
             initialValue = ""
         )
 
+    private val predefinedTags = setOf("mural", "stencil", "throwup", "pasteup", "sticker")
+    val recentCustomTags: StateFlow<List<String>> = repository.getRecentCustomTags(predefinedTags)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     fun updateStatus(status: String) {
         viewModelScope.launch {
             repository.updateSpotStatus(spotId, status)
@@ -54,6 +62,12 @@ class DetailViewModel(
     fun updatePhotographer(photographer: String) {
         viewModelScope.launch {
             repository.updateSpotPhotographer(spotId, photographer)
+        }
+    }
+
+    fun updateTags(tags: List<String>) {
+        viewModelScope.launch {
+            repository.updateSpotTags(spotId, tags)
         }
     }
 
