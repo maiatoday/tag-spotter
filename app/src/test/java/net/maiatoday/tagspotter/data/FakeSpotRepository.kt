@@ -89,6 +89,12 @@ class FakeSpotRepository : SpotRepository {
         updateFlow()
     }
 
+    override suspend fun updateSpotTags(spotId: Long, tags: List<String>) {
+        val details = spotsMap[spotId] ?: return
+        spotsMap[spotId] = details.copy(spot = details.spot.copy(tags = tags))
+        updateFlow()
+    }
+
     override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {
         val details = spotsMap[spotId] ?: return
         spotsMap[spotId] = details.copy(spot = details.spot.copy(latitude = latitude, longitude = longitude))

@@ -41,8 +41,25 @@
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:host="*" />
+                <data android:mimeType="*/*" />
                 <data android:pathSuffix=".ts_pack" />
                 <data android:pathPattern=".*\\.ts_pack" />
+            </intent-filter>
+            <intent-filter android:label="Import Tag Spotter Pack">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/json" />
+            </intent-filter>
+            <intent-filter android:label="Import Tag Spotter Pack">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
     </application>

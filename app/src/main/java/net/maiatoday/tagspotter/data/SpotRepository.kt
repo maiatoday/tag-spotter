@@ -16,6 +16,7 @@ interface SpotRepository {
     suspend fun updateSpotCategory(spotId: Long, category: String)
     suspend fun updateSpotArtists(spotId: Long, artists: List<String>)
     suspend fun updateSpotPhotographer(spotId: Long, photographer: String)
+    suspend fun updateSpotTags(spotId: Long, tags: List<String>)
     suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double)
     suspend fun updateSpotDescription(spotId: Long, description: String)
     suspend fun deleteSpot(spotDetails: SpotDetails)
@@ -92,6 +93,10 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
         spotDao.updateSpotPhotographer(spotId, photographer)
     }
 
+    override suspend fun updateSpotTags(spotId: Long, tags: List<String>) {
+        spotDao.updateSpotTags(spotId, tags)
+    }
+
     override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {
         spotDao.updateSpotLocation(spotId, latitude, longitude)
     }
@@ -101,12 +106,27 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
-        // Delete all local thumbnail files (original public gallery photos are NOT deleted)
+        // Delete all local thumbnail and image files (original public gallery photos are NOT deleted)
         spotDetails.images.forEach { image ->
             try {
                 if (image.thumbnailPath.isNotEmpty()) {
                     val file = File(image.thumbnailPath)
                     if (file.exists()) {
+                        file.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            try {
+                if (image.imagePath.isNotEmpty()) {
+                    val file = File(image.imagePath)
+                    // Only delete local private files, not content:// URIs or resource paths
+                    if (file.exists() &&
+                        !image.imagePath.startsWith("content://") &&
+                        !image.imagePath.startsWith("android.resource://") &&
+                        !image.imagePath.startsWith("http")
+                    ) {
                         file.delete()
                     }
                 }
