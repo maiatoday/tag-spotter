@@ -993,16 +993,18 @@ private fun DetailInfoCard(
                             style = MaterialTheme.typography.titleSmall,
                             color = Color.Gray
                         )
-                        IconButton(
-                            onClick = { isEditingPhotographer = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit photographer",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        if (!details.spot.isImported) {
+                            IconButton(
+                                onClick = { isEditingPhotographer = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit photographer",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))

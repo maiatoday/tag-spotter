@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.data.SpotDetails
+import net.maiatoday.tagspotter.utils.PackManager
+import kotlinx.coroutines.flow.first
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,13 +76,15 @@ class MainActivity : ComponentActivity() {
 
     lifecycleScope.launch(Dispatchers.IO) {
       try {
+        val currentPhotographer = app.settingsRepository.photographerName.first()
         val inputStream = contentResolver.openInputStream(uri)
-        val jsonText = inputStream?.use { stream ->
-          stream.bufferedReader().readText()
-        }
-        if (jsonText != null) {
-          val spots = Json.decodeFromString<List<SpotDetails>>(jsonText)
-          val importedCount = app.repository.importSpots(spots)
+        if (inputStream != null) {
+          val importedCount = PackManager.importPack(
+            context = applicationContext,
+            repository = app.repository,
+            inputStream = inputStream,
+            currentPhotographerName = currentPhotographer
+          )
           withContext(Dispatchers.Main) {
             Toast.makeText(
               this@MainActivity,

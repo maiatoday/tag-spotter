@@ -74,6 +74,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.ui.viewmodel.GalleryViewModel
+import net.maiatoday.tagspotter.utils.PackManager
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -102,9 +103,8 @@ fun GalleryScreen(
         if (uri != null) {
             val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
             try {
-                val jsonString = Json.encodeToString(selectedSpots)
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.write(jsonString.toByteArray())
+                    PackManager.exportPack(context, selectedSpots, outputStream)
                 }
                 Toast.makeText(context, "Saved successfully!", Toast.LENGTH_LONG).show()
                 selectedSpotIds.clear()

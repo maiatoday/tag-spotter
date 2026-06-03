@@ -101,12 +101,27 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
-        // Delete all local thumbnail files (original public gallery photos are NOT deleted)
+        // Delete all local thumbnail and image files (original public gallery photos are NOT deleted)
         spotDetails.images.forEach { image ->
             try {
                 if (image.thumbnailPath.isNotEmpty()) {
                     val file = File(image.thumbnailPath)
                     if (file.exists()) {
+                        file.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            try {
+                if (image.imagePath.isNotEmpty()) {
+                    val file = File(image.imagePath)
+                    // Only delete local private files, not content:// URIs or resource paths
+                    if (file.exists() &&
+                        !image.imagePath.startsWith("content://") &&
+                        !image.imagePath.startsWith("android.resource://") &&
+                        !image.imagePath.startsWith("http")
+                    ) {
                         file.delete()
                     }
                 }
