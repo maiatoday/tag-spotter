@@ -53,6 +53,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import net.maiatoday.tagspotter.theme.categoryColors
@@ -93,6 +95,26 @@ fun GalleryScreen(
     var isMultiSelectMode by remember { mutableStateOf(false) }
     val selectedSpotIds = remember { mutableStateListOf<Long>() }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        if (uri != null) {
+            val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
+            try {
+                val jsonString = Json.encodeToString(selectedSpots)
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(jsonString.toByteArray())
+                }
+                Toast.makeText(context, "Saved successfully!", Toast.LENGTH_LONG).show()
+                selectedSpotIds.clear()
+                isMultiSelectMode = false
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Failed to save: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
     val sources = listOf("All", "My Spots", "Imported")
@@ -159,32 +181,7 @@ fun GalleryScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
-                            try {
-                                val jsonString = Json.encodeToString(selectedSpots)
-                                val cacheFile = File(context.cacheDir, "spots_export.ts_pack")
-                                cacheFile.writeText(jsonString)
-
-                                val uri = FileProvider.getUriForFile(
-                                    context,
-                                    "${context.packageName}.fileprovider",
-                                    cacheFile
-                                )
-
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "application/json"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-
-                                context.startActivity(Intent.createChooser(shareIntent, "Share Spots"))
-
-                                selectedSpotIds.clear()
-                                isMultiSelectMode = false
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                Toast.makeText(context, "Export failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                            }
+                            createDocumentLauncher.launch("spots_export.ts_pack")
                         },
                         enabled = selectedSpotIds.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(
@@ -193,11 +190,11 @@ fun GalleryScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
+                            contentDescription = "Export",
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Share")
+                        Text("Export")
                     }
 
                     Button(
