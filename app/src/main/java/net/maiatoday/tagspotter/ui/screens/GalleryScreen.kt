@@ -4,6 +4,8 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
@@ -24,9 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -468,42 +467,50 @@ fun GalleryScreen(
         if (spots.isEmpty()) {
             EmptyGalleryState(category = selectedCategory, query = searchQuery)
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .weight(1f),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.Start
             ) {
-                items(spots, key = { it.spot.id }) { spotDetails ->
-                    val isSelected = selectedSpotIds.contains(spotDetails.spot.id)
-                    SpotGridCard(
-                        spotDetails = spotDetails,
-                        isSelected = isSelected,
-                        isMultiSelectMode = isMultiSelectMode,
-                        onClick = {
-                            if (isMultiSelectMode) {
-                                if (isSelected) {
-                                    selectedSpotIds.remove(spotDetails.spot.id)
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    spots.forEach { spotDetails ->
+                        val isSelected = selectedSpotIds.contains(spotDetails.spot.id)
+                        SpotGridCard(
+                            modifier = Modifier.width(170.dp),
+                            spotDetails = spotDetails,
+                            isSelected = isSelected,
+                            isMultiSelectMode = isMultiSelectMode,
+                            onClick = {
+                                if (isMultiSelectMode) {
+                                    if (isSelected) {
+                                        selectedSpotIds.remove(spotDetails.spot.id)
+                                    } else {
+                                        selectedSpotIds.add(spotDetails.spot.id)
+                                    }
                                 } else {
+                                    onSpotClick(spotDetails.spot.id)
+                                }
+                            },
+                            onLongClick = {
+                                if (!isMultiSelectMode) {
+                                    isMultiSelectMode = true
                                     selectedSpotIds.add(spotDetails.spot.id)
                                 }
-                            } else {
-                                onSpotClick(spotDetails.spot.id)
                             }
-                        },
-                        onLongClick = {
-                            if (!isMultiSelectMode) {
-                                isMultiSelectMode = true
-                                selectedSpotIds.add(spotDetails.spot.id)
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
+            }
         }
-    }
     }
     if (showPermissionDisclosure) {
         AlertDialog(
@@ -561,15 +568,15 @@ fun SpotGridCard(
     isSelected: Boolean,
     isMultiSelectMode: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     // Get latest image based on timestamp
     val latestImage = spotDetails.images.maxByOrNull { it.timestamp }
     val isErased = spotDetails.spot.status == "erased"
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
