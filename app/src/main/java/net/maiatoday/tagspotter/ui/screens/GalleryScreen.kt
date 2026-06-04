@@ -287,7 +287,7 @@ fun GalleryScreen(
                             tint = if (selectedSpotIds.isEmpty()) {
                                 Color.Gray
                             } else if (anyUnstarred) {
-                                Color.LightGray
+                                MaterialTheme.colorScheme.primary
                             } else {
                                 Color(0xFFFFD700) // Starred gold
                             }
@@ -341,7 +341,7 @@ fun GalleryScreen(
                         modifier = Modifier
                             .weight(1f)
                             .padding(vertical = 4.dp),
-                        placeholder = { Text("Search by tag, artist, or photographer...") },
+                        placeholder = { Text("Search tags, artists...") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
