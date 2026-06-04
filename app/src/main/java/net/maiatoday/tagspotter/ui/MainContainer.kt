@@ -329,12 +329,12 @@ fun MainContainer(
                             Icon(
                                 imageVector = Icons.Default.CameraAlt,
                                 contentDescription = "Camera",
-                                tint = MaterialTheme.colorScheme.tertiary
+                                tint = Color.Gray
                             )
                         },
                         label = { Text("Camera") },
                         colors = NavigationRailItemDefaults.colors(
-                            unselectedIconColor = MaterialTheme.colorScheme.tertiary,
+                            unselectedIconColor = Color.Gray,
                             unselectedTextColor = Color.Gray,
                             indicatorColor = Color.Transparent
                         )
@@ -346,12 +346,12 @@ fun MainContainer(
                             Icon(
                                 imageVector = Icons.Default.Folder,
                                 contentDescription = "Files",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = Color.Gray
                             )
                         },
                         label = { Text("Files") },
                         colors = NavigationRailItemDefaults.colors(
-                            unselectedIconColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = Color.Gray,
                             unselectedTextColor = Color.Gray,
                             indicatorColor = Color.Transparent
                         )
@@ -455,12 +455,12 @@ fun MainContainer(
                                 Icon(
                                     imageVector = Icons.Default.CameraAlt,
                                     contentDescription = "Camera",
-                                    tint = MaterialTheme.colorScheme.tertiary
+                                    tint = Color.Gray
                                 )
                             },
                             label = { Text("Camera") },
                             colors = NavigationBarItemDefaults.colors(
-                                unselectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedIconColor = Color.Gray,
                                 unselectedTextColor = Color.Gray,
                                 indicatorColor = Color.Transparent
                             )
@@ -472,12 +472,12 @@ fun MainContainer(
                                 Icon(
                                     imageVector = Icons.Default.Folder,
                                     contentDescription = "Files",
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = Color.Gray
                                 )
                             },
                             label = { Text("Files") },
                             colors = NavigationBarItemDefaults.colors(
-                                unselectedIconColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = Color.Gray,
                                 unselectedTextColor = Color.Gray,
                                 indicatorColor = Color.Transparent
                             )
