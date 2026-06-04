@@ -15,7 +15,7 @@ class TestTagSpotterApplication : TagSpotterApplication() {
         get() = inMemoryDatabase
 
     override val repository: LocalSpotRepository by lazy {
-        LocalSpotRepository(inMemoryDatabase.spotDao())
+        LocalSpotRepository(this, inMemoryDatabase.spotDao())
     }
 
     override fun onCreate() {

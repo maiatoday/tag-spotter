@@ -21,7 +21,8 @@ data class Spot(
     val status: String, // "active" or "erased"
     val artists: List<String> = emptyList(),
     val photographer: String = "",
-    val isImported: Boolean = false
+    val isImported: Boolean = false,
+    val isStarred: Boolean = false
 )
 
 @Entity(

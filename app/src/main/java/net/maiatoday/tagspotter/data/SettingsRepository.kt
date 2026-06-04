@@ -13,6 +13,8 @@ interface SettingsRepository {
     suspend fun updateHomeCity(city: String)
     val showTestData: Flow<Boolean>
     suspend fun updateShowTestData(show: Boolean)
+    val notificationsEnabled: Flow<Boolean>
+    suspend fun updateNotificationsEnabled(enabled: Boolean)
 }
 
 class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository {
@@ -27,6 +29,9 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     private val _showTestData = MutableStateFlow(getSavedShowTestData())
     override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
 
+    private val _notificationsEnabled = MutableStateFlow(getSavedNotificationsEnabled())
+    override val notificationsEnabled: Flow<Boolean> = _notificationsEnabled.asStateFlow()
+
     private fun getSavedName(): String {
         return sharedPreferences.getString("photographer_name", "") ?: ""
     }
@@ -37,6 +42,10 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
 
     private fun getSavedShowTestData(): Boolean {
         return sharedPreferences.getBoolean("show_test_data", false)
+    }
+
+    private fun getSavedNotificationsEnabled(): Boolean {
+        return sharedPreferences.getBoolean("notifications_enabled", false)
     }
 
     override suspend fun updatePhotographerName(name: String) {
@@ -52,5 +61,10 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     override suspend fun updateShowTestData(show: Boolean) {
         sharedPreferences.edit { putBoolean("show_test_data", show) }
         _showTestData.value = show
+    }
+
+    override suspend fun updateNotificationsEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("notifications_enabled", enabled) }
+        _notificationsEnabled.value = enabled
     }
 }

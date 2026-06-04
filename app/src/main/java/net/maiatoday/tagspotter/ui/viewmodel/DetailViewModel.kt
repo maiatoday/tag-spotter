@@ -11,6 +11,8 @@ import net.maiatoday.tagspotter.data.SpotRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 class DetailViewModel(
@@ -18,6 +20,13 @@ class DetailViewModel(
     private val repository: SpotRepository,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
+
+    sealed interface UiEvent {
+        data object StarLimitExceeded : UiEvent
+    }
+
+    private val _uiEvent = MutableSharedFlow<UiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     val spotDetails: StateFlow<SpotDetails?> = repository.getSpotById(spotId)
         .stateIn(
@@ -40,6 +49,21 @@ class DetailViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    fun toggleStarred() {
+        val details = spotDetails.value ?: return
+        val currentStarred = details.spot.isStarred
+        viewModelScope.launch {
+            if (!currentStarred) {
+                val count = repository.getStarredSpotsCount()
+                if (count >= 100) {
+                    _uiEvent.emit(UiEvent.StarLimitExceeded)
+                    return@launch
+                }
+            }
+            repository.updateSpotStarred(spotId, !currentStarred)
+        }
+    }
 
     fun updateStatus(status: String) {
         viewModelScope.launch {

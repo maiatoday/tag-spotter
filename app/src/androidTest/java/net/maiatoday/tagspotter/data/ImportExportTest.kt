@@ -28,7 +28,7 @@ class ImportExportTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         db = Room.inMemoryDatabaseBuilder(context, SpotDatabase::class.java).build()
-        repository = LocalSpotRepository(db.spotDao())
+        repository = LocalSpotRepository(context, db.spotDao())
     }
 
     @After

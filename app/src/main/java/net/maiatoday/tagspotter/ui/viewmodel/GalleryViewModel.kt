@@ -16,9 +16,18 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 class GalleryViewModel(private val repository: SpotRepository) : ViewModel() {
+
+    sealed interface UiEvent {
+        data object StarLimitExceeded : UiEvent
+    }
+
+    private val _uiEvent = MutableSharedFlow<UiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     private val _selectedCategory = MutableStateFlow("All")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
@@ -83,6 +92,27 @@ class GalleryViewModel(private val repository: SpotRepository) : ViewModel() {
                 allSpots.find { it.spot.id == id }?.let { detail ->
                     repository.deleteSpot(detail)
                 }
+            }
+            onCompleted()
+        }
+    }
+
+    fun bulkUpdateStarred(ids: List<Long>, isStarred: Boolean, onCompleted: () -> Unit) {
+        viewModelScope.launch {
+            if (isStarred) {
+                val currentStarredCount = repository.getStarredSpotsCount()
+                val spotsList = spots.value
+                val newStarsCount = ids.count { id ->
+                    val spotDetails = spotsList.find { it.spot.id == id }
+                    spotDetails != null && !spotDetails.spot.isStarred
+                }
+                if (currentStarredCount + newStarsCount > 100) {
+                    _uiEvent.emit(UiEvent.StarLimitExceeded)
+                    return@launch
+                }
+            }
+            ids.forEach { id ->
+                repository.updateSpotStarred(id, isStarred)
             }
             onCompleted()
         }

@@ -36,11 +36,15 @@ class SettingsViewModelTest {
         val collectJobShowTest = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.showTestData.collect {}
         }
+        val collectJobNotifications = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.notificationsEnabled.collect {}
+        }
 
         // Verify initial state
         assertEquals("Initial Photographer", viewModel.photographerName.value)
         assertEquals("Milan", viewModel.homeCity.value)
         assertFalse(viewModel.showTestData.value)
+        assertFalse(viewModel.notificationsEnabled.value)
 
         // Update photographer name
         viewModel.updatePhotographerName("New Photographer")
@@ -57,5 +61,13 @@ class SettingsViewModelTest {
         // Toggle mock data off
         viewModel.updateShowTestData(false)
         assertFalse(viewModel.showTestData.value)
+
+        // Toggle notifications on
+        viewModel.updateNotificationsEnabled(true)
+        assertTrue(viewModel.notificationsEnabled.value)
+
+        // Toggle notifications off
+        viewModel.updateNotificationsEnabled(false)
+        assertFalse(viewModel.notificationsEnabled.value)
     }
 }

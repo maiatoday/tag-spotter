@@ -8,9 +8,23 @@ import net.maiatoday.tagspotter.ui.DetailScreen
 import net.maiatoday.tagspotter.ui.MainContainer
 import net.maiatoday.tagspotter.ui.TaggingScreen
 
+import androidx.compose.runtime.LaunchedEffect
+
 @Composable
-fun MainNavigation() {
+fun MainNavigation(
+    initialSpotId: Long? = null,
+    onNavigateToSpotHandled: () -> Unit = {}
+) {
     val backStack = rememberNavBackStack(Main)
+
+    LaunchedEffect(initialSpotId) {
+        if (initialSpotId != null) {
+            if (backStack.none { it is DetailKey && it.spotId == initialSpotId }) {
+                backStack.add(DetailKey(initialSpotId))
+            }
+            onNavigateToSpotHandled()
+        }
+    }
 
     NavDisplay(
         backStack = backStack,

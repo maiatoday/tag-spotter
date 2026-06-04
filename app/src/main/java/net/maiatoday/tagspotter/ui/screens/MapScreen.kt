@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -79,6 +80,7 @@ fun MapScreen(
             category = spotDetails.spot.category,
             status = spotDetails.spot.status,
             title = spotDetails.spot.category.replace("_", " ").replaceFirstChar { it.titlecase() },
+            isStarred = spotDetails.spot.isStarred,
             onClick = {
                 viewModel.selectSpot(spotDetails)
                 mapViewInstance?.controller?.animateTo(
@@ -226,6 +228,14 @@ fun MapScreen(
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
                                     )
+                                    if (spot.spot.isStarred) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Star,
+                                            contentDescription = "Starred",
+                                            tint = Color(0xFFFFD700),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                     if (isErased) {
                                         Text(
                                             text = "(Gone)",

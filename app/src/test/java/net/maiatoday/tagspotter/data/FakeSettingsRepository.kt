@@ -14,6 +14,9 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
     private val _showTestData = MutableStateFlow(false)
     override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
 
+    private val _notificationsEnabled = MutableStateFlow(false)
+    override val notificationsEnabled: Flow<Boolean> = _notificationsEnabled.asStateFlow()
+
     override suspend fun updatePhotographerName(name: String) {
         _photographerName.value = name
     }
@@ -24,5 +27,9 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
 
     override suspend fun updateShowTestData(show: Boolean) {
         _showTestData.value = show
+    }
+
+    override suspend fun updateNotificationsEnabled(enabled: Boolean) {
+        _notificationsEnabled.value = enabled
     }
 }

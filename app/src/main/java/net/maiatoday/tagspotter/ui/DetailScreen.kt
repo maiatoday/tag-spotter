@@ -63,6 +63,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -128,6 +132,64 @@ fun DetailScreen(
     var zoomImage by remember { mutableStateOf<SpotImage?>(null) }
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
 
+    var showPermissionDisclosure by remember { mutableStateOf(false) }
+    var showLimitExceededDialog by remember { mutableStateOf(false) }
+
+    // Collect UI events
+    LaunchedEffect(viewModel) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                DetailViewModel.UiEvent.StarLimitExceeded -> {
+                    showLimitExceededDialog = true
+                }
+            }
+        }
+    }
+
+    val hasFineLocation = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.ACCESS_FINE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    val hasBackgroundLocation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+    val hasNotificationPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.POST_NOTIFICATIONS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.toggleStarred()
+        } else {
+            Toast.makeText(context, "Background location permission is required for proximity alerts.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val foregroundLocationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true
+        if (fineGranted) {
+            showPermissionDisclosure = true
+        } else {
+            Toast.makeText(context, "Location permission is required for starred spots geofencing.", Toast.LENGTH_LONG).show()
+        }
+    }
+
     // Launcher to add another image to this spot
     val pickMedia = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -160,6 +222,39 @@ fun DetailScreen(
                     }
                 },
                 actions = {
+                    val details = spotDetails
+                    if (details != null) {
+                        val isStarred = details.spot.isStarred
+                        IconButton(
+                            onClick = {
+                                if (isStarred) {
+                                    viewModel.toggleStarred()
+                                } else {
+                                    if (!hasFineLocation) {
+                                        val permissions = mutableListOf(
+                                            android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                            android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                                            permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                        foregroundLocationLauncher.launch(permissions.toTypedArray())
+                                    } else if (!hasBackgroundLocation) {
+                                        showPermissionDisclosure = true
+                                    } else {
+                                        viewModel.toggleStarred()
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                contentDescription = if (isStarred) "Unstar Spot" else "Star Spot",
+                                tint = if (isStarred) Color(0xFFFFD700) else Color.Gray
+                            )
+                        }
+                    }
+
                     IconButton(
                         onClick = {
                             val details = spotDetails
@@ -431,6 +526,50 @@ fun DetailScreen(
                 }
             }
         }
+    }
+
+    if (showPermissionDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDisclosure = false },
+            title = { Text("Background Location Access") },
+            text = {
+                Text("Tag Spotter needs background location access ('Allow all the time') to monitor starred spots and notify you when walking near them, even when the app is closed.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionDisclosure = false
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        } else {
+                            viewModel.toggleStarred()
+                        }
+                    }
+                ) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDisclosure = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showLimitExceededDialog) {
+        AlertDialog(
+            onDismissRequest = { showLimitExceededDialog = false },
+            title = { Text("Starred Limit Reached") },
+            text = {
+                Text("You can only star up to 100 spots due to geofencing limits. Please unstar some spots first.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showLimitExceededDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 

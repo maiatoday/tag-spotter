@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import java.io.File
+import android.content.Context
+import net.maiatoday.tagspotter.utils.GeofenceManager
 
 interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>
@@ -24,9 +26,17 @@ interface SpotRepository {
     suspend fun loadTestData()
     suspend fun unloadTestData()
     suspend fun importSpots(spots: List<SpotDetails>): Int
+    suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean)
+    suspend fun getStarredSpots(): List<Spot>
+    suspend fun getStarredSpotsCount(): Int
 }
 
-class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
+class LocalSpotRepository(
+    private val context: Context,
+    private val spotDao: SpotDao
+) : SpotRepository {
+
+    private val geofenceManager by lazy { GeofenceManager(context) }
 
     override fun getAllSpots(): Flow<List<SpotDetails>> {
         return spotDao.getAllSpotsDetails()
@@ -106,6 +116,10 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
+        // If starred, unregister geofence
+        if (spotDetails.spot.isStarred) {
+            geofenceManager.unregisterGeofence(spotDetails.spot.id)
+        }
         // Delete all local thumbnail and image files (original public gallery photos are NOT deleted)
         spotDetails.images.forEach { image ->
             try {
@@ -249,6 +263,26 @@ class LocalSpotRepository(private val spotDao: SpotDao) : SpotRepository {
             }
         }
         return importedCount
+    }
+
+    override suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean) {
+        spotDao.updateSpotStarred(spotId, isStarred)
+        if (isStarred) {
+            val details = spotDao.getSpotDetails(spotId).first()
+            if (details != null) {
+                geofenceManager.registerGeofence(details.spot) { _ -> }
+            }
+        } else {
+            geofenceManager.unregisterGeofence(spotId)
+        }
+    }
+
+    override suspend fun getStarredSpots(): List<Spot> {
+        return spotDao.getStarredSpots()
+    }
+
+    override suspend fun getStarredSpotsCount(): Int {
+        return spotDao.getStarredSpotsCount()
     }
 
     companion object {

@@ -33,6 +33,7 @@ data class OsmMarker(
     val category: String,
     val status: String,
     val title: String,
+    val isStarred: Boolean = false,
     val onClick: () -> Unit
 )
 
@@ -105,7 +106,7 @@ fun OsmMapView(
                 }
                 val marker = Marker(map).apply {
                     position = GeoPoint(osmMarker.latitude, osmMarker.longitude)
-                    icon = createPinDrawable(map.context, markerColor)
+                    icon = createPinDrawable(map.context, markerColor, osmMarker.isStarred)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     title = osmMarker.title
                     
@@ -123,7 +124,7 @@ fun OsmMapView(
     )
 }
 
-private fun createPinDrawable(context: Context, colorSource: Int): Drawable {
+private fun createPinDrawable(context: Context, colorSource: Int, isStarred: Boolean): Drawable {
     val density = context.resources.displayMetrics.density
     val size = (36 * density).toInt()
     
@@ -151,6 +152,16 @@ private fun createPinDrawable(context: Context, colorSource: Int): Drawable {
 
     paint.color = android.graphics.Color.WHITE
     canvas.drawCircle(centerX, centerY, radius / 2.5f, paint)
+
+    if (isStarred) {
+        val borderPaint = Paint().apply {
+            isAntiAlias = true
+            color = android.graphics.Color.parseColor("#FFD700") // Gold
+            style = Paint.Style.STROKE
+            strokeWidth = 2.5f * density
+        }
+        canvas.drawCircle(centerX, centerY, radius + 1.25f * density, borderPaint)
+    }
 
     return bitmap.toDrawable(context.resources)
 }

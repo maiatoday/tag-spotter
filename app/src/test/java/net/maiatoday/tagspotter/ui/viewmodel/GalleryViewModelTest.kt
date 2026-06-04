@@ -110,4 +110,81 @@ class GalleryViewModelTest {
         viewModel.setSearchQuery("xyz")
         assertTrue(viewModel.spots.value.isEmpty())
     }
+
+    @Test
+    fun bulkUpdateStarredAndLimitExceeded() = runTest {
+        val spot1 = Spot(id = 1L, latitude = 1.0, longitude = 2.0, createdAt = 1000L, description = "A", tags = emptyList(), category = "graffiti", status = "active", isStarred = false)
+        val spot2 = Spot(id = 2L, latitude = 3.0, longitude = 4.0, createdAt = 2000L, description = "B", tags = emptyList(), category = "sculpture", status = "active", isStarred = false)
+        val spotDetails1 = SpotDetails(spot1, emptyList(), emptyList())
+        val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
+        repository.setSpots(listOf(spotDetails1, spotDetails2))
+
+        val viewModel = GalleryViewModel(repository)
+
+        // Collect spots StateFlow in backgroundScope
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spots.collect {}
+        }
+
+        // Initially not starred
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+
+        // Bulk star both spots
+        var completed = false
+        viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = true) {
+            completed = true
+        }
+        assertTrue(completed)
+        assertEquals(true, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(true, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+
+        // Bulk unstar both spots
+        completed = false
+        viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = false) {
+            completed = true
+        }
+        assertTrue(completed)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+
+        // Now mock 99 starred spots, and try to bulk star the 2 spots (would exceed 100 limit: 99 + 2 = 101)
+        val starredSpots = (1..99).map { i ->
+            SpotDetails(
+                Spot(
+                    id = 1000L + i,
+                    latitude = 0.0,
+                    longitude = 0.0,
+                    createdAt = 0L,
+                    description = "",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    isStarred = true
+                ),
+                emptyList(),
+                emptyList()
+            )
+        }
+        repository.setSpots(starredSpots + spotDetails1 + spotDetails2)
+
+        var limitExceededEmitted = false
+        val collectEventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiEvent.collect { event ->
+                if (event is GalleryViewModel.UiEvent.StarLimitExceeded) {
+                    limitExceededEmitted = true
+                }
+            }
+        }
+
+        // Try to bulk star both (should fail due to 100 limit)
+        completed = false
+        viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = true) {
+            completed = true
+        }
+        assertEquals(false, completed)
+        assertTrue(limitExceededEmitted)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+    }
 }

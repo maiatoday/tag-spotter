@@ -117,4 +117,74 @@ class DetailViewModelTest {
         assertNull(viewModel.spotDetails.value)
         assertEquals(true, deleted)
     }
+
+    @Test
+    fun starredToggleAndLimitExceeded() = runTest {
+        val spotId = 1L
+        val spot = Spot(
+            id = spotId,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Test Spot",
+            tags = emptyList(),
+            category = "graffiti",
+            status = "active",
+            isStarred = false
+        )
+        val spotDetails = SpotDetails(spot, emptyList(), emptyList())
+        repository.setSpots(listOf(spotDetails))
+
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository)
+
+        // Collect spotDetails StateFlow in backgroundScope
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+
+        // Initially not starred
+        assertEquals(false, viewModel.spotDetails.value?.spot?.isStarred)
+
+        // Toggle star to true
+        viewModel.toggleStarred()
+        assertEquals(true, viewModel.spotDetails.value?.spot?.isStarred)
+
+        // Toggle star back to false
+        viewModel.toggleStarred()
+        assertEquals(false, viewModel.spotDetails.value?.spot?.isStarred)
+
+        // Now mock 100 starred spots and try to star target spot
+        val starredSpots = (1..100).map { i ->
+            SpotDetails(
+                Spot(
+                    id = 1000L + i,
+                    latitude = 0.0,
+                    longitude = 0.0,
+                    createdAt = 0L,
+                    description = "",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    isStarred = true
+                ),
+                emptyList(),
+                emptyList()
+            )
+        }
+        repository.setSpots(starredSpots + spotDetails)
+
+        var limitExceededEmitted = false
+        val collectEventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiEvent.collect { event ->
+                if (event is DetailViewModel.UiEvent.StarLimitExceeded) {
+                    limitExceededEmitted = true
+                }
+            }
+        }
+
+        // Toggle starring (should fail due to 100-star limit)
+        viewModel.toggleStarred()
+        assertEquals(true, limitExceededEmitted)
+        assertEquals(false, viewModel.spotDetails.value?.spot?.isStarred)
+    }
 }

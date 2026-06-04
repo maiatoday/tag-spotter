@@ -65,4 +65,13 @@ interface SpotDao {
 
     @Query("SELECT DISTINCT tags FROM spots")
     fun getAllUsedTags(): Flow<List<String>>
+
+    @Query("UPDATE spots SET isStarred = :isStarred WHERE id = :spotId")
+    suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean)
+
+    @Query("SELECT * FROM spots WHERE isStarred = 1")
+    suspend fun getStarredSpots(): List<Spot>
+
+    @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1")
+    suspend fun getStarredSpotsCount(): Int
 }

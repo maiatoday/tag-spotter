@@ -50,6 +50,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -96,6 +98,67 @@ fun GalleryScreen(
     var isMultiSelectMode by remember { mutableStateOf(false) }
     val selectedSpotIds = remember { mutableStateListOf<Long>() }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    var showPermissionDisclosure by remember { mutableStateOf(false) }
+    var showLimitExceededDialog by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(viewModel) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                GalleryViewModel.UiEvent.StarLimitExceeded -> {
+                    showLimitExceededDialog = true
+                }
+            }
+        }
+    }
+
+    val hasFineLocation = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.ACCESS_FINE_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    val hasBackgroundLocation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+    val hasNotificationPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.POST_NOTIFICATIONS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
+                selectedSpotIds.clear()
+                isMultiSelectMode = false
+                Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "Background location permission is required for proximity alerts.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val foregroundLocationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true
+        if (fineGranted) {
+            showPermissionDisclosure = true
+        } else {
+            Toast.makeText(context, "Location permission is required for starred spots geofencing.", Toast.LENGTH_LONG).show()
+        }
+    }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("*/*")
@@ -179,6 +242,67 @@ fun GalleryScreen(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                        onClick = {
+                            if (!hasFineLocation) {
+                                val permissions = mutableListOf(
+                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                                    permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                                foregroundLocationLauncher.launch(permissions.toTypedArray())
+                            } else if (!hasBackgroundLocation) {
+                                showPermissionDisclosure = true
+                            } else {
+                                viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
+                                    selectedSpotIds.clear()
+                                    isMultiSelectMode = false
+                                    Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        enabled = selectedSpotIds.isNotEmpty(),
+                        modifier = Modifier
+                            .background(
+                                color = if (selectedSpotIds.isNotEmpty()) Color(0xFFFFD700) else Color.DarkGray,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = "Star Selected",
+                            tint = if (selectedSpotIds.isNotEmpty()) Color.Black else Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = false) {
+                                selectedSpotIds.clear()
+                                isMultiSelectMode = false
+                                Toast.makeText(context, "Spots unstarred!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = selectedSpotIds.isNotEmpty(),
+                        modifier = Modifier
+                            .background(
+                                color = if (selectedSpotIds.isNotEmpty()) Color.DarkGray else Color.DarkGray.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.StarBorder,
+                            contentDescription = "Unstar Selected",
+                            tint = if (selectedSpotIds.isNotEmpty()) Color.LightGray else Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     Button(
                         onClick = {
                             createDocumentLauncher.launch("spots_export.ts_pack")
@@ -336,8 +460,55 @@ fun GalleryScreen(
                         }
                     )
                 }
-            }
         }
+    }
+    }
+    if (showPermissionDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDisclosure = false },
+            title = { Text("Background Location Access") },
+            text = {
+                Text("Tag Spotter needs background location access ('Allow all the time') to monitor starred spots and notify you when walking near them, even when the app is closed.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionDisclosure = false
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        } else {
+                            viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
+                                selectedSpotIds.clear()
+                                isMultiSelectMode = false
+                                Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                ) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDisclosure = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showLimitExceededDialog) {
+        AlertDialog(
+            onDismissRequest = { showLimitExceededDialog = false },
+            title = { Text("Starred Limit Reached") },
+            text = {
+                Text("Adding these spots would exceed the limit of 100 starred spots. Please unstar some spots first.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showLimitExceededDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 
@@ -461,6 +632,26 @@ fun SpotGridCard(
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                // Starred Badge
+                if (spotDetails.spot.isStarred) {
+                    Box(
+                        modifier = Modifier
+                            .align(if (isMultiSelectMode) Alignment.BottomEnd else Alignment.TopStart)
+                            .padding(6.dp)
+                            .background(
+                                color = Color(0xFFFFD700), // Gold
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                            .padding(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = "Starred Spot",
+                            tint = Color.Black,
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }

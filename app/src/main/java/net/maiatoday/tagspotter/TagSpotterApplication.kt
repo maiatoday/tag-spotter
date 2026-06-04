@@ -10,7 +10,7 @@ open class TagSpotterApplication : Application() {
 
     // Database and repository singletons for dependency injection
     open val database by lazy { SpotDatabase.getDatabase(this) }
-    open val repository by lazy { LocalSpotRepository(database.spotDao()) }
+    open val repository by lazy { LocalSpotRepository(this, database.spotDao()) }
     open val settingsRepository by lazy { SharedPreferencesSettingsRepository(this) }
 
     override fun onCreate() {

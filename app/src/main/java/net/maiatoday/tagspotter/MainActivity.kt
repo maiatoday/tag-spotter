@@ -9,6 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import net.maiatoday.tagspotter.theme.MyApplicationTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 import android.content.Intent
 import android.widget.Toast
@@ -24,19 +27,35 @@ import net.maiatoday.tagspotter.utils.PackManager
 import kotlinx.coroutines.flow.first
 
 class MainActivity : ComponentActivity() {
+  private var initialSpotId by mutableStateOf<Long?>(null)
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     enableEdgeToEdge()
     handleImportIntent(intent)
+    if (intent.hasExtra("EXTRA_SPOT_ID")) {
+      initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
+    }
+
     setContent {
-      MyApplicationTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      MyApplicationTheme {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+          MainNavigation(
+            initialSpotId = initialSpotId,
+            onNavigateToSpotHandled = { initialSpotId = null }
+          )
+        }
+      }
     }
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     handleImportIntent(intent)
+    if (intent.hasExtra("EXTRA_SPOT_ID")) {
+      initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
+    }
   }
 
   private fun getFileName(uri: Uri): String? {

@@ -38,6 +38,13 @@ class SettingsViewModel(
             initialValue = false
         )
 
+    val notificationsEnabled: StateFlow<Boolean> = settingsRepository.notificationsEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     fun updatePhotographerName(name: String) {
         viewModelScope.launch {
             settingsRepository.updatePhotographerName(name)
@@ -58,6 +65,12 @@ class SettingsViewModel(
             } else {
                 spotRepository.unloadTestData()
             }
+        }
+    }
+
+    fun updateNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateNotificationsEnabled(enabled)
         }
     }
 
