@@ -2,40 +2,71 @@ package net.maiatoday.tagspotter.theme
 
 import androidx.compose.ui.graphics.Color
 
-val UrbanBackground = Color(0xFF0F0F11)
-val UrbanSurface = Color(0xFF1B1B1F)
-val UrbanPrimary = Color(0xFF00FF88) // Neon Green
-val UrbanSecondary = Color(0xFF00F0FF) // Neon Cyan
-val UrbanTertiary = Color(0xFFFF007F) // Hot Pink
-val UrbanOnBackground = Color(0xFFF3F3F5)
-val UrbanOnSurface = Color(0xFFE4E4E9)
-val UrbanError = Color(0xFFFF453A)
-val UrbanOnError = Color(0xFFFFFFFF)
+// Neon Urbanist (Dark Theme) colors
+val DarkBackground = Color(0xFF131313)
+val DarkSurface = Color(0xFF131313)
+val DarkOnBackground = Color(0xFFE5E2E1)
+val DarkOnSurface = Color(0xFFE5E2E1)
+val DarkPrimary = Color(0xFFFFFFFF)
+val DarkOnPrimary = Color(0xFF283500)
+val DarkPrimaryContainer = Color(0xFFC3F400) // Lime Green
+val DarkOnPrimaryContainer = Color(0xFF556D00)
+val DarkSecondary = Color(0xFFFFB1C4)
+val DarkOnSecondary = Color(0xFF65002E)
+val DarkSecondaryContainer = Color(0xFFFF4A8D) // Hot Pink
+val DarkOnSecondaryContainer = Color(0xFF590028)
+val DarkTertiary = Color(0xFFFFFFFF)
+val DarkOnTertiary = Color(0xFF003737)
+val DarkTertiaryContainer = Color(0xFF00FBFB) // Cyan
+val DarkOnTertiaryContainer = Color(0xFF007070)
+val DarkSurfaceVariant = Color(0xFF353534)
+val DarkOnSurfaceVariant = Color(0xFFC4C9AC)
+val DarkOutline = Color(0xFF8E9379)
+val DarkOutlineVariant = Color(0xFF444933)
+val DarkError = Color(0xFFFFB4AB)
+val DarkOnError = Color(0xFF690005)
+val DarkErrorContainer = Color(0xFF93000A)
+val DarkOnErrorContainer = Color(0xFFFFDAD6)
 
-// Light Theme colors
-val LightBackground = Color(0xFFF9F9FB)
-val LightSurface = Color(0xFFFFFFFF)
-val LightPrimary = Color(0xFF007D44) // Forest Green (high contrast primary)
-val LightSecondary = Color(0xFF006B75) // Deep Teal
-val LightTertiary = Color(0xFFC2185B) // Magenta/Pink
-val LightOnBackground = Color(0xFF1A1A1E)
-val LightOnSurface = Color(0xFF2E2E33)
+// Neon Urbanist Light (Light Theme) colors
+val LightBackground = Color(0xFFFCF8FD)
+val LightSurface = Color(0xFFFCF8FD)
+val LightOnBackground = Color(0xFF1B1B1E)
+val LightOnSurface = Color(0xFF1B1B1E)
+val LightPrimary = Color(0xFFB60055) // Hot Pink
+val LightOnPrimary = Color(0xFFFFFFFF)
+val LightPrimaryContainer = Color(0xFFE4006C)
+val LightOnPrimaryContainer = Color(0xFFFFFBFF)
+val LightSecondary = Color(0xFF006875) // Cyan-Teal
+val LightOnSecondary = Color(0xFFFFFFFF)
+val LightSecondaryContainer = Color(0xFF00E3FD) // Cyan
+val LightOnSecondaryContainer = Color(0xFF00616D)
+val LightTertiary = Color(0xFF436600) // Lime-Green
+val LightOnTertiary = Color(0xFFFFFFFF)
+val LightTertiaryContainer = Color(0xFF558100)
+val LightOnTertiaryContainer = Color(0xFFFAFFE9)
+val LightSurfaceVariant = Color(0xFFE4E1E6)
+val LightOnSurfaceVariant = Color(0xFF5C3F45)
+val LightOutline = Color(0xFF906E75)
+val LightOutlineVariant = Color(0xFFE5BCC4)
 val LightError = Color(0xFFBA1A1A)
 val LightOnError = Color(0xFFFFFFFF)
+val LightErrorContainer = Color(0xFFFFDAD6)
+val LightOnErrorContainer = Color(0xFF93000A)
 
 val DarkCategoryColors = CategoryColors(
-    graffiti = Color(0xFFFF007F),     // Neon Hot Pink (matches UrbanTertiary)
-    sculpture = Color(0xFF00F0FF),    // Neon Cyan (matches UrbanSecondary)
-    tree = Color(0xFF00FF88),         // Neon Green (matches UrbanPrimary)
+    graffiti = Color(0xFFFF4A8D),     // Neon Hot Pink (matches DarkSecondaryContainer)
+    sculpture = Color(0xFF00FBFB),    // Neon Cyan (matches DarkTertiaryContainer)
+    tree = Color(0xFFC3F400),         // Lime Green (matches DarkPrimaryContainer)
     architecture = Color(0xFFBF5AF2), // Neon Purple
     publicPlace = Color(0xFFFF9F0A),  // Neon Orange
     default = Color.DarkGray
 )
 
 val LightCategoryColors = CategoryColors(
-    graffiti = Color(0xFFD81B60),     // Darker Pink/Magenta
-    sculpture = Color(0xFF007A78),    // Darker Teal/Cyan
-    tree = Color(0xFF2E7D32),         // Darker Green
+    graffiti = Color(0xFFE4006C),     // Hot Pink (matches LightPrimaryContainer)
+    sculpture = Color(0xFF00E3FD),    // Cyan (matches LightSecondaryContainer)
+    tree = Color(0xFF558100),         // Lime Green/Olive (matches LightTertiaryContainer)
     architecture = Color(0xFF8E24AA), // Darker Purple
     publicPlace = Color(0xFFE65100),  // Darker Orange
     default = Color.Gray
