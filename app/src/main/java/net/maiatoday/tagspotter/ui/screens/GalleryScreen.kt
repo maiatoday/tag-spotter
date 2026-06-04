@@ -32,9 +32,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.IconButton
@@ -87,6 +89,7 @@ import androidx.core.net.toUri
 fun GalleryScreen(
     onSpotClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    onMenuClick: () -> Unit = {},
     viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
 ) {
     val context = LocalContext.current
@@ -101,6 +104,7 @@ fun GalleryScreen(
 
     var showPermissionDisclosure by remember { mutableStateOf(false) }
     var showLimitExceededDialog by remember { mutableStateOf(false) }
+    var isSearchExpanded by remember { mutableStateOf(false) }
 
     androidx.compose.runtime.LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
@@ -215,13 +219,13 @@ fun GalleryScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (isMultiSelectMode) {
-            // Multi-Select Action Bar
+            // Multi-Select Action Bar (Consolidated Top Bar)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .height(56.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -241,185 +245,225 @@ fun GalleryScreen(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Star toggle
                     IconButton(
                         onClick = {
-                            if (!hasFineLocation) {
-                                val permissions = mutableListOf(
-                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
-                                    permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                            val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
+                            val anyUnstarred = selectedSpots.any { !it.spot.isStarred }
+                            if (anyUnstarred) {
+                                if (!hasFineLocation) {
+                                    val permissions = mutableListOf(
+                                        android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                        android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                                        permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    foregroundLocationLauncher.launch(permissions.toTypedArray())
+                                } else if (!hasBackgroundLocation) {
+                                    showPermissionDisclosure = true
+                                } else {
+                                    viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
+                                        selectedSpotIds.clear()
+                                        isMultiSelectMode = false
+                                        Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
-                                foregroundLocationLauncher.launch(permissions.toTypedArray())
-                            } else if (!hasBackgroundLocation) {
-                                showPermissionDisclosure = true
                             } else {
-                                viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
+                                viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = false) {
                                     selectedSpotIds.clear()
                                     isMultiSelectMode = false
-                                    Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Spots unstarred!", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
-                        enabled = selectedSpotIds.isNotEmpty(),
-                        modifier = Modifier
-                            .background(
-                                color = if (selectedSpotIds.isNotEmpty()) Color(0xFFFFD700) else Color.DarkGray,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .size(40.dp)
+                        enabled = selectedSpotIds.isNotEmpty()
                     ) {
+                        val anyUnstarred = spots.filter { it.spot.id in selectedSpotIds }.any { !it.spot.isStarred }
                         Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = "Star Selected",
-                            tint = if (selectedSpotIds.isNotEmpty()) Color.Black else Color.Gray,
-                            modifier = Modifier.size(20.dp)
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Toggle Star",
+                            tint = if (selectedSpotIds.isEmpty()) {
+                                Color.Gray
+                            } else if (anyUnstarred) {
+                                Color.LightGray
+                            } else {
+                                Color(0xFFFFD700) // Starred gold
+                            }
                         )
                     }
 
                     IconButton(
-                        onClick = {
-                            viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = false) {
-                                selectedSpotIds.clear()
-                                isMultiSelectMode = false
-                                Toast.makeText(context, "Spots unstarred!", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        enabled = selectedSpotIds.isNotEmpty(),
-                        modifier = Modifier
-                            .background(
-                                color = if (selectedSpotIds.isNotEmpty()) Color.DarkGray else Color.DarkGray.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.StarBorder,
-                            contentDescription = "Unstar Selected",
-                            tint = if (selectedSpotIds.isNotEmpty()) Color.LightGray else Color.Gray,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Button(
                         onClick = {
                             createDocumentLauncher.launch("spots_export.ts_pack")
                         },
-                        enabled = selectedSpotIds.isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+                        enabled = selectedSpotIds.isNotEmpty()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "Export",
-                            modifier = Modifier.size(18.dp)
+                            tint = if (selectedSpotIds.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Export")
                     }
 
-                    Button(
+                    IconButton(
                         onClick = { showDeleteConfirmDialog = true },
-                        enabled = selectedSpotIds.isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
+                        enabled = selectedSpotIds.isNotEmpty()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete",
-                            modifier = Modifier.size(18.dp)
+                            tint = if (selectedSpotIds.isNotEmpty()) MaterialTheme.colorScheme.error else Color.Gray
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Delete")
+                    }
+                }
+            }
+        } else if (isSearchExpanded) {
+            // Expanded Search/Filter Top Bar
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(bottom = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.setSearchQuery(it) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp),
+                        placeholder = { Text("Search by tag, artist, or photographer...") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        tint = Color.Gray
+                                    )
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.DarkGray
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = {
+                        isSearchExpanded = false
+                        viewModel.setSearchQuery("")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Collapse",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // Categories Filter Header
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(categories) { category ->
+                        val isSelected = selectedCategory == category
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.selectCategory(category) },
+                            label = { Text(category.replace("_", " ").replaceFirstChar { it.titlecase() }) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = if (category == "All") {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.categoryColors.getColorForCategory(category)
+                                },
+                                selectedLabelColor = MaterialTheme.colorScheme.background,
+                                labelColor = Color.Gray
+                            )
+                        )
+                    }
+                }
+
+                // Sources Filter Header
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(sources) { source ->
+                        val isSelected = selectedSource == source
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.selectSource(source) },
+                            label = { Text(source) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+                                labelColor = Color.Gray
+                            )
+                        )
                     }
                 }
             }
         } else {
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
+            // Normal Mode Top Bar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search by tag, artist, or photographer...") },
-                leadingIcon = {
+                    .height(56.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = { onMenuClick() }) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                Text(
+                    text = "TAGSPOTTER",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                IconButton(onClick = { isSearchExpanded = true }) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onBackground
                     )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear",
-                                tint = Color.Gray
-                            )
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.DarkGray
-                )
-            )
-        }
-        // Categories Filter Header
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(categories) { category ->
-                val isSelected = selectedCategory == category
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { viewModel.selectCategory(category) },
-                    label = { Text(category.replace("_", " ").replaceFirstChar { it.titlecase() }) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = if (category == "All") {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.categoryColors.getColorForCategory(category)
-                        },
-                        selectedLabelColor = MaterialTheme.colorScheme.background,
-                        labelColor = Color.Gray
-                    )
-                )
-            }
-        }
-
-        // Sources Filter Header
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(sources) { source ->
-                val isSelected = selectedSource == source
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { viewModel.selectSource(source) },
-                    label = { Text(source) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
-                        labelColor = Color.Gray
-                    )
-                )
+                }
             }
         }
 
