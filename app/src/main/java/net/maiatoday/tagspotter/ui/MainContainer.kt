@@ -1,18 +1,35 @@
 package net.maiatoday.tagspotter.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -24,21 +41,33 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import net.maiatoday.tagspotter.ui.screens.CaptureScreen
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.ui.screens.GalleryScreen
 import net.maiatoday.tagspotter.ui.screens.MapScreen
-import net.maiatoday.tagspotter.ui.screens.SettingsScreen
+import net.maiatoday.tagspotter.utils.ExifLocationExtractor
+import net.maiatoday.tagspotter.utils.ImageOptimizer
+import net.maiatoday.tagspotter.utils.LocationHelper
+import net.maiatoday.tagspotter.utils.MediaStorageHelper
+import java.io.File
+import java.util.UUID
 
 enum class Tab {
     Gallery,
-    Map,
-    Camera,
-    Settings
+    Map
 }
 
 @Composable
@@ -52,157 +81,449 @@ fun MainContainer(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    if (isLandscape) {
-        Row(modifier = modifier.fillMaxSize()) {
-            NavigationRail(
-                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
-                contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                NavigationRailItem(
-                    selected = selectedTab == Tab.Gallery,
-                    onClick = { selectedTab = Tab.Gallery },
-                    icon = { Icon(Icons.Default.PhotoLibrary, contentDescription = "Gallery") },
-                    label = { Text("Gallery") },
-                    colors = NavigationRailItemDefaults.colors(
-                        selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = Color.Gray,
-                        selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                        unselectedTextColor = Color.Gray,
-                        indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
-                    )
-                )
-                NavigationRailItem(
-                    selected = selectedTab == Tab.Map,
-                    onClick = { selectedTab = Tab.Map },
-                    icon = { Icon(Icons.Default.Map, contentDescription = "Map") },
-                    label = { Text("Map") },
-                    colors = NavigationRailItemDefaults.colors(
-                        selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                        unselectedIconColor = Color.Gray,
-                        selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                        unselectedTextColor = Color.Gray,
-                        indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
-                    )
-                )
-                NavigationRailItem(
-                    selected = selectedTab == Tab.Camera,
-                    onClick = { selectedTab = Tab.Camera },
-                    icon = { Icon(Icons.Default.CameraAlt, contentDescription = "Capture") },
-                    label = { Text("Capture") },
-                    colors = NavigationRailItemDefaults.colors(
-                        selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                        unselectedIconColor = Color.Gray,
-                        selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                        unselectedTextColor = Color.Gray,
-                        indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
-                    )
-                )
-                NavigationRailItem(
-                    selected = selectedTab == Tab.Settings,
-                    onClick = { selectedTab = Tab.Settings },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") },
-                    colors = NavigationRailItemDefaults.colors(
-                        selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = Color.Gray,
-                        selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                        unselectedTextColor = Color.Gray,
-                        indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
-                    )
-                )
-                Spacer(modifier = Modifier.weight(1f))
-            }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isLoading by rememberSaveable { mutableStateOf(false) }
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            ) {
-                TabContent(
-                    selectedTab = selectedTab,
-                    onSpotClick = onSpotClick,
-                    onPhotoCaptured = { imagePath, thumbnailPath, lat, lng, isFallback, captureTime ->
-                        onPhotoCaptured(imagePath, thumbnailPath, lat, lng, isFallback, "All", captureTime)
+    var hasLocationPermission by rememberSaveable {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    // Permission Launcher for GPS Location
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasLocationPermission = (permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: hasLocationPermission) ||
+                (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false)
+    }
+
+    var tempPhotoUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var tempPhotoFilePath by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Take Picture Launcher (Native Camera Intent)
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            val uriStr = tempPhotoUri
+            val pathStr = tempPhotoFilePath
+            if (uriStr != null && pathStr != null) {
+                val file = File(pathStr)
+                isLoading = true
+                scope.launch(Dispatchers.Default) {
+                    var lat = 0.0
+                    var lng = 0.0
+                    var isFallback = true
+
+                    if (hasLocationPermission) {
+                        val currentLoc = LocationHelper.getCurrentLocation(context)
+                        if (currentLoc != null) {
+                            lat = currentLoc.latitude
+                            lng = currentLoc.longitude
+                            isFallback = currentLoc.isFallback
+                        }
                     }
-                )
+
+                    // Save original to public MediaStore gallery
+                    val publicUri = MediaStorageHelper.saveImageToPublicGallery(context, file)
+                    // Create thumbnail
+                    val thumbnailPath = ImageOptimizer.createThumbnail(context, file)
+                    
+                    // Clean temp cache file
+                    try { file.delete() } catch (_: Exception) {}
+
+                    if (publicUri != null && thumbnailPath != null) {
+                        withContext(Dispatchers.Main) {
+                            isLoading = false
+                            onPhotoCaptured(publicUri.toString(), thumbnailPath, lat, lng, isFallback, "All", null)
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            isLoading = false
+                            Toast.makeText(context, "Error saving captured photo.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             }
         }
-    } else {
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            bottomBar = {
-                NavigationBar(
+    }
+
+    // Photo Gallery Picker Launcher (Native Visual Media Contract)
+    val pickMedia = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            isLoading = true
+            scope.launch(Dispatchers.Default) {
+                val exifMeta = ExifLocationExtractor.getPhotoMetadata(context, uri)
+                var lat = 0.0
+                var lng = 0.0
+                var isFallback = true
+                var captureTime: Long? = null
+
+                if (exifMeta != null) {
+                    if (exifMeta.latitude != null && exifMeta.longitude != null) {
+                        lat = exifMeta.latitude
+                        lng = exifMeta.longitude
+                        isFallback = false
+                    } else if (hasLocationPermission) {
+                        val currentLoc = LocationHelper.getCurrentLocation(context)
+                        if (currentLoc != null) {
+                            lat = currentLoc.latitude
+                            lng = currentLoc.longitude
+                            isFallback = currentLoc.isFallback
+                        }
+                    }
+                    captureTime = exifMeta.timestamp
+                } else if (hasLocationPermission) {
+                    val currentLoc = LocationHelper.getCurrentLocation(context)
+                    if (currentLoc != null) {
+                        lat = currentLoc.latitude
+                        lng = currentLoc.longitude
+                        isFallback = currentLoc.isFallback
+                    }
+                }
+
+                // Create thumbnail
+                val thumbnailPath = ImageOptimizer.createThumbnail(context, uri)
+                if (thumbnailPath != null) {
+                    withContext(Dispatchers.Main) {
+                        isLoading = false
+                        onPhotoCaptured(uri.toString(), thumbnailPath, lat, lng, isFallback, "All", captureTime)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        isLoading = false
+                        Toast.makeText(context, "Error processing gallery image.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    // Permission Launcher for ACCESS_MEDIA_LOCATION (Android 10+)
+    val mediaLocationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        scope.launch {
+            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
+    }
+
+    val triggerCamera = {
+        if (!hasLocationPermission) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+        val file = File(context.cacheDir, "cam_${UUID.randomUUID()}.jpg")
+        val authority = "${context.packageName}.fileprovider"
+        try {
+            val uri = FileProvider.getUriForFile(context, authority, file)
+            tempPhotoUri = uri.toString()
+            tempPhotoFilePath = file.absolutePath
+            takePictureLauncher.launch(uri)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Failed to launch device camera.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val triggerFiles = {
+        val permission = Manifest.permission.ACCESS_MEDIA_LOCATION
+        val isGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        if (isGranted) {
+            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        } else {
+            mediaLocationPermissionLauncher.launch(permission)
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        if (isLandscape) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                NavigationRail(
                     containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
                     contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
                 ) {
-                    NavigationBarItem(
+                    Spacer(modifier = Modifier.weight(1f))
+                    NavigationRailItem(
                         selected = selectedTab == Tab.Gallery,
                         onClick = { selectedTab = Tab.Gallery },
-                        icon = { Icon(Icons.Default.PhotoLibrary, contentDescription = "Gallery") },
+                        icon = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = "Gallery",
+                                    tint = if (selectedTab == Tab.Gallery) MaterialTheme.colorScheme.primary else Color.Gray
+                                )
+                                if (selectedTab == Tab.Gallery) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .width(20.dp)
+                                            .height(2.dp)
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = RoundedCornerShape(1.dp)
+                                            )
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
+                            }
+                        },
                         label = { Text("Gallery") },
-                        colors = NavigationBarItemDefaults.colors(
+                        colors = NavigationRailItemDefaults.colors(
                             selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                             unselectedIconColor = Color.Gray,
                             selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                             unselectedTextColor = Color.Gray,
-                            indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                            indicatorColor = Color.Transparent
                         )
                     )
-                    NavigationBarItem(
+                    NavigationRailItem(
                         selected = selectedTab == Tab.Map,
                         onClick = { selectedTab = Tab.Map },
-                        icon = { Icon(Icons.Default.Map, contentDescription = "Map") },
-                        label = { Text("Map") },
-                        colors = NavigationBarItemDefaults.colors(
+                        icon = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.Map,
+                                    contentDescription = "Maps",
+                                    tint = if (selectedTab == Tab.Map) MaterialTheme.colorScheme.secondary else Color.Gray
+                                )
+                                if (selectedTab == Tab.Map) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .width(20.dp)
+                                            .height(2.dp)
+                                            .background(
+                                                color = MaterialTheme.colorScheme.secondary,
+                                                shape = RoundedCornerShape(1.dp)
+                                            )
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
+                            }
+                        },
+                        label = { Text("Maps") },
+                        colors = NavigationRailItemDefaults.colors(
                             selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
                             unselectedIconColor = Color.Gray,
                             selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
                             unselectedTextColor = Color.Gray,
-                            indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                            indicatorColor = Color.Transparent
                         )
                     )
-                    NavigationBarItem(
-                        selected = selectedTab == Tab.Camera,
-                        onClick = { selectedTab = Tab.Camera },
-                        icon = { Icon(Icons.Default.CameraAlt, contentDescription = "Capture") },
-                        label = { Text("Capture") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                            unselectedIconColor = Color.Gray,
-                            selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
+                    NavigationRailItem(
+                        selected = false,
+                        onClick = { triggerCamera() },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Camera",
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                        },
+                        label = { Text("Camera") },
+                        colors = NavigationRailItemDefaults.colors(
+                            unselectedIconColor = MaterialTheme.colorScheme.tertiary,
                             unselectedTextColor = Color.Gray,
-                            indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                            indicatorColor = Color.Transparent
                         )
                     )
-                    NavigationBarItem(
-                        selected = selectedTab == Tab.Settings,
-                        onClick = { selectedTab = Tab.Settings },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = Color.Gray,
-                            selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                    NavigationRailItem(
+                        selected = false,
+                        onClick = { triggerFiles() },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = "Files",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        label = { Text("Files") },
+                        colors = NavigationRailItemDefaults.colors(
+                            unselectedIconColor = MaterialTheme.colorScheme.primary,
                             unselectedTextColor = Color.Gray,
-                            indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                            indicatorColor = Color.Transparent
                         )
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    TabContent(
+                        selectedTab = selectedTab,
+                        onSpotClick = onSpotClick
                     )
                 }
             }
-        ) { innerPadding ->
+        } else {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                bottomBar = {
+                    NavigationBar(
+                        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+                        contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    ) {
+                        NavigationBarItem(
+                            selected = selectedTab == Tab.Gallery,
+                            onClick = { selectedTab = Tab.Gallery },
+                            icon = {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoLibrary,
+                                        contentDescription = "Gallery",
+                                        tint = if (selectedTab == Tab.Gallery) MaterialTheme.colorScheme.primary else Color.Gray
+                                    )
+                                    if (selectedTab == Tab.Gallery) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .width(20.dp)
+                                                .height(2.dp)
+                                                .background(
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    shape = RoundedCornerShape(1.dp)
+                                                )
+                                        )
+                                    } else {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                }
+                            },
+                            label = { Text("Gallery") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = Color.Gray,
+                                selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                unselectedTextColor = Color.Gray,
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+                        NavigationBarItem(
+                            selected = selectedTab == Tab.Map,
+                            onClick = { selectedTab = Tab.Map },
+                            icon = {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.Map,
+                                        contentDescription = "Map",
+                                        tint = if (selectedTab == Tab.Map) MaterialTheme.colorScheme.secondary else Color.Gray
+                                    )
+                                    if (selectedTab == Tab.Map) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .width(20.dp)
+                                                .height(2.dp)
+                                                .background(
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                    shape = RoundedCornerShape(1.dp)
+                                                )
+                                        )
+                                    } else {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                }
+                            },
+                            label = { Text("Maps") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                                unselectedIconColor = Color.Gray,
+                                selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                                unselectedTextColor = Color.Gray,
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = { triggerCamera() },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Camera",
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+                            },
+                            label = { Text("Camera") },
+                            colors = NavigationBarItemDefaults.colors(
+                                unselectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedTextColor = Color.Gray,
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = { triggerFiles() },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = "Files",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            label = { Text("Files") },
+                            colors = NavigationBarItemDefaults.colors(
+                                unselectedIconColor = MaterialTheme.colorScheme.primary,
+                                unselectedTextColor = Color.Gray,
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+                    }
+                }
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+                    TabContent(
+                        selectedTab = selectedTab,
+                        onSpotClick = onSpotClick
+                    )
+                }
+            }
+        }
+
+        if (isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        enabled = true,
+                        onClick = {} // intercept clicks
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                TabContent(
-                    selectedTab = selectedTab,
-                    onSpotClick = onSpotClick,
-                    onPhotoCaptured = { imagePath, thumbnailPath, lat, lng, isFallback, captureTime ->
-                        onPhotoCaptured(imagePath, thumbnailPath, lat, lng, isFallback, "All", captureTime)
-                    }
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Processing image...",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -211,8 +532,7 @@ fun MainContainer(
 @Composable
 private fun TabContent(
     selectedTab: Tab,
-    onSpotClick: (Long) -> Unit,
-    onPhotoCaptured: (String, String, Double, Double, Boolean, Long?) -> Unit
+    onSpotClick: (Long) -> Unit
 ) {
     when (selectedTab) {
         Tab.Gallery -> GalleryScreen(
@@ -221,9 +541,5 @@ private fun TabContent(
         Tab.Map -> MapScreen(
             onSpotClick = onSpotClick
         )
-        Tab.Camera -> CaptureScreen(
-            onPhotoCaptured = onPhotoCaptured
-        )
-        Tab.Settings -> SettingsScreen()
     }
 }
