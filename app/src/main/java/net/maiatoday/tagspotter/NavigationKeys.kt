@@ -19,3 +19,7 @@ data class TaggingKey(
     val defaultCategory: String = "graffiti",
     val captureTime: Long? = null
 ) : NavKey
+
+@Serializable
+data object SettingsKey : NavKey
+
