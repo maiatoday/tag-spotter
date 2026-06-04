@@ -4,8 +4,9 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
@@ -467,47 +468,44 @@ fun GalleryScreen(
         if (spots.isEmpty()) {
             EmptyGalleryState(category = selectedCategory, query = searchQuery)
         } else {
-            Column(
+            val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+            val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            val columns = if (isLandscape) 4 else 2
+
+            LazyVerticalStaggeredGrid(
+                columns = StaggeredGridCells.Fixed(columns),
                 modifier = Modifier
                     .fillMaxSize()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.Start
+                    .weight(1f),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalItemSpacing = 16.dp
             ) {
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    spots.forEach { spotDetails ->
-                        val isSelected = selectedSpotIds.contains(spotDetails.spot.id)
-                        SpotGridCard(
-                            modifier = Modifier.width(170.dp),
-                            spotDetails = spotDetails,
-                            isSelected = isSelected,
-                            isMultiSelectMode = isMultiSelectMode,
-                            onClick = {
-                                if (isMultiSelectMode) {
-                                    if (isSelected) {
-                                        selectedSpotIds.remove(spotDetails.spot.id)
-                                    } else {
-                                        selectedSpotIds.add(spotDetails.spot.id)
-                                    }
+                items(spots, key = { it.spot.id }) { spotDetails ->
+                    val isSelected = selectedSpotIds.contains(spotDetails.spot.id)
+                    SpotGridCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        spotDetails = spotDetails,
+                        isSelected = isSelected,
+                        isMultiSelectMode = isMultiSelectMode,
+                        onClick = {
+                            if (isMultiSelectMode) {
+                                if (isSelected) {
+                                    selectedSpotIds.remove(spotDetails.spot.id)
                                 } else {
-                                    onSpotClick(spotDetails.spot.id)
-                                }
-                            },
-                            onLongClick = {
-                                if (!isMultiSelectMode) {
-                                    isMultiSelectMode = true
                                     selectedSpotIds.add(spotDetails.spot.id)
                                 }
+                            } else {
+                                onSpotClick(spotDetails.spot.id)
                             }
-                        )
-                    }
+                        },
+                        onLongClick = {
+                            if (!isMultiSelectMode) {
+                                isMultiSelectMode = true
+                                selectedSpotIds.add(spotDetails.spot.id)
+                            }
+                        }
+                    )
                 }
             }
         }
