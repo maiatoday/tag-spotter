@@ -332,8 +332,7 @@ fun GalleryScreen(
                         .fillMaxWidth()
                         .height(56.dp)
                         .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = searchQuery,
@@ -341,14 +340,8 @@ fun GalleryScreen(
                         modifier = Modifier
                             .weight(1f)
                             .padding(vertical = 4.dp),
-                        placeholder = { Text("Search tags, artists...") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
+                        placeholder = { Text("Search tags, artists, photographers...") },
+                        leadingIcon = null,
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.setSearchQuery("") }) {
@@ -371,6 +364,8 @@ fun GalleryScreen(
                     IconButton(onClick = {
                         isSearchExpanded = false
                         viewModel.setSearchQuery("")
+                        viewModel.selectCategory("All")
+                        viewModel.selectSource("All")
                     }) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -437,8 +432,7 @@ fun GalleryScreen(
                     .fillMaxWidth()
                     .height(56.dp)
                     .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { onMenuClick() }) {
                     Icon(
@@ -448,6 +442,8 @@ fun GalleryScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
                     text = "TAGSPOTTER",
                     style = MaterialTheme.typography.titleLarge.copy(
@@ -456,6 +452,8 @@ fun GalleryScreen(
                     ),
                     color = MaterialTheme.colorScheme.onBackground
                 )
+
+                Spacer(modifier = Modifier.weight(1f))
 
                 IconButton(onClick = { isSearchExpanded = true }) {
                     Icon(
