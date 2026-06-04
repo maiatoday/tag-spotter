@@ -2,12 +2,14 @@
 <journey name="Settings">
     <description>Settings screen</description>
     <actions xml:space="preserve">
-        <action>open the settings screen</action>
+        <action>Tap on the hamburger menu icon in the gallery screen to open the drawer</action>
+        <action>Tap on Settings in the drawer</action>
         <action>Add a photographer name</action>
         <action>Set the home city to Berlin</action>
-        <action>scroll down to the bottom and check that a version number is displayed</action>
+        <action>Open the navigation drawer and check that a version number is displayed in the drawer footer</action>
         <action>Save the settings</action>
-        <action>Go to gallery screen</action>
-        <action>Go to settings screen and make sure the settings were saved</action>
+        <action>Tap the back button to return to the gallery screen</action>
+        <action>Tap on the hamburger menu icon in the gallery screen to open the drawer</action>
+        <action>Tap on Settings in the drawer and make sure the settings were saved</action>
     </actions>
 </journey>

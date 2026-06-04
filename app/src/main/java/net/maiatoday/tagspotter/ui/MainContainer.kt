@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -58,6 +60,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.ui.screens.GalleryScreen
 import net.maiatoday.tagspotter.ui.screens.MapScreen
+import net.maiatoday.tagspotter.ui.viewmodel.SettingsViewModel
+import net.maiatoday.tagspotter.TagSpotterApplication
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.Settings
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import net.maiatoday.tagspotter.utils.ExifLocationExtractor
 import net.maiatoday.tagspotter.utils.ImageOptimizer
 import net.maiatoday.tagspotter.utils.LocationHelper
@@ -74,6 +90,7 @@ enum class Tab {
 fun MainContainer(
     onSpotClick: (Long) -> Unit,
     onPhotoCaptured: (String, String, Double, Double, Boolean, String, Long?) -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(Tab.Gallery) }
@@ -83,6 +100,24 @@ fun MainContainer(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.provideFactory(
+            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository,
+            (LocalContext.current.applicationContext as TagSpotterApplication).repository
+        )
+    )
+
+    val versionName = remember {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: "1.0"
+        } catch (_: Exception) {
+            "1.0"
+        }
+    }
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var isLoading by rememberSaveable { mutableStateOf(false) }
 
     var hasLocationPermission by rememberSaveable {
@@ -244,9 +279,106 @@ fun MainContainer(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        if (isLandscape) {
-            Row(modifier = Modifier.fillMaxSize()) {
+    val showTestData by settingsViewModel.showTestData.collectAsStateWithLifecycle()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.width(300.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerContentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        // Title TAGSPOTTER
+                        Text(
+                            text = "TAGSPOTTER",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(bottom = 24.dp)
+                        )
+
+                        // Drawer Item: Settings
+                        NavigationDrawerItem(
+                            label = { Text("Settings", fontWeight = FontWeight.Bold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                }
+                                onNavigateToSettings()
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Drawer Switch Item: Load Mock Test Data
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Load Mock Test Data",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Switch(
+                                checked = showTestData,
+                                onCheckedChange = { isChecked ->
+                                    settingsViewModel.updateShowTestData(isChecked)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    uncheckedThumbColor = Color.Gray,
+                                    uncheckedTrackColor = Color.DarkGray
+                                )
+                            )
+                        }
+                    }
+
+                    // Drawer Footer: Version
+                    Text(
+                        text = "Version $versionName",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                }
+            }
+        }
+    ) {
+        Box(modifier = modifier.fillMaxSize()) {
+            if (isLandscape) {
+                Row(modifier = Modifier.fillMaxSize()) {
                 NavigationRail(
                     containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
                     contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
@@ -366,7 +498,12 @@ fun MainContainer(
                 ) {
                     TabContent(
                         selectedTab = selectedTab,
-                        onSpotClick = onSpotClick
+                        onSpotClick = onSpotClick,
+                        onMenuClick = {
+                            scope.launch {
+                                drawerState.open()
+                            }
+                        }
                     )
                 }
             }
@@ -492,7 +629,12 @@ fun MainContainer(
                 ) {
                     TabContent(
                         selectedTab = selectedTab,
-                        onSpotClick = onSpotClick
+                        onSpotClick = onSpotClick,
+                        onMenuClick = {
+                            scope.launch {
+                                drawerState.open()
+                            }
+                        }
                     )
                 }
             }
@@ -528,15 +670,18 @@ fun MainContainer(
         }
     }
 }
+}
 
 @Composable
 private fun TabContent(
     selectedTab: Tab,
-    onSpotClick: (Long) -> Unit
+    onSpotClick: (Long) -> Unit,
+    onMenuClick: () -> Unit
 ) {
     when (selectedTab) {
         Tab.Gallery -> GalleryScreen(
-            onSpotClick = onSpotClick
+            onSpotClick = onSpotClick,
+            onMenuClick = onMenuClick
         )
         Tab.Map -> MapScreen(
             onSpotClick = onSpotClick
