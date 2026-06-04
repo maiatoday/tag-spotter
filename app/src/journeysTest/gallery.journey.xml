@@ -2,8 +2,9 @@
 <journey name="Gallery">
     <description>Use test data to test the gallery screen</description>
     <actions xml:space="preserve">
-        <action>Tap on settings and choose show test data</action>
-        <action>Return to the gallery screen</action>
+        <action>Tap on the hamburger menu icon in the gallery screen to open the drawer</action>
+        <action>Toggle the Load Mock Test Data switch in the drawer to enable test data</action>
+        <action>Close the drawer</action>
         <action>Verify that 'Stunning street art stencil near the Duomo in Milan.' is visible.</action>
         <action>Verify that 'Statue of a famous historical figure in central London.' is visible.</action>
         <action>Verify that 'Modern architectural masterpiece in New York City.' is visible.</action>
