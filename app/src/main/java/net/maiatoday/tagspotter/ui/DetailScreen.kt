@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,8 +43,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -52,21 +57,17 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import net.maiatoday.tagspotter.theme.categoryColors
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,49 +80,72 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.TagSpotterApplication
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotImage
+import net.maiatoday.tagspotter.data.SpotNote
+import net.maiatoday.tagspotter.theme.categoryColors
 import net.maiatoday.tagspotter.ui.components.OsmMapView
 import net.maiatoday.tagspotter.ui.components.OsmMarker
 import net.maiatoday.tagspotter.ui.screens.ZoomableImageOverlay
 import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
 import net.maiatoday.tagspotter.utils.ImageOptimizer
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
     spotId: Long,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    draftImagePath: String? = null,
+    draftThumbnailPath: String? = null,
+    draftLatitude: Double? = null,
+    draftLongitude: Double? = null,
+    draftIsFallback: Boolean = false,
+    draftDefaultCategory: String = "graffiti",
+    draftCaptureTime: Long? = null
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as TagSpotterApplication
     val scope = rememberCoroutineScope()
+    val isCreationMode = spotId == -1L
 
     val viewModel: DetailViewModel = viewModel(
-        factory = DetailViewModel.provideFactory(spotId, app.repository, app.settingsRepository),
-        key = spotId.toString()
+        factory = DetailViewModel.provideFactory(
+            spotId = spotId,
+            repository = app.repository,
+            settingsRepository = app.settingsRepository,
+            draftImagePath = draftImagePath,
+            draftThumbnailPath = draftThumbnailPath,
+            draftLatitude = draftLatitude,
+            draftLongitude = draftLongitude,
+            draftCategory = draftDefaultCategory,
+            draftCaptureTime = draftCaptureTime
+        ),
+        key = if (isCreationMode) draftImagePath ?: "new_spot" else spotId.toString()
     )
 
     val spotDetails by viewModel.spotDetails.collectAsStateWithLifecycle()
@@ -212,69 +236,98 @@ fun DetailScreen(
         }
     }
 
+    val onCancelClick = {
+        if (isCreationMode && draftThumbnailPath != null) {
+            val file = File(draftThumbnailPath)
+            if (file.exists()) {
+                file.delete()
+            }
+        }
+        onBack()
+    }
+
+    val onSaveClick: () -> Unit = {
+        viewModel.saveSpot(onSaved = { _ ->
+            scope.launch {
+                Toast.makeText(context, "Spot Saved!", Toast.LENGTH_SHORT).show()
+                onBack()
+            }
+        })
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Spot Details") },
+                title = {
+                    Text(
+                        text = if (isCreationMode) "NEW SPOT" else "SPOT DETAILS",
+                        style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp)
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onCancelClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    val details = spotDetails
-                    if (details != null) {
-                        val isStarred = details.spot.isStarred
+                    if (!isCreationMode) {
+                        val details = spotDetails
+                        if (details != null) {
+                            val isStarred = details.spot.isStarred
+                            IconButton(
+                                onClick = {
+                                    if (isStarred) {
+                                        viewModel.toggleStarred()
+                                    } else {
+                                        if (!hasFineLocation) {
+                                            val permissions = mutableListOf(
+                                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                                android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                            )
+                                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                                                permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                                            }
+                                            foregroundLocationLauncher.launch(permissions.toTypedArray())
+                                        } else if (!hasBackgroundLocation) {
+                                            showPermissionDisclosure = true
+                                        } else {
+                                            viewModel.toggleStarred()
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                    contentDescription = if (isStarred) "Unstar Spot" else "Star Spot",
+                                    tint = if (isStarred) Color(0xFFFFD700) else Color.Gray
+                                )
+                            }
+                        }
+
                         IconButton(
                             onClick = {
-                                if (isStarred) {
-                                    viewModel.toggleStarred()
-                                } else {
-                                    if (!hasFineLocation) {
-                                        val permissions = mutableListOf(
-                                            android.Manifest.permission.ACCESS_FINE_LOCATION,
-                                            android.Manifest.permission.ACCESS_COARSE_LOCATION
-                                        )
-                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
-                                            permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                                val details = spotDetails
+                                if (details != null) {
+                                    viewModel.deleteSpot(details, onDeleted = {
+                                        scope.launch(Dispatchers.Main) {
+                                            Toast.makeText(context, "Spot deleted successfully", Toast.LENGTH_SHORT).show()
+                                            onBack()
                                         }
-                                        foregroundLocationLauncher.launch(permissions.toTypedArray())
-                                    } else if (!hasBackgroundLocation) {
-                                        showPermissionDisclosure = true
-                                    } else {
-                                        viewModel.toggleStarred()
-                                    }
+                                    })
                                 }
                             }
                         ) {
-                            Icon(
-                                imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                contentDescription = if (isStarred) "Unstar Spot" else "Star Spot",
-                                tint = if (isStarred) Color(0xFFFFD700) else Color.Gray
-                            )
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Spot", tint = MaterialTheme.colorScheme.error)
                         }
-                    }
-
-                    IconButton(
-                        onClick = {
-                            val details = spotDetails
-                            if (details != null) {
-                                viewModel.deleteSpot(details, onDeleted = {
-                                    scope.launch(Dispatchers.Main) {
-                                        Toast.makeText(context, "Spot deleted successfully", Toast.LENGTH_SHORT).show()
-                                        onBack()
-                                    }
-                                })
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete Spot", tint = MaterialTheme.colorScheme.error)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
                     titleContentColor = MaterialTheme.colorScheme.primary,
                     navigationIconContentColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.border(
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                 )
             )
         }
@@ -293,7 +346,6 @@ fun DetailScreen(
             return@Scaffold
         }
 
-        val isErased = details.spot.status == "erased"
         val sortedImages = details.images.sortedBy { it.timestamp }
         val sortedNotes = details.notes.sortedBy { it.timestamp }
 
@@ -307,104 +359,224 @@ fun DetailScreen(
                     .padding(innerPadding)
                     .background(MaterialTheme.colorScheme.background)
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Left Pane: Photo Timeline
+                // Left Pane: Photo Hero and Timeline
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    DetailPhotoTimeline(
-                        sortedImages = sortedImages,
-                        onAddPhotoClick = {
-                            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        },
-                        onImageClick = { zoomImage = it }
-                    )
+                    val mainImage = sortedImages.firstOrNull()
+                    if (mainImage != null) {
+                        DetailHeroSection(
+                            imagePath = mainImage.imagePath,
+                            thumbnailPath = mainImage.thumbnailPath,
+                            status = details.spot.status,
+                            isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported
+                        )
+                    }
+
+                    if (!isCreationMode) {
+                        DetailPhotoTimeline(
+                            sortedImages = sortedImages,
+                            onAddPhotoClick = {
+                                pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            onImageClick = { zoomImage = it }
+                        )
+                    } else {
+                        // Actions row in landscape creation mode
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Button(
+                                onClick = onCancelClick,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.DarkGray,
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text("Cancel")
+                            }
+
+                            Button(
+                                onClick = onSaveClick,
+                                modifier = Modifier.weight(1.5f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Text("Save Spot")
+                            }
+                        }
+                    }
                 }
 
-                // Right Pane: Info Card and Notes Section
+                // Right Pane: Info Bento Card, Map and Notes Section
                 Column(
                     modifier = Modifier
                         .weight(1.2f)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    DetailInfoCard(
+                    DetailMetadataCard(
                         details = details,
+                        isCreationMode = isCreationMode,
                         defaultPhotographer = defaultPhotographer,
-                        recentCustomTags = recentCustomTags,
-                        onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
-                        onUpdateCategory = { category -> viewModel.updateCategory(category) },
-                        onUpdateArtists = { list -> viewModel.updateArtists(list) },
-                        onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
-                        onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
-                        onUpdateTags = { tags -> viewModel.updateTags(tags) },
+                        onUpdateCategory = { viewModel.updateCategory(it) },
+                        onUpdateArtists = { viewModel.updateArtists(it) },
+                        onUpdatePhotographer = { viewModel.updatePhotographer(it) },
                         onMapPickerClick = { isMapPickerDialogVisible = true }
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    DetailNotesSection(
-                        sortedNotes = sortedNotes,
-                        noteInput = noteInput,
-                        onNoteInputChange = { noteInput = it },
-                        onSendNote = {
-                            val noteText = noteInput.trim()
-                            if (noteText.isNotEmpty()) {
-                                viewModel.addNote(noteText, System.currentTimeMillis())
-                                noteInput = ""
-                            }
-                        }
+                    DetailFieldNotesCard(
+                        details = details,
+                        isCreationMode = isCreationMode,
+                        recentCustomTags = recentCustomTags,
+                        onUpdateDescription = { viewModel.updateDescription(it) },
+                        onUpdateTags = { viewModel.updateTags(it) }
                     )
+
+                    DetailMiniMapCard(
+                        latitude = details.spot.latitude,
+                        longitude = details.spot.longitude,
+                        category = details.spot.category
+                    )
+
+                    if (!isCreationMode) {
+                        DetailNotesSection(
+                            sortedNotes = sortedNotes,
+                            noteInput = noteInput,
+                            onNoteInputChange = { noteInput = it },
+                            onSendNote = {
+                                val noteText = noteInput.trim()
+                                if (noteText.isNotEmpty()) {
+                                    viewModel.addNote(noteText, System.currentTimeMillis())
+                                    noteInput = ""
+                                }
+                            }
+                        )
+                    }
                 }
             }
         } else {
-            Column(
-                modifier = modifier
+            // Portrait view
+            Box(
+                modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .background(MaterialTheme.colorScheme.background)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
             ) {
-                DetailPhotoTimeline(
-                    sortedImages = sortedImages,
-                    onAddPhotoClick = {
-                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    onImageClick = { zoomImage = it }
-                )
+                Column(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = if (isCreationMode) 80.dp else 16.dp)
+                ) {
+                    val mainImage = sortedImages.firstOrNull()
+                    if (mainImage != null) {
+                        DetailHeroSection(
+                            imagePath = mainImage.imagePath,
+                            thumbnailPath = mainImage.thumbnailPath,
+                            status = details.spot.status,
+                            isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        DetailMetadataCard(
+                            details = details,
+                            isCreationMode = isCreationMode,
+                            defaultPhotographer = defaultPhotographer,
+                            onUpdateCategory = { viewModel.updateCategory(it) },
+                            onUpdateArtists = { viewModel.updateArtists(it) },
+                            onUpdatePhotographer = { viewModel.updatePhotographer(it) },
+                            onMapPickerClick = { isMapPickerDialogVisible = true }
+                        )
 
-                DetailInfoCard(
-                    details = details,
-                    defaultPhotographer = defaultPhotographer,
-                    recentCustomTags = recentCustomTags,
-                    onUpdateStatus = { nextStatus -> viewModel.updateStatus(nextStatus) },
-                    onUpdateCategory = { category -> viewModel.updateCategory(category) },
-                    onUpdateArtists = { list -> viewModel.updateArtists(list) },
-                    onUpdatePhotographer = { name -> viewModel.updatePhotographer(name) },
-                    onUpdateDescription = { desc -> viewModel.updateDescription(desc) },
-                    onUpdateTags = { tags -> viewModel.updateTags(tags) },
-                    onMapPickerClick = { isMapPickerDialogVisible = true }
-                )
+                        DetailFieldNotesCard(
+                            details = details,
+                            isCreationMode = isCreationMode,
+                            recentCustomTags = recentCustomTags,
+                            onUpdateDescription = { viewModel.updateDescription(it) },
+                            onUpdateTags = { viewModel.updateTags(it) }
+                        )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                        DetailMiniMapCard(
+                            latitude = details.spot.latitude,
+                            longitude = details.spot.longitude,
+                            category = details.spot.category
+                        )
 
-                DetailNotesSection(
-                    sortedNotes = sortedNotes,
-                    noteInput = noteInput,
-                    onNoteInputChange = { noteInput = it },
-                    onSendNote = {
-                        val noteText = noteInput.trim()
-                        if (noteText.isNotEmpty()) {
-                            viewModel.addNote(noteText, System.currentTimeMillis())
-                            noteInput = ""
+                        if (!isCreationMode) {
+                            DetailPhotoTimeline(
+                                sortedImages = sortedImages,
+                                onAddPhotoClick = {
+                                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                },
+                                onImageClick = { zoomImage = it }
+                            )
+
+                            DetailNotesSection(
+                                sortedNotes = sortedNotes,
+                                noteInput = noteInput,
+                                onNoteInputChange = { noteInput = it },
+                                onSendNote = {
+                                    val noteText = noteInput.trim()
+                                    if (noteText.isNotEmpty()) {
+                                        viewModel.addNote(noteText, System.currentTimeMillis())
+                                        noteInput = ""
+                                    }
+                                }
+                            )
                         }
                     }
-                )
+                }
+
+                // Floating Action row at the bottom for Portrait Creation Mode
+                if (isCreationMode) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .background(MaterialTheme.colorScheme.background)
+                            .border(
+                                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                            )
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Button(
+                            onClick = onCancelClick,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.DarkGray,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Cancel")
+                        }
+
+                        Button(
+                            onClick = onSaveClick,
+                            modifier = Modifier.weight(1.5f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            Text("Save Spot")
+                        }
+                    }
+                }
             }
         }
     }
@@ -461,7 +633,6 @@ fun DetailScreen(
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    // OpenStreetMap via shared OsmMapView
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -503,7 +674,7 @@ fun DetailScreen(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.DarkGray
-                             )
+                            )
                         ) {
                             Text("Cancel")
                         }
@@ -574,114 +745,117 @@ fun DetailScreen(
 }
 
 @Composable
-fun SpotTimelineCard(
-    image: SpotImage,
-    onClick: () -> Unit
+fun DetailHeroSection(
+    imagePath: String,
+    thumbnailPath: String,
+    status: String,
+    isFallback: Boolean
 ) {
-    Card(
+    Box(
         modifier = Modifier
-            .width(180.dp)
-            .height(200.dp)
-            .clickable { onClick() }
-            .border(1.dp, Color.DarkGray, RoundedCornerShape(8.dp)),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            .fillMaxWidth()
+            .height(350.dp)
+            .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
+            .background(Color.Black)
     ) {
-        Column {
-            val imageModel = remember(image.imagePath, image.thumbnailPath) {
-                if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("android.resource://") && !image.thumbnailPath.startsWith("http")) {
-                    File(image.thumbnailPath)
-                } else if (image.thumbnailPath.isNotEmpty() && (image.thumbnailPath.startsWith("android.resource://") || image.thumbnailPath.startsWith("http"))) {
-                    image.thumbnailPath.toUri()
-                } else if (image.imagePath.startsWith("content://") || image.imagePath.startsWith("android.resource://") || image.imagePath.startsWith("http")) {
-                    image.imagePath.toUri()
-                } else {
-                    File(image.imagePath)
-                }
+        val imageModel = remember(imagePath, thumbnailPath) {
+            if (thumbnailPath.isNotEmpty() && !thumbnailPath.startsWith("android.resource://") && !thumbnailPath.startsWith("http")) {
+                File(thumbnailPath)
+            } else if (thumbnailPath.isNotEmpty() && (thumbnailPath.startsWith("android.resource://") || thumbnailPath.startsWith("http"))) {
+                thumbnailPath.toUri()
+            } else if (imagePath.startsWith("content://") || imagePath.startsWith("android.resource://") || imagePath.startsWith("http")) {
+                imagePath.toUri()
+            } else {
+                File(imagePath)
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .background(Color.Black)
-            ) {
-                AsyncImage(
-                    model = imageModel,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+        }
+        AsyncImage(
+            model = imageModel,
+            contentDescription = "Spot Hero Image",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Bottom gradient overlay
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
+                    )
                 )
-            }
-            
-            // Format photo timestamp
-            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-            val formattedDate = sdf.format(Date(image.timestamp))
+        )
+
+        // Floating Badges at bottom left
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Status Tag
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(6.dp),
-                contentAlignment = Alignment.Center
+                    .background(
+                        color = if (status == "erased") MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = (if (status == "erased") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary).copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = formattedDate,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.LightGray,
-                    fontWeight = FontWeight.Bold
+                    text = if (status == "erased") "Erased Spot" else "Active Spot",
+                    color = if (status == "erased") MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                 )
             }
-        }
-    }
-}
 
-@Composable
-private fun DetailPhotoTimeline(
-    sortedImages: List<SpotImage>,
-    onAddPhotoClick: () -> Unit,
-    onImageClick: (SpotImage) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Photo Timeline",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-
-            IconButton(
-                onClick = onAddPhotoClick,
+            // GPS Signal / Verified Tag
+            Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), CircleShape)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.AddPhotoAlternate,
-                    contentDescription = "Add image",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(end = 64.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(sortedImages, key = { it.id }) { image ->
-                SpotTimelineCard(
-                    image = image,
-                    onClick = { onImageClick(image) }
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (isFallback) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            text = "GPS Signal Weak",
+                            color = MaterialTheme.colorScheme.tertiary,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    } else {
+                        Text(
+                            text = "Verified GPS",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
             }
         }
     }
@@ -689,69 +863,45 @@ private fun DetailPhotoTimeline(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DetailInfoCard(
+fun DetailMetadataCard(
     details: SpotDetails,
+    isCreationMode: Boolean,
     defaultPhotographer: String,
-    recentCustomTags: List<String>,
-    onUpdateStatus: (String) -> Unit,
     onUpdateCategory: (String) -> Unit,
     onUpdateArtists: (List<String>) -> Unit,
     onUpdatePhotographer: (String) -> Unit,
-    onUpdateDescription: (String) -> Unit,
-    onUpdateTags: (List<String>) -> Unit,
-    onMapPickerClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onMapPickerClick: () -> Unit
 ) {
-    val isErased = details.spot.status == "erased"
-
-    var isEditingArtists by remember { mutableStateOf(false) }
+    var isEditingArtists by remember { mutableStateOf(isCreationMode) }
     var artistEditInput by remember { mutableStateOf("") }
     val localArtistsList = remember { mutableStateListOf<String>() }
 
-    var isEditingPhotographer by remember { mutableStateOf(false) }
-    var photographerEditInput by remember { mutableStateOf("") }
+    var isEditingPhotographer by remember { mutableStateOf(isCreationMode) }
+    var photographerEditInput by remember { mutableStateOf(details.spot.photographer) }
 
-    var isEditingDescription by remember { mutableStateOf(false) }
-    var descriptionEditInput by remember { mutableStateOf("") }
-
-    var isEditingTags by remember { mutableStateOf(false) }
-    var customTagEditInput by remember { mutableStateOf("") }
-    val localTagsList = remember { mutableStateListOf<String>() }
-
-    LaunchedEffect(isEditingArtists) {
+    LaunchedEffect(isEditingArtists, details.spot.artists) {
         if (isEditingArtists) {
             localArtistsList.clear()
             localArtistsList.addAll(details.spot.artists)
         }
     }
 
-    LaunchedEffect(isEditingPhotographer) {
+    LaunchedEffect(isEditingPhotographer, details.spot.photographer) {
         if (isEditingPhotographer) {
             photographerEditInput = details.spot.photographer
         }
     }
 
-    LaunchedEffect(isEditingDescription) {
-        if (isEditingDescription) {
-            descriptionEditInput = details.spot.description
-        }
-    }
-
-    LaunchedEffect(isEditingTags) {
-        if (isEditingTags) {
-            localTagsList.clear()
-            localTagsList.addAll(details.spot.tags)
-        }
-    }
-
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Category Badge & Dropdown
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -762,16 +912,15 @@ private fun DetailInfoCard(
                     modifier = Modifier
                         .background(
                             color = MaterialTheme.categoryColors.getColorForCategory(details.spot.category),
-                            shape = RoundedCornerShape(4.dp)
+                            shape = RoundedCornerShape(6.dp)
                         )
                         .clickable { isCategoryDropdownExpanded = true }
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = details.spot.category.replace("_", " ").uppercase(),
                         color = Color.Black,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     DropdownMenu(
                         expanded = isCategoryDropdownExpanded,
@@ -790,79 +939,19 @@ private fun DetailInfoCard(
                     }
                 }
 
-                Button(
-                    onClick = {
-                        val nextStatus = if (isErased) "active" else "erased"
-                        onUpdateStatus(nextStatus)
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                        contentColor = if (isErased) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.error
-                    ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(6.dp)
-                ) {
-                    Text(if (isErased) "Mark Active" else "Mark as Erased")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.EditCalendar,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                val sdf = SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault())
-                Text(
-                    text = "Created: ${sdf.format(Date(details.spot.createdAt))}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.LightGray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Map,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
+                if (isCreationMode) {
                     Text(
-                        text = String.format(Locale.US, "GPS: %.6f, %.6f", details.spot.latitude, details.spot.longitude),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray
-                    )
-                }
-
-                IconButton(
-                    onClick = onMapPickerClick,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit location",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(16.dp)
+                        text = "NEW SPOT",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Artist Section
             if (isEditingArtists) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -871,43 +960,45 @@ private fun DetailInfoCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Edit Artist(s) / Writer(s)",
-                            style = MaterialTheme.typography.titleSmall,
+                            text = "ARTIST / CREW",
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
                         )
 
-                        Row {
-                            IconButton(
-                                onClick = {
-                                    val cleaned = artistEditInput.trim()
-                                    val finalArtists = if (cleaned.isNotEmpty() && !localArtistsList.contains(cleaned)) {
-                                        localArtistsList.toList() + cleaned
-                                    } else {
-                                        localArtistsList.toList()
-                                    }
-                                    onUpdateArtists(finalArtists)
-                                    artistEditInput = ""
-                                    isEditingArtists = false
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Save artists",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { isEditingArtists = false },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Cancel edit",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
+                        if (!isCreationMode) {
+                            Row {
+                                IconButton(
+                                    onClick = {
+                                        val cleaned = artistEditInput.trim()
+                                        val finalArtists = if (cleaned.isNotEmpty() && !localArtistsList.contains(cleaned)) {
+                                            localArtistsList.toList() + cleaned
+                                        } else {
+                                            localArtistsList.toList()
+                                        }
+                                        onUpdateArtists(finalArtists)
+                                        artistEditInput = ""
+                                        isEditingArtists = false
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Save artists",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { isEditingArtists = false },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel edit",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }
@@ -934,6 +1025,7 @@ private fun DetailInfoCard(
                                     if (cleaned.isNotEmpty()) {
                                         if (!localArtistsList.contains(cleaned)) {
                                             localArtistsList.add(cleaned)
+                                            onUpdateArtists(localArtistsList.toList())
                                         }
                                         artistEditInput = ""
                                     }
@@ -954,6 +1046,7 @@ private fun DetailInfoCard(
                                 if (cleaned.isNotEmpty()) {
                                     if (!localArtistsList.contains(cleaned)) {
                                         localArtistsList.add(cleaned)
+                                        onUpdateArtists(localArtistsList.toList())
                                     }
                                     artistEditInput = ""
                                 }
@@ -998,7 +1091,10 @@ private fun DetailInfoCard(
                                         tint = MaterialTheme.colorScheme.tertiary,
                                         modifier = Modifier
                                             .size(14.dp)
-                                            .clickable { localArtistsList.remove(artist) }
+                                            .clickable { 
+                                                localArtistsList.remove(artist)
+                                                onUpdateArtists(localArtistsList.toList())
+                                            }
                                     )
                                 }
                             }
@@ -1013,9 +1109,10 @@ private fun DetailInfoCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Artist(s) / Writer(s)",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.Gray
+                            text = "ARTIST / CREW",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Bold
                         )
                         IconButton(
                             onClick = { isEditingArtists = true },
@@ -1033,36 +1130,52 @@ private fun DetailInfoCard(
                     if (details.spot.artists.isEmpty()) {
                         Text(
                             text = "Unknown Artist",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.LightGray
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.primary
                         )
                     } else {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            details.spot.artists.forEach { artist ->
-                                Box(
-                                    modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-                                        .border(1.5.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(16.dp))
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = artist,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            text = details.spot.artists.joinToString(", "),
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Logged Date
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val sdf = SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault())
+                Column {
+                    Text(
+                        text = "LOGGED DATE",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = sdf.format(Date(details.spot.createdAt)),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Photographer Section
             if (isEditingPhotographer) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -1071,36 +1184,38 @@ private fun DetailInfoCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Edit Photographer",
-                            style = MaterialTheme.typography.titleSmall,
+                            text = "PHOTOGRAPHER",
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
                         )
 
-                        Row {
-                            IconButton(
-                                onClick = {
-                                    onUpdatePhotographer(photographerEditInput.trim())
-                                    isEditingPhotographer = false
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Save photographer",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { isEditingPhotographer = false },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Cancel edit",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
+                        if (!isCreationMode) {
+                            Row {
+                                IconButton(
+                                    onClick = {
+                                        onUpdatePhotographer(photographerEditInput.trim())
+                                        isEditingPhotographer = false
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Save photographer",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { isEditingPhotographer = false },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel edit",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }
@@ -1109,7 +1224,10 @@ private fun DetailInfoCard(
 
                     OutlinedTextField(
                         value = photographerEditInput,
-                        onValueChange = { photographerEditInput = it },
+                        onValueChange = { 
+                            photographerEditInput = it 
+                            if (isCreationMode) onUpdatePhotographer(it)
+                        },
                         label = { Text("Photographer Name") },
                         placeholder = { Text("e.g. Jane Doe") },
                         singleLine = true,
@@ -1127,8 +1245,11 @@ private fun DetailInfoCard(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            androidx.compose.material3.TextButton(
-                                onClick = { photographerEditInput = defaultPhotographer },
+                            TextButton(
+                                onClick = { 
+                                    photographerEditInput = defaultPhotographer
+                                    onUpdatePhotographer(defaultPhotographer)
+                                },
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
@@ -1148,49 +1269,156 @@ private fun DetailInfoCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Photographer",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.Gray
+                            text = "PHOTOGRAPHER",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Bold
                         )
-                        if (!details.spot.isImported) {
-                            IconButton(
-                                onClick = { isEditingPhotographer = true },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit photographer",
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                        IconButton(
+                            onClick = { isEditingPhotographer = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit photographer",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = details.spot.photographer.ifEmpty { "Unknown Photographer" },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Location coordinates & "Map It" or "Refine" button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "LOCATION COORDINATES",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = String.format(Locale.US, "%.6f° N, %.6f° W", details.spot.latitude, details.spot.longitude),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Button(
+                    onClick = onMapPickerClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.background
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isCreationMode) Icons.Default.EditLocationAlt else Icons.Default.Map,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isCreationMode) "REFINE" else "MAP IT",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun DetailFieldNotesCard(
+    details: SpotDetails,
+    isCreationMode: Boolean,
+    recentCustomTags: List<String>,
+    onUpdateDescription: (String) -> Unit,
+    onUpdateTags: (List<String>) -> Unit
+) {
+    var isEditingDescription by remember { mutableStateOf(isCreationMode) }
+    var descriptionEditInput by remember { mutableStateOf(details.spot.description) }
+
+    var isEditingTags by remember { mutableStateOf(isCreationMode) }
+    var customTagEditInput by remember { mutableStateOf("") }
+    val localTagsList = remember { mutableStateListOf<String>() }
+
+    LaunchedEffect(isEditingDescription, details.spot.description) {
+        if (isEditingDescription) {
+            descriptionEditInput = details.spot.description
+        }
+    }
+
+    LaunchedEffect(isEditingTags, details.spot.tags) {
+        if (isEditingTags) {
+            localTagsList.clear()
+            localTagsList.addAll(details.spot.tags)
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Notes header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "FIELD NOTES",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (!isCreationMode) {
+                    IconButton(
+                        onClick = { isEditingDescription = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit field notes",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Description block
             if (isEditingDescription) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Edit Description",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Row {
+                    if (!isCreationMode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
                             IconButton(
                                 onClick = {
                                     onUpdateDescription(descriptionEditInput.trim())
@@ -1200,7 +1428,7 @@ private fun DetailInfoCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = "Save description",
+                                    contentDescription = "Save notes",
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -1218,13 +1446,14 @@ private fun DetailInfoCard(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     OutlinedTextField(
                         value = descriptionEditInput,
-                        onValueChange = { descriptionEditInput = it },
-                        label = { Text("Description") },
-                        placeholder = { Text("e.g. Artist info, style, notes...") },
+                        onValueChange = { 
+                            descriptionEditInput = it 
+                            if (isCreationMode) onUpdateDescription(it)
+                        },
+                        label = { Text("Observation Notes") },
+                        placeholder = { Text("e.g. Fresh paint, high-quality stencil...") },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 4,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -1235,54 +1464,52 @@ private fun DetailInfoCard(
                     )
                 }
             } else {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Description",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.Gray
-                        )
-                        IconButton(
-                            onClick = { isEditingDescription = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit description",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = details.spot.description.ifEmpty { "No description given." },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                Text(
+                    text = if (details.spot.description.isEmpty()) "\"No field notes logged.\"" else "\"${details.spot.description}\"",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Tags section header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "TAGS",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (!isCreationMode) {
+                    IconButton(
+                        onClick = { isEditingTags = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit tags",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             if (isEditingTags) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Edit Tags",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Row {
+                    if (!isCreationMode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
                             IconButton(
                                 onClick = {
                                     val cleaned = customTagEditInput.trim().lowercase().removePrefix("#")
@@ -1317,12 +1544,10 @@ private fun DetailInfoCard(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     // Predefined Quick Tags
                     Text(
                         text = "Quick Select Tags",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
@@ -1343,6 +1568,7 @@ private fun DetailInfoCard(
                                     } else {
                                         localTagsList.add(tag)
                                     }
+                                    onUpdateTags(localTagsList.toList())
                                 },
                                 label = { Text("#$tag") },
                                 colors = InputChipDefaults.inputChipColors(
@@ -1364,10 +1590,10 @@ private fun DetailInfoCard(
                     // Recent Custom Tags
                     val recentTagsToShow = recentCustomTags.filter { !predefinedTags.contains(it) }
                     if (recentTagsToShow.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Recent Custom Tags",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             color = Color.Gray,
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
@@ -1387,6 +1613,7 @@ private fun DetailInfoCard(
                                         } else {
                                             localTagsList.add(tag)
                                         }
+                                        onUpdateTags(localTagsList.toList())
                                     },
                                     label = { Text("#$tag") },
                                     colors = InputChipDefaults.inputChipColors(
@@ -1406,7 +1633,7 @@ private fun DetailInfoCard(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Add Custom Tag Input
                     Row(
@@ -1417,7 +1644,7 @@ private fun DetailInfoCard(
                             value = customTagEditInput,
                             onValueChange = { customTagEditInput = it },
                             label = { Text("Add Custom Tag") },
-                            placeholder = { Text("e.g. stencil") },
+                            placeholder = { Text("e.g. pasteup") },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(
@@ -1429,6 +1656,7 @@ private fun DetailInfoCard(
                                     if (cleaned.isNotEmpty()) {
                                         if (!localTagsList.contains(cleaned)) {
                                             localTagsList.add(cleaned)
+                                            onUpdateTags(localTagsList.toList())
                                         }
                                         customTagEditInput = ""
                                     }
@@ -1449,6 +1677,7 @@ private fun DetailInfoCard(
                                 if (cleaned.isNotEmpty()) {
                                     if (!localTagsList.contains(cleaned)) {
                                         localTagsList.add(cleaned)
+                                        onUpdateTags(localTagsList.toList())
                                     }
                                     customTagEditInput = ""
                                 }
@@ -1464,93 +1693,32 @@ private fun DetailInfoCard(
                             )
                         }
                     }
-
-                    // Display current local tags list in edit mode
-                    if (localTagsList.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            localTagsList.forEach { tag ->
-                                Row(
-                                    modifier = Modifier
-                                        .background(Color.DarkGray, RoundedCornerShape(16.dp))
-                                        .border(1.dp, Color.Gray, RoundedCornerShape(16.dp))
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "#$tag",
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Remove tag",
-                                        tint = Color.LightGray,
-                                        modifier = Modifier
-                                            .size(14.dp)
-                                            .clickable { localTagsList.remove(tag) }
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
             } else {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
+                if (details.spot.tags.isEmpty()) {
+                    Text(
+                        text = "No tags added.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.LightGray
+                    )
+                } else {
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            text = "Tags",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.Gray
-                        )
-                        IconButton(
-                            onClick = { isEditingTags = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit tags",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    if (details.spot.tags.isEmpty()) {
-                        Text(
-                            text = "No tags added.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.LightGray
-                        )
-                    } else {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            details.spot.tags.forEach { tag ->
-                                Box(
-                                    modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-                                        .border(1.5.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(16.dp))
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = "#$tag",
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                        details.spot.tags.forEach { tag ->
+                            Box(
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "#$tag".uppercase(),
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                )
                             }
                         }
                     }
@@ -1561,8 +1729,158 @@ private fun DetailInfoCard(
 }
 
 @Composable
+fun DetailMiniMapCard(
+    latitude: Double,
+    longitude: Double,
+    category: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Black
+        )
+    ) {
+        val mapMarker = OsmMarker(
+            id = 0L,
+            latitude = latitude,
+            longitude = longitude,
+            category = category,
+            status = "active",
+            title = "Spot Location",
+            onClick = {}
+        )
+
+        OsmMapView(
+            latitude = latitude,
+            longitude = longitude,
+            zoomLevel = 17.0,
+            markers = listOf(mapMarker),
+            modifier = Modifier.fillMaxSize(),
+            onMapClick = {}
+        )
+    }
+}
+
+@Composable
+fun SpotTimelineCard(
+    image: SpotImage,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(180.dp)
+            .height(180.dp)
+            .clickable { onClick() }
+            .border(1.dp, Color.DarkGray, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column {
+            val imageModel = remember(image.imagePath, image.thumbnailPath) {
+                if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("android.resource://") && !image.thumbnailPath.startsWith("http")) {
+                    File(image.thumbnailPath)
+                } else if (image.thumbnailPath.isNotEmpty() && (image.thumbnailPath.startsWith("android.resource://") || image.thumbnailPath.startsWith("http"))) {
+                    image.thumbnailPath.toUri()
+                } else if (image.imagePath.startsWith("content://") || image.imagePath.startsWith("android.resource://") || image.imagePath.startsWith("http")) {
+                    image.imagePath.toUri()
+                } else {
+                    File(image.imagePath)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .background(Color.Black)
+            ) {
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+            val formattedDate = sdf.format(Date(image.timestamp))
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.LightGray,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailPhotoTimeline(
+    sortedImages: List<SpotImage>,
+    onAddPhotoClick: () -> Unit,
+    onImageClick: (SpotImage) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "PHOTO TIMELINE",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            IconButton(
+                onClick = onAddPhotoClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AddPhotoAlternate,
+                    contentDescription = "Add image",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(end = 64.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(sortedImages, key = { it.id }) { image ->
+                SpotTimelineCard(
+                    image = image,
+                    onClick = { onImageClick(image) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun DetailNotesSection(
-    sortedNotes: List<net.maiatoday.tagspotter.data.SpotNote>,
+    sortedNotes: List<SpotNote>,
     noteInput: String,
     onNoteInputChange: (String) -> Unit,
     onSendNote: () -> Unit,
@@ -1581,8 +1899,8 @@ private fun DetailNotesSection(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Observations & Notes Log",
-                style = MaterialTheme.typography.titleLarge,
+                text = "OBSERVATIONS & NOTES",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
@@ -1604,8 +1922,9 @@ private fun DetailNotesSection(
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
                     shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
                     )
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {

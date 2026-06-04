@@ -6,7 +6,6 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import net.maiatoday.tagspotter.ui.DetailScreen
 import net.maiatoday.tagspotter.ui.MainContainer
-import net.maiatoday.tagspotter.ui.TaggingScreen
 import net.maiatoday.tagspotter.ui.screens.SettingsScreen
 
 import androidx.compose.runtime.LaunchedEffect
@@ -55,14 +54,15 @@ fun MainNavigation(
                 )
             }
             entry<TaggingKey> { key ->
-                TaggingScreen(
-                    imagePath = key.imagePath,
-                    thumbnailPath = key.thumbnailPath,
-                    latitude = key.latitude,
-                    longitude = key.longitude,
-                    isFallback = key.isFallback,
-                    defaultCategory = key.defaultCategory,
-                    captureTime = key.captureTime,
+                DetailScreen(
+                    spotId = -1L,
+                    draftImagePath = key.imagePath,
+                    draftThumbnailPath = key.thumbnailPath,
+                    draftLatitude = key.latitude,
+                    draftLongitude = key.longitude,
+                    draftIsFallback = key.isFallback,
+                    draftDefaultCategory = key.defaultCategory,
+                    draftCaptureTime = key.captureTime,
                     onBack = {
                         if (backStack.size > 1) {
                             backStack.removeLastOrNull()
