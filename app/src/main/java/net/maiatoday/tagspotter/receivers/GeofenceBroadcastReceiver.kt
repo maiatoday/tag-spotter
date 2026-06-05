@@ -96,7 +96,8 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun showNotification(context: Context, details: SpotDetails, distance: Int, bitmap: Bitmap?) {
+    @androidx.annotation.VisibleForTesting
+    internal fun showNotification(context: Context, details: SpotDetails, distance: Int, bitmap: Bitmap?) {
         val channelId = "starred_spots_channel"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -136,7 +137,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val contentText = "${details.spot.category.replace("_", " ").uppercase()} ($distance meters away) $artistText"
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_map) // Default system map icon, or clean outline pin icon
             .setContentTitle("Nearby Starred Spot!")
             .setContentText(contentText)
@@ -147,7 +148,17 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .extend(wearableExtender)
-            .build()
+
+        if (bitmap != null) {
+            builder.setStyle(
+                NotificationCompat.BigPictureStyle()
+                    .bigPicture(bitmap)
+                    .setBigContentTitle("Nearby Starred Spot!")
+                    .setSummaryText(contentText)
+            )
+        }
+
+        val notification = builder.build()
 
         notificationManager.notify(details.spot.id.toInt(), notification)
     }
