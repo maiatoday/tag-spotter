@@ -59,8 +59,8 @@ class GalleryViewModelTest {
         assertEquals(2L, spots[0].spot.id)
 
         // Select non-existing category
-        viewModel.selectCategory("tree")
-        assertEquals("tree", viewModel.selectedCategory.value)
+        viewModel.selectCategory("nature")
+        assertEquals("nature", viewModel.selectedCategory.value)
         spots = viewModel.spots.value
         assertTrue(spots.isEmpty())
     }

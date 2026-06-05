@@ -183,7 +183,7 @@ fun GalleryScreen(
         }
     }
 
-    val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
+    val categories = listOf("All", "graffiti", "sculpture", "nature", "architecture", "public_place")
     val sources = listOf("All", "My Spots", "Imported")
 
     if (showDeleteConfirmDialog) {
@@ -739,27 +739,27 @@ fun SpotGridCard(
                     color = Color.Gray
                 )
 
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "\"${spotDetails.spot.description.ifEmpty { "No description added." }}\"",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
                 if (spotDetails.spot.artists.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "by " + spotDetails.spot.artists.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = spotDetails.spot.description.ifEmpty { "No description added." },
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
 
                 // Sub-tags list
                 if (spotDetails.spot.tags.isNotEmpty()) {

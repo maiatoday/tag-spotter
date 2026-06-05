@@ -17,7 +17,7 @@ data class Spot(
     val createdAt: Long,
     val description: String,
     val tags: List<String>,
-    val category: String, // e.g. "graffiti", "sculpture", "tree", "architecture"
+    val category: String, // e.g. "graffiti", "sculpture", "nature", "architecture"
     val status: String, // "active" or "erased"
     val artists: List<String> = emptyList(),
     val photographer: String = "",

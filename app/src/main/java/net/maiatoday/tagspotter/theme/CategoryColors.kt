@@ -11,7 +11,7 @@ import androidx.compose.material3.MaterialTheme
 data class CategoryColors(
     val graffiti: Color,
     val sculpture: Color,
-    val tree: Color,
+    val nature: Color,
     val architecture: Color,
     val publicPlace: Color,
     val default: Color
@@ -20,7 +20,7 @@ data class CategoryColors(
         return when (category) {
             "graffiti" -> graffiti
             "sculpture" -> sculpture
-            "tree" -> tree
+            "nature" -> nature
             "architecture" -> architecture
             "public_place" -> publicPlace
             else -> default

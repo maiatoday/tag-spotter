@@ -88,7 +88,7 @@ class MapViewModelTest {
         // Let's add 2 spots in Paris and 1 in SF
         val paris1 = Spot(id = 1L, latitude = 48.8560, longitude = 2.3520, createdAt = 1000L, description = "Paris 1", tags = emptyList(), category = "graffiti", status = "active")
         val paris2 = Spot(id = 2L, latitude = 48.8570, longitude = 2.3530, createdAt = 2000L, description = "Paris 2", tags = emptyList(), category = "sculpture", status = "active")
-        val sf1 = Spot(id = 3L, latitude = 37.7749, longitude = -122.4194, createdAt = 3000L, description = "SF 1", tags = emptyList(), category = "tree", status = "active")
+        val sf1 = Spot(id = 3L, latitude = 37.7749, longitude = -122.4194, createdAt = 3000L, description = "SF 1", tags = emptyList(), category = "nature", status = "active")
 
         repository.setSpots(listOf(
             SpotDetails(paris1, emptyList(), emptyList()),

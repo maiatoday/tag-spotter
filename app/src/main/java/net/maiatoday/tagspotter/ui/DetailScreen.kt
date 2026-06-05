@@ -926,7 +926,7 @@ fun DetailMetadataCard(
                         expanded = isCategoryDropdownExpanded,
                         onDismissRequest = { isCategoryDropdownExpanded = false }
                     ) {
-                        val categories = listOf("graffiti", "sculpture", "tree", "architecture", "public_place")
+                        val categories = listOf("graffiti", "sculpture", "nature", "architecture", "public_place")
                         categories.forEach { category ->
                             DropdownMenuItem(
                                 text = { Text(category.replace("_", " ").uppercase()) },

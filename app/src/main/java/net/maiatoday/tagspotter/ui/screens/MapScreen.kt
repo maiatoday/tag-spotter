@@ -130,7 +130,7 @@ fun MapScreen(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val categories = listOf("All", "graffiti", "sculpture", "tree", "architecture", "public_place")
+            val categories = listOf("All", "graffiti", "sculpture", "nature", "architecture", "public_place")
             items(categories) { category ->
                 val isSelected = selectedCategory == category
                 val categoryColor = if (category == "All") {
