@@ -431,14 +431,14 @@ fun DetailScreen(
                         onUpdateCategory = { viewModel.updateCategory(it) },
                         onUpdateArtists = { viewModel.updateArtists(it) },
                         onUpdatePhotographer = { viewModel.updatePhotographer(it) },
+                        onUpdateDescription = { viewModel.updateDescription(it) },
                         onMapPickerClick = { isMapPickerDialogVisible = true }
                     )
 
-                    DetailFieldNotesCard(
+                    DetailTagsCard(
                         details = details,
                         isCreationMode = isCreationMode,
                         recentCustomTags = recentCustomTags,
-                        onUpdateDescription = { viewModel.updateDescription(it) },
                         onUpdateTags = { viewModel.updateTags(it) }
                     )
 
@@ -499,14 +499,14 @@ fun DetailScreen(
                             onUpdateCategory = { viewModel.updateCategory(it) },
                             onUpdateArtists = { viewModel.updateArtists(it) },
                             onUpdatePhotographer = { viewModel.updatePhotographer(it) },
+                            onUpdateDescription = { viewModel.updateDescription(it) },
                             onMapPickerClick = { isMapPickerDialogVisible = true }
                         )
 
-                        DetailFieldNotesCard(
+                        DetailTagsCard(
                             details = details,
                             isCreationMode = isCreationMode,
                             recentCustomTags = recentCustomTags,
-                            onUpdateDescription = { viewModel.updateDescription(it) },
                             onUpdateTags = { viewModel.updateTags(it) }
                         )
 
@@ -870,6 +870,7 @@ fun DetailMetadataCard(
     onUpdateCategory: (String) -> Unit,
     onUpdateArtists: (List<String>) -> Unit,
     onUpdatePhotographer: (String) -> Unit,
+    onUpdateDescription: (String) -> Unit,
     onMapPickerClick: () -> Unit
 ) {
     var isEditingArtists by remember { mutableStateOf(isCreationMode) }
@@ -878,6 +879,9 @@ fun DetailMetadataCard(
 
     var isEditingPhotographer by remember { mutableStateOf(isCreationMode) }
     var photographerEditInput by remember { mutableStateOf(details.spot.photographer) }
+
+    var isEditingDescription by remember { mutableStateOf(isCreationMode) }
+    var descriptionEditInput by remember { mutableStateOf(details.spot.description) }
 
     LaunchedEffect(isEditingArtists, details.spot.artists) {
         if (isEditingArtists) {
@@ -889,6 +893,12 @@ fun DetailMetadataCard(
     LaunchedEffect(isEditingPhotographer, details.spot.photographer) {
         if (isEditingPhotographer) {
             photographerEditInput = details.spot.photographer
+        }
+    }
+
+    LaunchedEffect(isEditingDescription, details.spot.description) {
+        if (isEditingDescription) {
+            descriptionEditInput = details.spot.description
         }
     }
 
@@ -945,6 +955,109 @@ fun DetailMetadataCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Title Section (spot.description)
+            if (isEditingDescription) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "TITLE",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        if (!isCreationMode) {
+                            Row {
+                                IconButton(
+                                    onClick = {
+                                        onUpdateDescription(descriptionEditInput.trim())
+                                        isEditingDescription = false
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Save title",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { isEditingDescription = false },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel edit",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = descriptionEditInput,
+                        onValueChange = { 
+                            descriptionEditInput = it 
+                            if (isCreationMode) onUpdateDescription(it)
+                        },
+                        label = { Text("Title") },
+                        placeholder = { Text("e.g. Neon face stencil near Duomo") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 4,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedLabelColor = MaterialTheme.colorScheme.secondary
+                        )
+                    )
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "TITLE",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(
+                            onClick = { isEditingDescription = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit title",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (details.spot.description.isEmpty()) "\"No title logged.\"" else "\"${details.spot.description}\"",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -1130,20 +1243,14 @@ fun DetailMetadataCard(
                     if (details.spot.artists.isEmpty()) {
                         Text(
                             text = "Unknown Artist",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.primary
+                            style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
                         Text(
                             text = details.spot.artists.joinToString(", "),
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.primary
+                            style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -1345,25 +1452,15 @@ fun DetailMetadataCard(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DetailFieldNotesCard(
+fun DetailTagsCard(
     details: SpotDetails,
     isCreationMode: Boolean,
     recentCustomTags: List<String>,
-    onUpdateDescription: (String) -> Unit,
     onUpdateTags: (List<String>) -> Unit
 ) {
-    var isEditingDescription by remember { mutableStateOf(isCreationMode) }
-    var descriptionEditInput by remember { mutableStateOf(details.spot.description) }
-
     var isEditingTags by remember { mutableStateOf(isCreationMode) }
     var customTagEditInput by remember { mutableStateOf("") }
     val localTagsList = remember { mutableStateListOf<String>() }
-
-    LaunchedEffect(isEditingDescription, details.spot.description) {
-        if (isEditingDescription) {
-            descriptionEditInput = details.spot.description
-        }
-    }
 
     LaunchedEffect(isEditingTags, details.spot.tags) {
         if (isEditingTags) {
@@ -1381,98 +1478,6 @@ fun DetailFieldNotesCard(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Notes header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "FIELD NOTES",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    fontWeight = FontWeight.Bold
-                )
-
-                if (!isCreationMode) {
-                    IconButton(
-                        onClick = { isEditingDescription = true },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit field notes",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Description block
-            if (isEditingDescription) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    if (!isCreationMode) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    onUpdateDescription(descriptionEditInput.trim())
-                                    isEditingDescription = false
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Save notes",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { isEditingDescription = false },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Cancel edit",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = descriptionEditInput,
-                        onValueChange = { 
-                            descriptionEditInput = it 
-                            if (isCreationMode) onUpdateDescription(it)
-                        },
-                        label = { Text("Observation Notes") },
-                        placeholder = { Text("e.g. Fresh paint, high-quality stencil...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 4,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedLabelColor = MaterialTheme.colorScheme.secondary
-                        )
-                    )
-                }
-            } else {
-                Text(
-                    text = if (details.spot.description.isEmpty()) "\"No field notes logged.\"" else "\"${details.spot.description}\"",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Tags section header
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1899,7 +1904,7 @@ private fun DetailNotesSection(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "OBSERVATIONS & NOTES",
+                text = "FIELD NOTES",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
