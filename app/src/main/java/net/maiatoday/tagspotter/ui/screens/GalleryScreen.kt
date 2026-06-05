@@ -569,8 +569,8 @@ fun SpotGridCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Get latest image based on timestamp
-    val latestImage = spotDetails.images.maxByOrNull { it.timestamp }
+    // Get main thumbnail or latest image based on timestamp
+    val latestImage = spotDetails.images.firstOrNull { it.isMain } ?: spotDetails.images.maxByOrNull { it.timestamp }
     val isErased = spotDetails.spot.status == "erased"
 
     Card(

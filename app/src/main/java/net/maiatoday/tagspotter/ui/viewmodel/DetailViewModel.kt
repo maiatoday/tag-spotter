@@ -237,6 +237,14 @@ class DetailViewModel(
         }
     }
 
+    fun setMainImage(imageId: Long) {
+        if (spotId != -1L) {
+            viewModelScope.launch {
+                repository.setMainImage(spotId, imageId)
+            }
+        }
+    }
+
     fun deleteSpot(spotDetails: SpotDetails, onDeleted: () -> Unit) {
         if (spotId != -1L) {
             viewModelScope.launch {

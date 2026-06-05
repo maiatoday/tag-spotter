@@ -10,6 +10,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import net.maiatoday.tagspotter.TagSpotterApplication
 import net.maiatoday.tagspotter.data.Spot
+import net.maiatoday.tagspotter.theme.MyApplicationTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -46,10 +47,12 @@ class DetailScreenTest {
             
             // Now set the content using the repository (which DetailScreen will look up)
             composeTestRule.setContent {
-                DetailScreen(
-                    spotId = spotId,
-                    onBack = {}
-                )
+                MyApplicationTheme {
+                    DetailScreen(
+                        spotId = spotId,
+                        onBack = {}
+                    )
+                }
             }
             
             composeTestRule.waitForIdle()
@@ -71,8 +74,8 @@ class DetailScreenTest {
             
             composeTestRule.waitForIdle()
 
-            // Verify "Artist Y" is displayed
-            composeTestRule.onNodeWithText("Artist Y").assertExists()
+            // Verify "Artist X, Artist Y" is displayed
+            composeTestRule.onNodeWithText("Artist X, Artist Y").assertExists()
         }
     }
 
@@ -100,10 +103,12 @@ class DetailScreenTest {
             )
             
             composeTestRule.setContent {
-                DetailScreen(
-                    spotId = spotId,
-                    onBack = {}
-                )
+                MyApplicationTheme {
+                    DetailScreen(
+                        spotId = spotId,
+                        onBack = {}
+                    )
+                }
             }
             
             composeTestRule.waitForIdle()

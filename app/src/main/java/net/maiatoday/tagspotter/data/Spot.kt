@@ -43,7 +43,8 @@ data class SpotImage(
     val spotId: Long,
     val imagePath: String,
     val timestamp: Long,
-    val thumbnailPath: String = ""
+    val thumbnailPath: String = "",
+    val isMain: Boolean = false
 )
 
 @Entity(

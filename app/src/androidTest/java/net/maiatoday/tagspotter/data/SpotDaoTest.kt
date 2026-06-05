@@ -162,4 +162,40 @@ class SpotDaoTest {
         assertTrue(allTags.contains(expected1))
         assertTrue(allTags.contains(expected2))
     }
+
+    @Test
+    fun setMainImageTransaction() = runBlocking {
+        val spot = Spot(
+            id = 1L,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Spot 1",
+            tags = listOf("tag1"),
+            category = "graffiti",
+            status = "active"
+        )
+        dao.insertSpot(spot)
+
+        dao.insertImage(SpotImage(id = 10L, spotId = 1L, imagePath = "/path/1.png", timestamp = 1000L, isMain = false))
+        dao.insertImage(SpotImage(id = 11L, spotId = 1L, imagePath = "/path/2.png", timestamp = 1100L, isMain = false))
+
+        // Set image 11 as main
+        dao.setMainImage(1L, 11L)
+
+        val details = dao.getSpotDetails(1L).first()
+        assertNotNull(details)
+        val image10 = details?.images?.find { it.id == 10L }
+        val image11 = details?.images?.find { it.id == 11L }
+        assertTrue(image11?.isMain == true)
+        assertTrue(image10?.isMain == false)
+
+        // Switch main image to 10
+        dao.setMainImage(1L, 10L)
+        val detailsNew = dao.getSpotDetails(1L).first()
+        val image10New = detailsNew?.images?.find { it.id == 10L }
+        val image11New = detailsNew?.images?.find { it.id == 11L }
+        assertTrue(image10New?.isMain == true)
+        assertTrue(image11New?.isMain == false)
+    }
 }

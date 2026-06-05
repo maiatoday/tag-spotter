@@ -232,4 +232,13 @@ class FakeSpotRepository : SpotRepository {
         updateFlow()
         return importedCount
     }
+
+    override suspend fun setMainImage(spotId: Long, imageId: Long) {
+        val details = spotsMap[spotId] ?: return
+        val updatedImages = details.images.map { img ->
+            img.copy(isMain = img.id == imageId)
+        }
+        spotsMap[spotId] = details.copy(images = updatedImages)
+        updateFlow()
+    }
 }

@@ -29,6 +29,7 @@ interface SpotRepository {
     suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean)
     suspend fun getStarredSpots(): List<Spot>
     suspend fun getStarredSpotsCount(): Int
+    suspend fun setMainImage(spotId: Long, imageId: Long)
 }
 
 class LocalSpotRepository(
@@ -283,6 +284,10 @@ class LocalSpotRepository(
 
     override suspend fun getStarredSpotsCount(): Int {
         return spotDao.getStarredSpotsCount()
+    }
+
+    override suspend fun setMainImage(spotId: Long, imageId: Long) {
+        spotDao.setMainImage(spotId, imageId)
     }
 
     companion object {

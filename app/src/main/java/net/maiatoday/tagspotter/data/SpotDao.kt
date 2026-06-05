@@ -74,4 +74,16 @@ interface SpotDao {
 
     @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1")
     suspend fun getStarredSpotsCount(): Int
+
+    @Query("UPDATE spot_images SET isMain = 0 WHERE spotId = :spotId")
+    suspend fun clearMainImages(spotId: Long)
+
+    @Query("UPDATE spot_images SET isMain = 1 WHERE id = :imageId")
+    suspend fun setMainImageId(imageId: Long)
+
+    @Transaction
+    suspend fun setMainImage(spotId: Long, imageId: Long) {
+        clearMainImages(spotId)
+        setMainImageId(imageId)
+    }
 }

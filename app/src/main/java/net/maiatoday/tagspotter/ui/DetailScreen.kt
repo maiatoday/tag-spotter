@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +45,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Star
@@ -72,6 +76,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -149,6 +154,7 @@ fun DetailScreen(
     )
 
     val spotDetails by viewModel.spotDetails.collectAsStateWithLifecycle()
+    val sortedImages = remember(spotDetails) { spotDetails?.images?.sortedBy { it.timestamp } ?: emptyList() }
     val defaultPhotographer by viewModel.defaultPhotographer.collectAsStateWithLifecycle()
     val recentCustomTags by viewModel.recentCustomTags.collectAsStateWithLifecycle()
 
@@ -346,7 +352,6 @@ fun DetailScreen(
             return@Scaffold
         }
 
-        val sortedImages = details.images.sortedBy { it.timestamp }
         val sortedNotes = details.notes.sortedBy { it.timestamp }
 
         val configuration = LocalConfiguration.current
@@ -368,13 +373,14 @@ fun DetailScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val mainImage = sortedImages.firstOrNull()
+                    val mainImage = sortedImages.firstOrNull { it.isMain } ?: sortedImages.firstOrNull()
                     if (mainImage != null) {
                         DetailHeroSection(
                             imagePath = mainImage.imagePath,
                             thumbnailPath = mainImage.thumbnailPath,
                             status = details.spot.status,
-                            isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported
+                            isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported,
+                            onImageClick = { zoomImage = mainImage }
                         )
                     }
 
@@ -384,7 +390,8 @@ fun DetailScreen(
                             onAddPhotoClick = {
                                 pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                             },
-                            onImageClick = { zoomImage = it }
+                            onImageClick = { zoomImage = it },
+                            onHeartClick = { viewModel.setMainImage(it.id) }
                         )
                     } else {
                         // Actions row in landscape creation mode
@@ -428,6 +435,7 @@ fun DetailScreen(
                         details = details,
                         isCreationMode = isCreationMode,
                         defaultPhotographer = defaultPhotographer,
+                        onUpdateStatus = { viewModel.updateStatus(it) },
                         onUpdateCategory = { viewModel.updateCategory(it) },
                         onUpdateArtists = { viewModel.updateArtists(it) },
                         onUpdatePhotographer = { viewModel.updatePhotographer(it) },
@@ -478,13 +486,14 @@ fun DetailScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(bottom = if (isCreationMode) 80.dp else 16.dp)
                 ) {
-                    val mainImage = sortedImages.firstOrNull()
+                    val mainImage = sortedImages.firstOrNull { it.isMain } ?: sortedImages.firstOrNull()
                     if (mainImage != null) {
                         DetailHeroSection(
                             imagePath = mainImage.imagePath,
                             thumbnailPath = mainImage.thumbnailPath,
                             status = details.spot.status,
-                            isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported
+                            isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported,
+                            onImageClick = { zoomImage = mainImage }
                         )
                     }
 
@@ -496,6 +505,7 @@ fun DetailScreen(
                             details = details,
                             isCreationMode = isCreationMode,
                             defaultPhotographer = defaultPhotographer,
+                            onUpdateStatus = { viewModel.updateStatus(it) },
                             onUpdateCategory = { viewModel.updateCategory(it) },
                             onUpdateArtists = { viewModel.updateArtists(it) },
                             onUpdatePhotographer = { viewModel.updatePhotographer(it) },
@@ -522,7 +532,8 @@ fun DetailScreen(
                                 onAddPhotoClick = {
                                     pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                                 },
-                                onImageClick = { zoomImage = it }
+                                onImageClick = { zoomImage = it },
+                                onHeartClick = { viewModel.setMainImage(it.id) }
                             )
 
                             DetailNotesSection(
@@ -582,6 +593,14 @@ fun DetailScreen(
     }
 
     if (zoomImage != null) {
+        val initialIndex = sortedImages.indexOfFirst { it.id == zoomImage?.id }.coerceAtLeast(0)
+        val pagerState = rememberPagerState(initialPage = initialIndex) { sortedImages.size }
+        var currentScale by remember { mutableFloatStateOf(1f) }
+
+        LaunchedEffect(pagerState.currentPage) {
+            currentScale = 1f
+        }
+
         Dialog(
             onDismissRequest = { zoomImage = null },
             properties = DialogProperties(
@@ -589,11 +608,23 @@ fun DetailScreen(
                 decorFitsSystemWindows = false
             )
         ) {
-            ZoomableImageOverlay(
-                imagePath = zoomImage!!.imagePath,
-                thumbnailPath = zoomImage!!.thumbnailPath,
-                onClose = { zoomImage = null }
-            )
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = currentScale == 1f,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val image = sortedImages[page]
+                ZoomableImageOverlay(
+                    imagePath = image.imagePath,
+                    thumbnailPath = image.thumbnailPath,
+                    onClose = { zoomImage = null },
+                    onScaleChanged = { scale ->
+                        if (pagerState.currentPage == page) {
+                            currentScale = scale
+                        }
+                    }
+                )
+            }
         }
     }
 
@@ -749,7 +780,8 @@ fun DetailHeroSection(
     imagePath: String,
     thumbnailPath: String,
     status: String,
-    isFallback: Boolean
+    isFallback: Boolean,
+    onImageClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -772,7 +804,9 @@ fun DetailHeroSection(
         AsyncImage(
             model = imageModel,
             contentDescription = "Spot Hero Image",
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable { onImageClick() },
             contentScale = ContentScale.Crop
         )
 
@@ -867,6 +901,7 @@ fun DetailMetadataCard(
     details: SpotDetails,
     isCreationMode: Boolean,
     defaultPhotographer: String,
+    onUpdateStatus: (String) -> Unit,
     onUpdateCategory: (String) -> Unit,
     onUpdateArtists: (List<String>) -> Unit,
     onUpdatePhotographer: (String) -> Unit,
@@ -956,6 +991,20 @@ fun DetailMetadataCard(
                         color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.Bold
                     )
+                } else {
+                    val isErased = details.spot.status == "erased"
+                    TextButton(
+                        onClick = {
+                            val newStatus = if (isErased) "active" else "erased"
+                            onUpdateStatus(newStatus)
+                        }
+                    ) {
+                        Text(
+                            text = if (isErased) "Mark Active" else "Mark as Erased",
+                            color = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
                 }
             }
 
@@ -1773,6 +1822,8 @@ fun DetailMiniMapCard(
 @Composable
 fun SpotTimelineCard(
     image: SpotImage,
+    isMain: Boolean,
+    onHeartClick: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -1810,6 +1861,22 @@ fun SpotTimelineCard(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
+
+                IconButton(
+                    onClick = onHeartClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(32.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), shape = CircleShape)
+                ) {
+                    Icon(
+                        imageVector = if (isMain) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Main thumbnail",
+                        tint = if (isMain) Color(0xFFF43F5E) else Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
@@ -1836,6 +1903,7 @@ private fun DetailPhotoTimeline(
     sortedImages: List<SpotImage>,
     onAddPhotoClick: () -> Unit,
     onImageClick: (SpotImage) -> Unit,
+    onHeartClick: (SpotImage) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -1876,6 +1944,8 @@ private fun DetailPhotoTimeline(
             items(sortedImages, key = { it.id }) { image ->
                 SpotTimelineCard(
                     image = image,
+                    isMain = image.isMain,
+                    onHeartClick = { onHeartClick(image) },
                     onClick = { onImageClick(image) }
                 )
             }

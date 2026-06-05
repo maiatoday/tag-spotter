@@ -174,7 +174,7 @@ fun MapScreen(
         ) {
             val spot = selectedSpot
             if (spot != null) {
-                val latestImage = spot.images.maxByOrNull { it.timestamp }
+                val latestImage = spot.images.firstOrNull { it.isMain } ?: spot.images.maxByOrNull { it.timestamp }
                 val isErased = spot.spot.status == "erased"
 
                 Card(

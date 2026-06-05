@@ -43,7 +43,8 @@ fun ZoomableImageOverlay(
     imagePath: String,
     thumbnailPath: String,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onScaleChanged: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current
     var scale by remember { mutableFloatStateOf(1f) }
@@ -92,7 +93,11 @@ fun ZoomableImageOverlay(
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectTransformGestures { _, pan, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(1f, 5f)
+                        val newScale = (scale * zoom).coerceIn(1f, 5f)
+                        if (newScale != scale) {
+                            scale = newScale
+                            onScaleChanged(scale)
+                        }
                         if (scale > 1f) {
                             offset += pan
                         } else {
@@ -110,6 +115,7 @@ fun ZoomableImageOverlay(
                                 scale = 2.5f
                                 offset = Offset.Zero
                             }
+                            onScaleChanged(scale)
                         }
                     )
                 }

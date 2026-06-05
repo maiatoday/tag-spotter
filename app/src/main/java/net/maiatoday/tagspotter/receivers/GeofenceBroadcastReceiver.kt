@@ -79,7 +79,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     }
 
     private suspend fun loadThumbnail(context: Context, details: SpotDetails): Bitmap? {
-        val latestImage = details.images.maxByOrNull { it.timestamp } ?: return null
+        val latestImage = details.images.firstOrNull { it.isMain } ?: details.images.maxByOrNull { it.timestamp } ?: return null
         val path = latestImage.thumbnailPath.ifEmpty { latestImage.imagePath }
         if (path.isEmpty()) return null
 
