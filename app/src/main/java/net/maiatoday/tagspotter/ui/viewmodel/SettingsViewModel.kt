@@ -45,6 +45,13 @@ class SettingsViewModel(
             initialValue = false
         )
 
+    val darkMapEnabled: StateFlow<Boolean> = settingsRepository.darkMapEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     fun updatePhotographerName(name: String) {
         viewModelScope.launch {
             settingsRepository.updatePhotographerName(name)
@@ -71,6 +78,12 @@ class SettingsViewModel(
     fun updateNotificationsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateNotificationsEnabled(enabled)
+        }
+    }
+
+    fun updateDarkMapEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateDarkMapEnabled(enabled)
         }
     }
 

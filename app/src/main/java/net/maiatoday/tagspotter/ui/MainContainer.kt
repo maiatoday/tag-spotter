@@ -283,6 +283,7 @@ fun MainContainer(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = selectedTab != Tab.Map,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.width(300.dp),

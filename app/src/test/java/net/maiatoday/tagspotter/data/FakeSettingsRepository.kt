@@ -17,6 +17,9 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
     private val _notificationsEnabled = MutableStateFlow(false)
     override val notificationsEnabled: Flow<Boolean> = _notificationsEnabled.asStateFlow()
 
+    private val _darkMapEnabled = MutableStateFlow(false)
+    override val darkMapEnabled: Flow<Boolean> = _darkMapEnabled.asStateFlow()
+
     override suspend fun updatePhotographerName(name: String) {
         _photographerName.value = name
     }
@@ -31,5 +34,9 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
 
     override suspend fun updateNotificationsEnabled(enabled: Boolean) {
         _notificationsEnabled.value = enabled
+    }
+
+    override suspend fun updateDarkMapEnabled(enabled: Boolean) {
+        _darkMapEnabled.value = enabled
     }
 }

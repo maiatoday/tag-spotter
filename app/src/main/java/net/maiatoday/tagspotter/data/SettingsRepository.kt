@@ -15,6 +15,8 @@ interface SettingsRepository {
     suspend fun updateShowTestData(show: Boolean)
     val notificationsEnabled: Flow<Boolean>
     suspend fun updateNotificationsEnabled(enabled: Boolean)
+    val darkMapEnabled: Flow<Boolean>
+    suspend fun updateDarkMapEnabled(enabled: Boolean)
 }
 
 class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository {
@@ -32,6 +34,9 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     private val _notificationsEnabled = MutableStateFlow(getSavedNotificationsEnabled())
     override val notificationsEnabled: Flow<Boolean> = _notificationsEnabled.asStateFlow()
 
+    private val _darkMapEnabled = MutableStateFlow(getSavedDarkMapEnabled())
+    override val darkMapEnabled: Flow<Boolean> = _darkMapEnabled.asStateFlow()
+
     private fun getSavedName(): String {
         return sharedPreferences.getString("photographer_name", "") ?: ""
     }
@@ -46,6 +51,10 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
 
     private fun getSavedNotificationsEnabled(): Boolean {
         return sharedPreferences.getBoolean("notifications_enabled", false)
+    }
+
+    private fun getSavedDarkMapEnabled(): Boolean {
+        return sharedPreferences.getBoolean("dark_map_enabled", false)
     }
 
     override suspend fun updatePhotographerName(name: String) {
@@ -66,5 +75,10 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     override suspend fun updateNotificationsEnabled(enabled: Boolean) {
         sharedPreferences.edit { putBoolean("notifications_enabled", enabled) }
         _notificationsEnabled.value = enabled
+    }
+
+    override suspend fun updateDarkMapEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("dark_map_enabled", enabled) }
+        _darkMapEnabled.value = enabled
     }
 }

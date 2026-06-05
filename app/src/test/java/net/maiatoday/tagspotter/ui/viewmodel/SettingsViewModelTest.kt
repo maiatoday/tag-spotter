@@ -39,12 +39,16 @@ class SettingsViewModelTest {
         val collectJobNotifications = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.notificationsEnabled.collect {}
         }
+        val collectJobDarkMap = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.darkMapEnabled.collect {}
+        }
 
         // Verify initial state
         assertEquals("Initial Photographer", viewModel.photographerName.value)
         assertEquals("Milan", viewModel.homeCity.value)
         assertFalse(viewModel.showTestData.value)
         assertFalse(viewModel.notificationsEnabled.value)
+        assertFalse(viewModel.darkMapEnabled.value)
 
         // Update photographer name
         viewModel.updatePhotographerName("New Photographer")
@@ -69,5 +73,13 @@ class SettingsViewModelTest {
         // Toggle notifications off
         viewModel.updateNotificationsEnabled(false)
         assertFalse(viewModel.notificationsEnabled.value)
+
+        // Toggle dark map off
+        viewModel.updateDarkMapEnabled(false)
+        assertFalse(viewModel.darkMapEnabled.value)
+
+        // Toggle dark map on
+        viewModel.updateDarkMapEnabled(true)
+        assertTrue(viewModel.darkMapEnabled.value)
     }
 }

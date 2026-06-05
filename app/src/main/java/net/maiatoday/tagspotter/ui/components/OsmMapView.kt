@@ -19,12 +19,29 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import net.maiatoday.tagspotter.TagSpotterApplication
+
+val DarkMatterTileSource = XYTileSource(
+    "CartoDbDarkMatter",
+    0, 19, 256, ".png",
+    arrayOf(
+        "https://a.basemaps.cartocdn.com/dark_all/",
+        "https://b.basemaps.cartocdn.com/dark_all/",
+        "https://c.basemaps.cartocdn.com/dark_all/",
+        "https://d.basemaps.cartocdn.com/dark_all/"
+    ),
+    "Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
+)
 
 data class OsmMarker(
     val id: Long,
@@ -53,6 +70,13 @@ fun OsmMapView(
         MapView(context)
     }
 
+    val settingsRepository = remember(context) {
+        (context.applicationContext as TagSpotterApplication).settingsRepository
+    }
+    val isSystemDark = isSystemInDarkTheme()
+    val darkMapEnabled by settingsRepository.darkMapEnabled.collectAsState(initial = false)
+    val useDarkMap = isSystemDark && darkMapEnabled
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, mapView) {
         val observer = LifecycleEventObserver { _, event ->
@@ -72,7 +96,7 @@ fun OsmMapView(
     AndroidView(
         factory = {
             mapView.apply {
-                setTileSource(TileSourceFactory.MAPNIK)
+                setTileSource(if (useDarkMap) DarkMatterTileSource else TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 controller.setZoom(zoomLevel)
                 controller.setCenter(GeoPoint(latitude, longitude))
@@ -94,6 +118,11 @@ fun OsmMapView(
             }
         },
         update = { map ->
+            val expectedTileSource = if (useDarkMap) DarkMatterTileSource else TileSourceFactory.MAPNIK
+            if (map.tileProvider.tileSource?.name() != expectedTileSource.name()) {
+                map.setTileSource(expectedTileSource)
+            }
+
             // Clear existing markers
             map.overlays.filterIsInstance<Marker>().forEach { map.overlays.remove(it) }
 

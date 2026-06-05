@@ -56,6 +56,7 @@ import net.maiatoday.tagspotter.TagSpotterApplication
 import net.maiatoday.tagspotter.ui.viewmodel.SettingsViewModel
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -293,6 +294,43 @@ fun SettingsScreen(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = Color.Gray,
                                     focusedLabelColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                        }
+                    }
+                    
+                    val isSystemDark = isSystemInDarkTheme()
+                    if (isSystemDark) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Darkmode Map Renders",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Use dark themed tiles when system is in dark mode.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+                            val darkMapEnabled by viewModel.darkMapEnabled.collectAsStateWithLifecycle()
+                            Switch(
+                                checked = darkMapEnabled,
+                                onCheckedChange = { isChecked ->
+                                    viewModel.updateDarkMapEnabled(isChecked)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    uncheckedThumbColor = Color.Gray,
+                                    uncheckedTrackColor = Color.DarkGray
                                 )
                             )
                         }
