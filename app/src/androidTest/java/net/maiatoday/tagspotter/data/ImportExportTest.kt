@@ -265,4 +265,56 @@ class ImportExportTest {
             packFile.delete()
         }
     }
+
+    @Test
+    fun testImportExportWithArtworkDate() {
+        runBlocking {
+            val thumbnailsDir = File(context.filesDir, "thumbnails").apply { mkdirs() }
+            val imagesDir = File(context.filesDir, "images").apply { mkdirs() }
+
+            val dummyThumbFile = File(thumbnailsDir, "dummy_thumb_date_${System.currentTimeMillis()}.jpg").apply { writeText("thumb") }
+            val dummyImageFile = File(imagesDir, "dummy_image_date_${System.currentTimeMillis()}.jpg").apply { writeText("img") }
+
+            val spot = Spot(
+                id = 20L,
+                latitude = 40.0,
+                longitude = -74.0,
+                createdAt = System.currentTimeMillis(),
+                description = "Artwork Date Spot",
+                tags = emptyList(),
+                category = "sculpture",
+                status = "active",
+                artworkDate = "circa 2005"
+            )
+            val spotId = repository.saveSpot(spot, dummyImageFile.absolutePath, dummyThumbFile.absolutePath)
+
+            val initialSpots = repository.getAllSpots().first()
+            val initialDetails = initialSpots.first { it.spot.id == spotId }
+            assertEquals("circa 2005", initialDetails.spot.artworkDate)
+
+            // Export
+            val packFile = File(context.cacheDir, "artwork_date_test.ts_pack")
+            packFile.outputStream().use { fos ->
+                PackManager.exportPack(context, listOf(initialDetails), fos)
+            }
+
+            // Cleanup local DB spot and files to avoid clashes when importing
+            repository.deleteSpot(initialDetails)
+
+            // Import
+            val importedCount = packFile.inputStream().use { fis ->
+                PackManager.importPack(context, repository, fis, "")
+            }
+            assertEquals(1, importedCount)
+
+            // Verify imported spot has the correct artworkDate
+            val importedSpots = repository.getAllSpots().first()
+            val importedDetail = importedSpots.first()
+            assertEquals("circa 2005", importedDetail.spot.artworkDate)
+
+            // Cleanup
+            repository.deleteSpot(importedDetail)
+            packFile.delete()
+        }
+    }
 }

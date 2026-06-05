@@ -712,6 +712,7 @@ fun DetailScreen(
                         onUpdateArtists = { viewModel.updateArtists(it) },
                         onUpdatePhotographer = { viewModel.updatePhotographer(it) },
                         onUpdateDescription = { viewModel.updateDescription(it) },
+                        onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
                         onMapPickerClick = { isMapPickerDialogVisible = true }
                     )
 
@@ -787,6 +788,7 @@ fun DetailScreen(
                             onUpdateArtists = { viewModel.updateArtists(it) },
                             onUpdatePhotographer = { viewModel.updatePhotographer(it) },
                             onUpdateDescription = { viewModel.updateDescription(it) },
+                            onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
                             onMapPickerClick = { isMapPickerDialogVisible = true }
                         )
 
@@ -1190,6 +1192,7 @@ fun DetailMetadataCard(
     onUpdateArtists: (List<String>) -> Unit,
     onUpdatePhotographer: (String) -> Unit,
     onUpdateDescription: (String) -> Unit,
+    onUpdateArtworkDate: (String) -> Unit,
     onMapPickerClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1202,6 +1205,9 @@ fun DetailMetadataCard(
 
     var isEditingDescription by remember { mutableStateOf(isCreationMode) }
     var descriptionEditInput by remember { mutableStateOf(details.spot.description) }
+
+    var isEditingArtworkDate by remember { mutableStateOf(isCreationMode) }
+    var artworkDateEditInput by remember { mutableStateOf(details.spot.artworkDate) }
 
     LaunchedEffect(isEditingArtists, details.spot.artists) {
         if (isEditingArtists) {
@@ -1219,6 +1225,12 @@ fun DetailMetadataCard(
     LaunchedEffect(isEditingDescription, details.spot.description) {
         if (isEditingDescription) {
             descriptionEditInput = details.spot.description
+        }
+    }
+
+    LaunchedEffect(isEditingArtworkDate, details.spot.artworkDate) {
+        if (isEditingArtworkDate) {
+            artworkDateEditInput = details.spot.artworkDate
         }
     }
 
@@ -1771,6 +1783,107 @@ fun DetailMetadataCard(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                }
+            }
+
+            val showArtworkDate = details.spot.category in listOf("graffiti", "sculpture", "architecture")
+            if (showArtworkDate) {
+                Spacer(modifier = Modifier.height(16.dp))
+                if (isEditingArtworkDate) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "ARTWORK CREATED DATE",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            if (!isCreationMode) {
+                                Row {
+                                    IconButton(
+                                        onClick = {
+                                            onUpdateArtworkDate(artworkDateEditInput.trim())
+                                            isEditingArtworkDate = false
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Save artwork date",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { isEditingArtworkDate = false },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Cancel edit",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = artworkDateEditInput,
+                            onValueChange = { 
+                                artworkDateEditInput = it 
+                                if (isCreationMode) onUpdateArtworkDate(it)
+                            },
+                            label = { Text("Artwork Date / Year") },
+                            placeholder = { Text("e.g. 2024, June 2021, Circa 1950") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                                unfocusedBorderColor = Color.Gray,
+                                focusedLabelColor = MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "ARTWORK CREATED DATE",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = { isEditingArtworkDate = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit artwork date",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = details.spot.artworkDate.ifEmpty { "Unknown Creation Date" },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
 

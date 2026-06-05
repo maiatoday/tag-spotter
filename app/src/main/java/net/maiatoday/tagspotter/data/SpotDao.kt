@@ -95,4 +95,7 @@ interface SpotDao {
 
     @Query("UPDATE spot_images SET rating = :rating WHERE id = :imageId")
     suspend fun updateImageRating(imageId: Long, rating: Int)
+
+    @Query("UPDATE spots SET artworkDate = :artworkDate WHERE id = :spotId")
+    suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String)
 }

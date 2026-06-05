@@ -406,6 +406,18 @@ class DetailViewModel(
         }
     }
 
+    fun updateArtworkDate(artworkDate: String) {
+        if (spotId != -1L) {
+            viewModelScope.launch {
+                repository.updateSpotArtworkDate(spotId, artworkDate)
+            }
+        } else {
+            _draftDetails.value = _draftDetails.value?.let {
+                it.copy(spot = it.spot.copy(artworkDate = artworkDate))
+            }
+        }
+    }
+
     fun addNote(noteText: String, timestamp: Long) {
         if (spotId != -1L) {
             viewModelScope.launch {
