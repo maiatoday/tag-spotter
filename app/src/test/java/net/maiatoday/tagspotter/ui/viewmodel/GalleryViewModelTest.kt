@@ -2,6 +2,7 @@ package net.maiatoday.tagspotter.ui.viewmodel
 
 import net.maiatoday.tagspotter.MainDispatcherRule
 import net.maiatoday.tagspotter.data.FakeSpotRepository
+import net.maiatoday.tagspotter.data.FakeSettingsRepository
 import net.maiatoday.tagspotter.data.Spot
 import net.maiatoday.tagspotter.data.SpotDetails
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,6 +21,7 @@ class GalleryViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val repository = FakeSpotRepository()
+    private val settingsRepository = FakeSettingsRepository()
 
     @Test
     fun spotsFilteredByCategoryCorrectly() = runTest {
@@ -31,7 +33,7 @@ class GalleryViewModelTest {
         
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository)
+        val viewModel = GalleryViewModel(repository, settingsRepository)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -81,7 +83,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository)
+        val viewModel = GalleryViewModel(repository, settingsRepository)
 
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
@@ -112,6 +114,41 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun locationAndRadiusFilteringWorksCorrectly() = runTest {
+        // Milan coordinates: 45.4642, 9.1899
+        // London coordinates: 51.5074, -0.1278
+        val milanSpot = Spot(id = 1L, latitude = 45.4640, longitude = 9.1890, createdAt = 1000L, description = "Milan Spot", tags = emptyList(), category = "graffiti", status = "active")
+        val londonSpot = Spot(id = 2L, latitude = 51.5070, longitude = -0.1270, createdAt = 2000L, description = "London Spot", tags = emptyList(), category = "graffiti", status = "active")
+        
+        repository.setSpots(listOf(
+            SpotDetails(milanSpot, emptyList(), emptyList()),
+            SpotDetails(londonSpot, emptyList(), emptyList())
+        ))
+
+        val viewModel = GalleryViewModel(repository, settingsRepository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spots.collect {}
+        }
+
+        // Initially no location filter, returns both
+        assertEquals(2, viewModel.spots.value.size)
+
+        // Apply Milan filter (radius 5km)
+        viewModel.setLocationFilter(
+            net.maiatoday.tagspotter.utils.FilterCenter.FocusCity("Milan", 45.4642, 9.1899),
+            5000.0
+        )
+        
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(1L, viewModel.spots.value[0].spot.id)
+
+        // Clear location filter
+        viewModel.clearLocationFilter()
+        assertEquals(2, viewModel.spots.value.size)
+    }
+
+    @Test
     fun bulkUpdateStarredAndLimitExceeded() = runTest {
         val spot1 = Spot(id = 1L, latitude = 1.0, longitude = 2.0, createdAt = 1000L, description = "A", tags = emptyList(), category = "graffiti", status = "active", isStarred = false)
         val spot2 = Spot(id = 2L, latitude = 3.0, longitude = 4.0, createdAt = 2000L, description = "B", tags = emptyList(), category = "sculpture", status = "active", isStarred = false)
@@ -119,7 +156,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository)
+        val viewModel = GalleryViewModel(repository, settingsRepository)
 
         // Collect spots StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {

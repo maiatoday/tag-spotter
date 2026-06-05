@@ -16,13 +16,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 import org.osmdroid.util.GeoPoint
 import kotlin.math.roundToInt
 
 class MapViewModel(
     private val repository: SpotRepository,
-    settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
+
+    val homeCity: StateFlow<String> = settingsRepository.homeCity
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "Milan"
+        )
 
     private val _selectedCategory = MutableStateFlow("All")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
@@ -30,16 +38,47 @@ class MapViewModel(
     private val _selectedSpot = MutableStateFlow<SpotDetails?>(null)
     val selectedSpot: StateFlow<SpotDetails?> = _selectedSpot.asStateFlow()
 
+    private val _activeFilterCenter = MutableStateFlow<net.maiatoday.tagspotter.utils.FilterCenter?>(null)
+    val activeFilterCenter: StateFlow<net.maiatoday.tagspotter.utils.FilterCenter?> = _activeFilterCenter.asStateFlow()
+
+    private val _activeRadiusMeters = MutableStateFlow(5000.0) // default 5km
+    val activeRadiusMeters: StateFlow<Double> = _activeRadiusMeters.asStateFlow()
+
+    private data class MapFilterState(
+        val category: String,
+        val filterCenter: net.maiatoday.tagspotter.utils.FilterCenter?,
+        val radiusMeters: Double
+    )
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val spots: StateFlow<List<SpotDetails>> = _selectedCategory
-        .flatMapLatest { category ->
-            repository.getSpotsByCategory(category)
+    val spots: StateFlow<List<SpotDetails>> = combine(
+        _selectedCategory,
+        _activeFilterCenter,
+        _activeRadiusMeters
+    ) { category, filterCenter, radiusMeters ->
+        MapFilterState(category, filterCenter, radiusMeters)
+    }.flatMapLatest { state ->
+        repository.getSpotsByCategory(state.category).map { list ->
+            val center = state.filterCenter
+            if (center != null) {
+                list.filter { detail ->
+                    val distance = net.maiatoday.tagspotter.utils.LocationUtils.calculateDistance(
+                        center.latitude,
+                        center.longitude,
+                        detail.spot.latitude,
+                        detail.spot.longitude
+                    )
+                    distance <= state.radiusMeters
+                }
+            } else {
+                list
+            }
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     fun selectCategory(category: String) {
         _selectedCategory.value = category
@@ -47,6 +86,15 @@ class MapViewModel(
 
     fun selectSpot(spot: SpotDetails?) {
         _selectedSpot.value = spot
+    }
+
+    fun setLocationFilter(center: net.maiatoday.tagspotter.utils.FilterCenter?, radiusMeters: Double) {
+        _activeFilterCenter.value = center
+        _activeRadiusMeters.value = radiusMeters
+    }
+
+    fun clearLocationFilter() {
+        _activeFilterCenter.value = null
     }
 
     private fun resolveCityCoordinate(homeCityName: String): GeoPoint {

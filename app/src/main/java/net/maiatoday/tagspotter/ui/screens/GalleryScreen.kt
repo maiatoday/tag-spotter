@@ -88,6 +88,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.core.net.toUri
+import net.maiatoday.tagspotter.ui.components.FilterBottomSheet
+import net.maiatoday.tagspotter.utils.FilterCenter
+import net.maiatoday.tagspotter.utils.LocationUtils
 
 @Composable
 fun GalleryScreen(
@@ -101,6 +104,12 @@ fun GalleryScreen(
     val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+
+    val activeFilterCenter by viewModel.activeFilterCenter.collectAsStateWithLifecycle()
+    val activeRadiusMeters by viewModel.activeRadiusMeters.collectAsStateWithLifecycle()
+    val homeCityName by viewModel.homeCity.collectAsStateWithLifecycle()
+    
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
 
     var isMultiSelectMode by remember { mutableStateOf(false) }
     val selectedSpotIds = remember { mutableStateListOf<Long>() }
@@ -499,6 +508,48 @@ fun GalleryScreen(
                         )
                     }
                 }
+
+                // Location Filter Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (activeFilterCenter != null) {
+                        FilterChip(
+                            selected = true,
+                            onClick = { showFilterBottomSheet = true },
+                            label = {
+                                Text(
+                                    text = "${activeFilterCenter?.displayName} (${LocationUtils.getRadiusLabel(activeRadiusMeters)})"
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear location filter",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.clearLocationFilter() }
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    } else {
+                        FilterChip(
+                            selected = false,
+                            onClick = { showFilterBottomSheet = true },
+                            label = { Text("+ Add Location Filter") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                labelColor = Color.Gray
+                            )
+                        )
+                    }
+                }
             }
         } else {
             // Normal Mode Top Bar
@@ -530,6 +581,14 @@ fun GalleryScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
+                IconButton(onClick = { showFilterBottomSheet = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Location Filter",
+                        tint = if (activeFilterCenter != null) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
                 IconButton(onClick = { isSearchExpanded = true }) {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -540,8 +599,46 @@ fun GalleryScreen(
             }
         }
 
+        // Active location chip in normal mode
+        if (!isSearchExpanded && activeFilterCenter != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilterChip(
+                    selected = true,
+                    onClick = { showFilterBottomSheet = true },
+                    label = {
+                        Text(
+                            text = "${activeFilterCenter?.displayName} within ${LocationUtils.getRadiusLabel(activeRadiusMeters)}"
+                        )
+                    },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear location filter",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { viewModel.clearLocationFilter() }
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+        }
+
         if (spots.isEmpty()) {
-            EmptyGalleryState(category = selectedCategory, query = searchQuery)
+            EmptyGalleryState(
+                category = selectedCategory,
+                query = searchQuery,
+                activeFilterCenter = activeFilterCenter,
+                onClearLocationFilter = { viewModel.clearLocationFilter() }
+            )
         } else {
             val configuration = androidx.compose.ui.platform.LocalConfiguration.current
             val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -563,6 +660,7 @@ fun GalleryScreen(
                         spotDetails = spotDetails,
                         isSelected = isSelected,
                         isMultiSelectMode = isMultiSelectMode,
+                        activeFilterCenter = activeFilterCenter,
                         onClick = {
                             if (isMultiSelectMode) {
                                 if (isSelected) {
@@ -584,6 +682,18 @@ fun GalleryScreen(
                 }
             }
         }
+    }
+
+    if (showFilterBottomSheet) {
+        FilterBottomSheet(
+            onDismissRequest = { showFilterBottomSheet = false },
+            currentCenter = activeFilterCenter,
+            currentRadiusMeters = activeRadiusMeters,
+            homeCityName = homeCityName,
+            onApplyFilter = { center, radius ->
+                viewModel.setLocationFilter(center, radius)
+            }
+        )
     }
     if (showPermissionDisclosure) {
         AlertDialog(
@@ -716,7 +826,8 @@ fun SpotGridCard(
     isMultiSelectMode: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    activeFilterCenter: FilterCenter? = null
 ) {
     // Get main thumbnail or latest image based on timestamp
     val latestImage = spotDetails.images.firstOrNull { it.isMain } ?: spotDetails.images.maxByOrNull { it.timestamp }
@@ -888,6 +999,22 @@ fun SpotGridCard(
                     color = Color.Gray
                 )
 
+                if (activeFilterCenter != null) {
+                    val distanceMeters = LocationUtils.calculateDistance(
+                        activeFilterCenter.latitude,
+                        activeFilterCenter.longitude,
+                        spotDetails.spot.latitude,
+                        spotDetails.spot.longitude
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${LocationUtils.getRadiusLabel(distanceMeters)} away",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
@@ -933,7 +1060,12 @@ fun SpotGridCard(
 }
 
 @Composable
-fun EmptyGalleryState(category: String, query: String = "") {
+fun EmptyGalleryState(
+    category: String,
+    query: String = "",
+    activeFilterCenter: FilterCenter? = null,
+    onClearLocationFilter: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -955,7 +1087,9 @@ fun EmptyGalleryState(category: String, query: String = "") {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = if (query.isNotEmpty()) {
+            text = if (activeFilterCenter != null) {
+                "No spots found within range of ${activeFilterCenter.displayName}."
+            } else if (query.isNotEmpty()) {
                 "No spots match '$query'."
             } else if (category == "All") {
                 "Document your city walks! Tap the 'Capture' tab below to photograph your first spot."
@@ -966,5 +1100,16 @@ fun EmptyGalleryState(category: String, query: String = "") {
             color = Color.Gray,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
+        if (activeFilterCenter != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onClearLocationFilter,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Text("Show All Spots")
+            }
+        }
     }
 }

@@ -24,6 +24,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polygon
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -61,6 +62,8 @@ fun OsmMapView(
     zoomLevel: Double,
     markers: List<OsmMarker>,
     modifier: Modifier = Modifier,
+    radiusCircleCenter: GeoPoint? = null,
+    radiusCircleMeters: Double = 0.0,
     onMapClick: ((GeoPoint) -> Unit)? = null,
     onMapReady: ((MapView) -> Unit)? = null
 ) {
@@ -125,6 +128,21 @@ fun OsmMapView(
 
             // Clear existing markers
             map.overlays.filterIsInstance<Marker>().forEach { map.overlays.remove(it) }
+            
+            // Clear existing polygons/circles
+            map.overlays.filterIsInstance<Polygon>().forEach { map.overlays.remove(it) }
+
+            // Add circle overlay if active
+            if (radiusCircleCenter != null && radiusCircleMeters > 0.0) {
+                val circleColor = Color(0xFF00FFCC) // Neon Cyan
+                val circle = Polygon(map).apply {
+                    points = Polygon.pointsAsCircle(radiusCircleCenter, radiusCircleMeters)
+                    fillPaint.color = circleColor.copy(alpha = 0.12f).toArgb()
+                    outlinePaint.color = circleColor.toArgb()
+                    outlinePaint.strokeWidth = 2.0f * map.context.resources.displayMetrics.density
+                }
+                map.overlays.add(circle)
+            }
 
             // Add pins
             markers.forEach { osmMarker ->

@@ -20,7 +20,17 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
-class GalleryViewModel(private val repository: SpotRepository) : ViewModel() {
+class GalleryViewModel(
+    private val repository: SpotRepository,
+    private val settingsRepository: net.maiatoday.tagspotter.data.SettingsRepository
+) : ViewModel() {
+
+    val homeCity: StateFlow<String> = settingsRepository.homeCity
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "Milan"
+        )
 
     sealed interface UiEvent {
         data object StarLimitExceeded : UiEvent
@@ -38,26 +48,42 @@ class GalleryViewModel(private val repository: SpotRepository) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _activeFilterCenter = MutableStateFlow<net.maiatoday.tagspotter.utils.FilterCenter?>(null)
+    val activeFilterCenter: StateFlow<net.maiatoday.tagspotter.utils.FilterCenter?> = _activeFilterCenter.asStateFlow()
+
+    private val _activeRadiusMeters = MutableStateFlow(5000.0) // default 5km
+    val activeRadiusMeters: StateFlow<Double> = _activeRadiusMeters.asStateFlow()
+
+    private data class FilterState(
+        val category: String,
+        val source: String,
+        val query: String,
+        val filterCenter: net.maiatoday.tagspotter.utils.FilterCenter?,
+        val radiusMeters: Double
+    )
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val spots: StateFlow<List<SpotDetails>> = combine(
         _selectedCategory,
         _selectedSource,
-        _searchQuery
-    ) { category, source, query ->
-        Triple(category, source, query)
-    }.flatMapLatest { (category, source, query) ->
-        repository.getSpotsByCategory(category).map { list ->
+        _searchQuery,
+        _activeFilterCenter,
+        _activeRadiusMeters
+    ) { category, source, query, filterCenter, radiusMeters ->
+        FilterState(category, source, query, filterCenter, radiusMeters)
+    }.flatMapLatest { state ->
+        repository.getSpotsByCategory(state.category).map { list ->
             // First apply source filtering
-            val sourceFiltered = when (source) {
+            val sourceFiltered = when (state.source) {
                 "My Spots" -> list.filter { !it.spot.isImported }
                 "Imported" -> list.filter { it.spot.isImported }
                 else -> list
             }
             // Then apply search query filtering
-            if (query.isBlank()) {
+            val queryFiltered = if (state.query.isBlank()) {
                 sourceFiltered
             } else {
-                val q = query.trim().lowercase()
+                val q = state.query.trim().lowercase()
                 sourceFiltered.filter { detail ->
                     val spot = detail.spot
                     val matchTags = spot.tags.any { it.lowercase().contains(q) }
@@ -66,12 +92,36 @@ class GalleryViewModel(private val repository: SpotRepository) : ViewModel() {
                     matchTags || matchArtists || matchPhotographer
                 }
             }
+            // Then apply location & radius filtering if active
+            val center = state.filterCenter
+            if (center != null) {
+                queryFiltered.filter { detail ->
+                    val distance = net.maiatoday.tagspotter.utils.LocationUtils.calculateDistance(
+                        center.latitude,
+                        center.longitude,
+                        detail.spot.latitude,
+                        detail.spot.longitude
+                    )
+                    distance <= state.radiusMeters
+                }
+            } else {
+                queryFiltered
+            }
         }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    fun setLocationFilter(center: net.maiatoday.tagspotter.utils.FilterCenter?, radiusMeters: Double) {
+        _activeFilterCenter.value = center
+        _activeRadiusMeters.value = radiusMeters
+    }
+
+    fun clearLocationFilter() {
+        _activeFilterCenter.value = null
+    }
 
     fun selectCategory(category: String) {
         _selectedCategory.value = category
@@ -122,7 +172,7 @@ class GalleryViewModel(private val repository: SpotRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as TagSpotterApplication
-                GalleryViewModel(app.repository)
+                GalleryViewModel(app.repository, app.settingsRepository)
             }
         }
     }

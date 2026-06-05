@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,6 +57,11 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import java.io.File
 import androidx.core.net.toUri
+import androidx.compose.runtime.LaunchedEffect
+import net.maiatoday.tagspotter.ui.components.FilterBottomSheet
+import net.maiatoday.tagspotter.utils.FilterCenter
+import net.maiatoday.tagspotter.utils.LocationUtils
+import org.osmdroid.util.BoundingBox
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -69,7 +75,39 @@ fun MapScreen(
     val selectedSpot by viewModel.selectedSpot.collectAsStateWithLifecycle()
     val initialCenter by viewModel.initialMapCenter.collectAsStateWithLifecycle()
 
+    val activeFilterCenter by viewModel.activeFilterCenter.collectAsStateWithLifecycle()
+    val activeRadiusMeters by viewModel.activeRadiusMeters.collectAsStateWithLifecycle()
+    val homeCityName by viewModel.homeCity.collectAsStateWithLifecycle()
+
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
     var mapViewInstance: MapView? by remember { mutableStateOf(null) }
+
+    // Trigger map camera update when activeFilterCenter or activeRadiusMeters changes
+    LaunchedEffect(activeFilterCenter, activeRadiusMeters) {
+        val center = activeFilterCenter
+        val map = mapViewInstance
+        if (map != null) {
+            if (center != null) {
+                map.controller.animateTo(GeoPoint(center.latitude, center.longitude))
+                val zoom = when {
+                    activeRadiusMeters <= 500.0 -> 16.0
+                    activeRadiusMeters <= 1000.0 -> 15.0
+                    activeRadiusMeters <= 2000.0 -> 14.0
+                    activeRadiusMeters <= 5000.0 -> 13.0
+                    activeRadiusMeters <= 10000.0 -> 12.0
+                    activeRadiusMeters <= 20000.0 -> 11.0
+                    else -> 10.0
+                }
+                map.controller.setZoom(zoom)
+            } else {
+                if (spots.isNotEmpty()) {
+                    val points = spots.map { GeoPoint(it.spot.latitude, it.spot.longitude) }
+                    val bbox = BoundingBox.fromGeoPoints(points)
+                    map.zoomToBoundingBox(bbox, true, 80)
+                }
+            }
+        }
+    }
 
     // Map spots to OsmMarkers
     val markers = spots.map { spotDetails ->
@@ -104,6 +142,8 @@ fun MapScreen(
                 zoomLevel = 14.0,
                 markers = markers,
                 modifier = Modifier.fillMaxSize(),
+                radiusCircleCenter = activeFilterCenter?.let { GeoPoint(it.latitude, it.longitude) },
+                radiusCircleMeters = activeRadiusMeters,
                 onMapClick = {
                     viewModel.selectSpot(null)
                 },
@@ -160,6 +200,51 @@ fun MapScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
+        }
+
+        // Floating Location Filter Button / Active Chip Row
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 88.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = Color.Gray.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (activeFilterCenter != null) {
+                Text(
+                    text = "${activeFilterCenter?.displayName} (${LocationUtils.getRadiusLabel(activeRadiusMeters)})",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { showFilterBottomSheet = true }
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Clear location filter",
+                    tint = Color.Gray,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable { viewModel.clearLocationFilter() }
+                )
+            } else {
+                Text(
+                    text = "+ Add Location Filter",
+                    color = Color.LightGray,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { showFilterBottomSheet = true }
+                )
             }
         }
 
@@ -303,5 +388,17 @@ fun MapScreen(
                 }
             }
         }
+    }
+
+    if (showFilterBottomSheet) {
+        FilterBottomSheet(
+            onDismissRequest = { showFilterBottomSheet = false },
+            currentCenter = activeFilterCenter,
+            currentRadiusMeters = activeRadiusMeters,
+            homeCityName = homeCityName,
+            onApplyFilter = { center, radius ->
+                viewModel.setLocationFilter(center, radius)
+            }
+        )
     }
 }
