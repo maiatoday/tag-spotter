@@ -133,4 +133,4 @@ jobs:
           echo "Found APK at $APK_PATH"
           gh release create "v${{ steps.bump_version.outputs.new_version }}" "$APK_PATH" \
             --title "Release v${{ steps.bump_version.outputs.new_version }}" \
-            --notes "Automated release of version v${{ steps.bump_version.outputs.new_version }}."
+            --generate-notes
