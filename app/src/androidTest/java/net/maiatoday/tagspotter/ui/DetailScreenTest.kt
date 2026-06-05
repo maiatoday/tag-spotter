@@ -113,11 +113,11 @@ class DetailScreenTest {
             
             composeTestRule.waitForIdle()
 
-            // Verify initial status is active by looking for "Mark as Erased" button
-            composeTestRule.onNodeWithText("Mark as Erased").assertExists()
+            // Verify initial status is active by looking for "Mark as Painted Over" button
+            composeTestRule.onNodeWithText("Mark as Painted Over").assertExists()
             
-            // Click "Mark as Erased" button
-            composeTestRule.onNodeWithText("Mark as Erased").performClick()
+            // Click "Mark as Painted Over" button
+            composeTestRule.onNodeWithText("Mark as Painted Over").performClick()
             
             composeTestRule.waitForIdle()
 

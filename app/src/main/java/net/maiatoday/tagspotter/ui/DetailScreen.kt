@@ -846,7 +846,7 @@ fun DetailHeroSection(
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = if (status == "erased") "Erased Spot" else "Active Spot",
+                    text = if (status == "erased") "Painted Over" else "Active Spot",
                     color = if (status == "erased") MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                 )
@@ -1000,7 +1000,7 @@ fun DetailMetadataCard(
                         }
                     ) {
                         Text(
-                            text = if (isErased) "Mark Active" else "Mark as Erased",
+                            text = if (isErased) "Mark Active" else "Mark as Painted Over",
                             color = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )

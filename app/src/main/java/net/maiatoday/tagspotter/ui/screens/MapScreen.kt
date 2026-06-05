@@ -238,7 +238,7 @@ fun MapScreen(
                                     }
                                     if (isErased) {
                                         Text(
-                                            text = "(Gone)",
+                                            text = "(Painted Over)",
                                             color = MaterialTheme.colorScheme.error,
                                             style = MaterialTheme.typography.labelSmall
                                         )
