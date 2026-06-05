@@ -92,4 +92,7 @@ interface SpotDao {
 
     @Query("SELECT * FROM spot_images WHERE spotId = :spotId ORDER BY timestamp ASC")
     suspend fun getImagesForSpot(spotId: Long): List<SpotImage>
+
+    @Query("UPDATE spot_images SET rating = :rating WHERE id = :imageId")
+    suspend fun updateImageRating(imageId: Long, rating: Int)
 }

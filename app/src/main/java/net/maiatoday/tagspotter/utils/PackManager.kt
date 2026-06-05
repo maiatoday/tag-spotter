@@ -43,16 +43,21 @@ object PackManager {
         return File(image.thumbnailPath).name
     }
 
-    fun exportPack(context: Context, spots: List<SpotDetails>, outputStream: OutputStream) {
+    fun exportPack(context: Context, spots: List<SpotDetails>, outputStream: OutputStream, minRating: Int = 0) {
+        val filteredSpots = spots.map { spotDetails ->
+            val heroImage = spotDetails.images.firstOrNull { it.isMain } ?: spotDetails.images.maxByOrNull { it.timestamp }
+            spotDetails.copy(images = spotDetails.images.filter { it.rating >= minRating || it == heroImage })
+        }
+
         ZipOutputStream(outputStream.buffered()).use { zos ->
             // 1. Write spots.json
-            val jsonString = Json.encodeToString(spots)
+            val jsonString = Json.encodeToString(filteredSpots)
             zos.putNextEntry(ZipEntry("spots.json"))
             zos.write(jsonString.toByteArray())
             zos.closeEntry()
 
             // 2. Write images and thumbnails
-            spots.forEach { spotDetails ->
+            filteredSpots.forEach { spotDetails ->
                 spotDetails.images.forEach { image ->
                     // Write thumbnail if it's local and exists
                     if (image.thumbnailPath.isNotEmpty() &&
@@ -168,6 +173,7 @@ object PackManager {
                     var isFirstImage = true
                     var firstImageNewPath = ""
                     var firstImageNewThumbnailPath = ""
+                    var firstImageRating = 0
                     val extraImages = mutableListOf<SpotImage>()
 
                     importedDetail.images.forEach { image ->
@@ -233,6 +239,7 @@ object PackManager {
                         if (isFirstImage) {
                             firstImageNewPath = newImagePath
                             firstImageNewThumbnailPath = newThumbnailPath
+                            firstImageRating = image.rating
                             isFirstImage = false
                         } else {
                             extraImages.add(
@@ -240,7 +247,8 @@ object PackManager {
                                     spotId = 0L,
                                     imagePath = newImagePath,
                                     thumbnailPath = newThumbnailPath,
-                                    timestamp = image.timestamp
+                                    timestamp = image.timestamp,
+                                    rating = image.rating
                                 )
                             )
                         }
@@ -250,7 +258,8 @@ object PackManager {
                     val newSpotId = repository.saveSpot(
                         spot = importedSpot.copy(id = 0L, isImported = markImported),
                         imagePath = firstImageNewPath,
-                        thumbnailPath = firstImageNewThumbnailPath
+                        thumbnailPath = firstImageNewThumbnailPath,
+                        rating = firstImageRating
                     )
 
                     // Insert extra images (if any)
@@ -259,7 +268,8 @@ object PackManager {
                             spotId = newSpotId,
                             imagePath = extraImage.imagePath,
                             thumbnailPath = extraImage.thumbnailPath,
-                            timestamp = extraImage.timestamp
+                            timestamp = extraImage.timestamp,
+                            rating = extraImage.rating
                         )
                     }
 

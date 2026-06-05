@@ -110,6 +110,8 @@ fun GalleryScreen(
     var showPermissionDisclosure by remember { mutableStateOf(false) }
     var showLimitExceededDialog by remember { mutableStateOf(false) }
     var isSearchExpanded by remember { mutableStateOf(false) }
+    var exportMinRatingThreshold by remember { mutableStateOf(0) }
+    var showExportOptionsDialog by remember { mutableStateOf(false) }
 
     androidx.compose.runtime.LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
@@ -176,7 +178,7 @@ fun GalleryScreen(
             val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
             try {
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    PackManager.exportPack(context, selectedSpots, outputStream)
+                    PackManager.exportPack(context, selectedSpots, outputStream, minRating = exportMinRatingThreshold)
                 }
                 Toast.makeText(context, "Saved successfully!", Toast.LENGTH_LONG).show()
                 selectedSpotIds.clear()
@@ -320,7 +322,7 @@ fun GalleryScreen(
                                 text = { Text("Export Tag Spotter Pack (.ts_pack)") },
                                 onClick = {
                                     isShareMenuExpanded = false
-                                    createDocumentLauncher.launch("spots_export.ts_pack")
+                                    showExportOptionsDialog = true
                                 }
                             )
                             DropdownMenuItem(
@@ -626,6 +628,80 @@ fun GalleryScreen(
             confirmButton = {
                 TextButton(onClick = { showLimitExceededDialog = false }) {
                     Text("OK")
+                }
+            }
+        )
+    }
+
+    if (showExportOptionsDialog) {
+        var tempMinRating by remember { mutableStateOf(0) }
+        AlertDialog(
+            onDismissRequest = { showExportOptionsDialog = false },
+            title = { Text("Export Pack Options") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Filter images by minimum rating. Images below this rating will be excluded from the pack (the main hero image is always included).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    ) {
+                        Text("Min Rating: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            for (i in 1..5) {
+                                val isStarred = i <= tempMinRating
+                                Icon(
+                                    imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                    contentDescription = "Star $i",
+                                    tint = if (isStarred) Color(0xFFFFD700) else Color.Gray,
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clickable {
+                                            tempMinRating = if (tempMinRating == i) 0 else i
+                                        }
+                                )
+                            }
+                        }
+                    }
+                    val ratingLabel = when (tempMinRating) {
+                        0 -> "All photos (no filter)"
+                        1 -> "1 Star and above"
+                        2 -> "2 Stars and above"
+                        3 -> "3 Stars and above"
+                        4 -> "4 Stars and above"
+                        5 -> "5 Stars only"
+                        else -> ""
+                    }
+                    Text(
+                        text = ratingLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        exportMinRatingThreshold = tempMinRating
+                        showExportOptionsDialog = false
+                        createDocumentLauncher.launch("spots_export.ts_pack")
+                    }
+                ) {
+                    Text("Export")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportOptionsDialog = false }) {
+                    Text("Cancel")
                 }
             }
         )

@@ -657,7 +657,8 @@ fun DetailScreen(
                             },
                             onImageClick = { zoomImage = it },
                             onHeartClick = { viewModel.setMainImage(it.id) },
-                            onDeleteClick = { imageToDelete = it }
+                            onDeleteClick = { imageToDelete = it },
+                            onRatingChange = { img, rating -> viewModel.updateImageRating(img, rating) }
                         )
                     } else {
                         // Actions row in landscape creation mode
@@ -810,7 +811,8 @@ fun DetailScreen(
                                 },
                                 onImageClick = { zoomImage = it },
                                 onHeartClick = { viewModel.setMainImage(it.id) },
-                                onDeleteClick = { imageToDelete = it }
+                                onDeleteClick = { imageToDelete = it },
+                                onRatingChange = { img, rating -> viewModel.updateImageRating(img, rating) }
                             )
 
                             DetailNotesSection(
@@ -2192,7 +2194,8 @@ fun SpotTimelineCard(
     isMain: Boolean,
     onHeartClick: () -> Unit,
     onClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onRatingChange: (Int) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -2265,11 +2268,12 @@ fun SpotTimelineCard(
 
             val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
             val formattedDate = sdf.format(Date(image.timestamp))
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(6.dp),
-                contentAlignment = Alignment.Center
+                    .padding(vertical = 4.dp, horizontal = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = formattedDate,
@@ -2277,6 +2281,26 @@ fun SpotTimelineCard(
                     color = Color.LightGray,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (i in 1..5) {
+                        val isStarred = i <= image.rating
+                        Icon(
+                            imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = "Star $i",
+                            tint = if (isStarred) Color(0xFFFFD700) else Color.Gray,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clickable {
+                                    val newRating = if (image.rating == i) 0 else i
+                                    onRatingChange(newRating)
+                                }
+                        )
+                    }
+                }
             }
         }
     }
@@ -2289,6 +2313,7 @@ private fun DetailPhotoTimeline(
     onImageClick: (SpotImage) -> Unit,
     onHeartClick: (SpotImage) -> Unit,
     onDeleteClick: (SpotImage) -> Unit,
+    onRatingChange: (SpotImage, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -2332,7 +2357,8 @@ private fun DetailPhotoTimeline(
                     isMain = image.isMain,
                     onHeartClick = { onHeartClick(image) },
                     onClick = { onImageClick(image) },
-                    onDeleteClick = { onDeleteClick(image) }
+                    onDeleteClick = { onDeleteClick(image) },
+                    onRatingChange = { rating -> onRatingChange(image, rating) }
                 )
             }
         }

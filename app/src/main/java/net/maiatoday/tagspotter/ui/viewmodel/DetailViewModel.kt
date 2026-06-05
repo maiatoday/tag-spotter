@@ -452,6 +452,24 @@ class DetailViewModel(
         }
     }
 
+    fun updateImageRating(image: SpotImage, rating: Int) {
+        if (spotId != -1L) {
+            viewModelScope.launch {
+                repository.updateImageRating(image.id, rating)
+            }
+        } else {
+            val details = _draftDetails.value ?: return
+            val updatedImages = details.images.map {
+                if (it.imagePath == image.imagePath) {
+                    it.copy(rating = rating)
+                } else {
+                    it
+                }
+            }
+            _draftDetails.value = details.copy(images = updatedImages)
+        }
+    }
+
     fun deleteSpot(spotDetails: SpotDetails, onDeleted: () -> Unit) {
         if (spotId != -1L) {
             viewModelScope.launch {

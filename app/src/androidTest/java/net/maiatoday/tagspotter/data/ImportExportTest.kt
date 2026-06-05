@@ -176,4 +176,93 @@ class ImportExportTest {
             packFile.delete()
         }
     }
+
+    @Test
+    fun testExportWithMinRatingFilterAndHeroPreservation() {
+        runBlocking {
+            val thumbnailsDir = File(context.filesDir, "thumbnails").apply { mkdirs() }
+            val imagesDir = File(context.filesDir, "images").apply { mkdirs() }
+
+            val dummyThumbFile1 = File(thumbnailsDir, "dummy_thumb_1_${System.currentTimeMillis()}.jpg").apply { writeText("thumb1") }
+            val dummyImageFile1 = File(imagesDir, "dummy_image_1_${System.currentTimeMillis()}.jpg").apply { writeText("img1") }
+
+            val dummyThumbFile2 = File(thumbnailsDir, "dummy_thumb_2_${System.currentTimeMillis()}.jpg").apply { writeText("thumb2") }
+            val dummyImageFile2 = File(imagesDir, "dummy_image_2_${System.currentTimeMillis()}.jpg").apply { writeText("img2") }
+
+            val dummyThumbFile3 = File(thumbnailsDir, "dummy_thumb_3_${System.currentTimeMillis()}.jpg").apply { writeText("thumb3") }
+            val dummyImageFile3 = File(imagesDir, "dummy_image_3_${System.currentTimeMillis()}.jpg").apply { writeText("img3") }
+
+            val spot = Spot(
+                id = 10L,
+                latitude = 40.0,
+                longitude = -74.0,
+                createdAt = System.currentTimeMillis(),
+                description = "Export Filter Test Spot",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active"
+            )
+            val spotId = repository.saveSpot(spot, dummyImageFile1.absolutePath, dummyThumbFile1.absolutePath)
+
+            // Add two more images
+            val imgId2 = repository.addImageToSpot(spotId, dummyImageFile2.absolutePath, dummyThumbFile2.absolutePath, System.currentTimeMillis() + 1000)
+            val imgId3 = repository.addImageToSpot(spotId, dummyImageFile3.absolutePath, dummyThumbFile3.absolutePath, System.currentTimeMillis() + 2000)
+
+            // Fetch the inserted images to get the first one's ID
+            val initialSpotDetails = repository.getSpotById(spotId).first()!!
+            val imgId1 = initialSpotDetails.images.first { it.imagePath == dummyImageFile1.absolutePath }.id
+
+            // Set main image (hero image) to the first image (rated 0 stars)
+            repository.setMainImage(spotId, imgId1)
+
+            // Update ratings:
+            // img1 (hero): 0 stars
+            // img2: 1 star
+            // img3: 5 stars
+            repository.updateImageRating(imgId1, 0)
+            repository.updateImageRating(imgId2, 1)
+            repository.updateImageRating(imgId3, 5)
+
+            // Fetch updated spot details to verify ratings are set
+            val spotsToExport = repository.getAllSpots().first()
+
+            // Export with minRating = 3
+            val packFile = File(context.cacheDir, "rating_export_test.ts_pack")
+            packFile.outputStream().use { fos ->
+                PackManager.exportPack(context, spotsToExport, fos, minRating = 3)
+            }
+
+            // Cleanup local DB spot and files to avoid clashes when importing
+            repository.deleteSpot(initialSpotDetails)
+
+            // Import the pack
+            val importedCount = packFile.inputStream().use { fis ->
+                PackManager.importPack(context, repository, fis, "")
+            }
+            assertEquals(1, importedCount)
+
+            // Verify imported spot details
+            val importedSpots = repository.getAllSpots().first()
+            assertEquals(1, importedSpots.size)
+            val importedDetail = importedSpots.first()
+
+            // Verify that exactly 2 images were imported:
+            // 1. The 5-star image (rating >= 3)
+            // 2. The 0-star hero image (preserved because it's the hero image)
+            // The 1-star image should be excluded.
+            assertEquals(2, importedDetail.images.size)
+
+            val rating0Image = importedDetail.images.find { it.rating == 0 }
+            val rating5Image = importedDetail.images.find { it.rating == 5 }
+            val rating1Image = importedDetail.images.find { it.rating == 1 }
+
+            assertNotNull("Hero image with 0 stars should be imported", rating0Image)
+            assertNotNull("5-star image should be imported", rating5Image)
+            assertTrue("1-star image should NOT be imported", rating1Image == null)
+
+            // Clean up files and database
+            repository.deleteSpot(importedDetail)
+            packFile.delete()
+        }
+    }
 }

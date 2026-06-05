@@ -11,8 +11,8 @@ interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>
     fun getSpotsByCategory(category: String): Flow<List<SpotDetails>>
     fun getSpotById(id: Long): Flow<SpotDetails?>
-    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String): Long
-    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long): Long
+    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int = 0): Long
+    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int = 0): Long
     suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long
     suspend fun updateSpotStatus(spotId: Long, status: String)
     suspend fun updateSpotCategory(spotId: Long, category: String)
@@ -31,6 +31,7 @@ interface SpotRepository {
     suspend fun getStarredSpotsCount(): Int
     suspend fun setMainImage(spotId: Long, imageId: Long)
     suspend fun deleteImage(image: SpotImage)
+    suspend fun updateImageRating(imageId: Long, rating: Int)
 }
 
 class LocalSpotRepository(
@@ -55,26 +56,30 @@ class LocalSpotRepository(
         return spotDao.getSpotDetails(id)
     }
 
-    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String): Long {
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int): Long {
         val spotId = spotDao.insertSpot(spot)
-        spotDao.insertImage(
-            SpotImage(
-                spotId = spotId,
-                imagePath = imagePath,
-                thumbnailPath = thumbnailPath,
-                timestamp = spot.createdAt
+        if (imagePath.isNotEmpty()) {
+            spotDao.insertImage(
+                SpotImage(
+                    spotId = spotId,
+                    imagePath = imagePath,
+                    thumbnailPath = thumbnailPath,
+                    timestamp = spot.createdAt,
+                    rating = rating
+                )
             )
-        )
+        }
         return spotId
     }
 
-    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long): Long {
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int): Long {
         return spotDao.insertImage(
             SpotImage(
                 spotId = spotId,
                 imagePath = imagePath,
                 thumbnailPath = thumbnailPath,
-                timestamp = timestamp
+                timestamp = timestamp,
+                rating = rating
             )
         )
     }
@@ -326,6 +331,10 @@ class LocalSpotRepository(
                 spotDao.setMainImage(image.spotId, nextMain.id)
             }
         }
+    }
+
+    override suspend fun updateImageRating(imageId: Long, rating: Int) {
+        spotDao.updateImageRating(imageId, rating)
     }
 
     companion object {
