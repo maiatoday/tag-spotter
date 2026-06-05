@@ -30,6 +30,7 @@ interface SpotRepository {
     suspend fun getStarredSpots(): List<Spot>
     suspend fun getStarredSpotsCount(): Int
     suspend fun setMainImage(spotId: Long, imageId: Long)
+    suspend fun deleteImage(image: SpotImage)
 }
 
 class LocalSpotRepository(
@@ -288,6 +289,43 @@ class LocalSpotRepository(
 
     override suspend fun setMainImage(spotId: Long, imageId: Long) {
         spotDao.setMainImage(spotId, imageId)
+    }
+
+    override suspend fun deleteImage(image: SpotImage) {
+        try {
+            if (image.thumbnailPath.isNotEmpty()) {
+                val file = File(image.thumbnailPath)
+                if (file.exists()) {
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            if (image.imagePath.isNotEmpty()) {
+                val file = File(image.imagePath)
+                if (file.exists() &&
+                    !image.imagePath.startsWith("content://") &&
+                    !image.imagePath.startsWith("android.resource://") &&
+                    !image.imagePath.startsWith("http")
+                ) {
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        spotDao.deleteImageById(image.id)
+
+        if (image.isMain) {
+            val remainingImages = spotDao.getImagesForSpot(image.spotId)
+            val nextMain = remainingImages.firstOrNull()
+            if (nextMain != null) {
+                spotDao.setMainImage(image.spotId, nextMain.id)
+            }
+        }
     }
 
     companion object {

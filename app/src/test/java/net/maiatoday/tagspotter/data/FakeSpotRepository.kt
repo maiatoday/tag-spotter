@@ -241,4 +241,17 @@ class FakeSpotRepository : SpotRepository {
         spotsMap[spotId] = details.copy(images = updatedImages)
         updateFlow()
     }
+
+    override suspend fun deleteImage(image: SpotImage) {
+        val details = spotsMap[image.spotId] ?: return
+        var updatedImages = details.images.filter { it.id != image.id }
+        if (image.isMain && updatedImages.isNotEmpty()) {
+            val nextMain = updatedImages.first()
+            updatedImages = updatedImages.map { img ->
+                img.copy(isMain = img.id == nextMain.id)
+            }
+        }
+        spotsMap[image.spotId] = details.copy(images = updatedImages)
+        updateFlow()
+    }
 }

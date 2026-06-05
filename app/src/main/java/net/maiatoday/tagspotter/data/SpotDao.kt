@@ -86,4 +86,10 @@ interface SpotDao {
         clearMainImages(spotId)
         setMainImageId(imageId)
     }
+
+    @Query("DELETE FROM spot_images WHERE id = :imageId")
+    suspend fun deleteImageById(imageId: Long)
+
+    @Query("SELECT * FROM spot_images WHERE spotId = :spotId ORDER BY timestamp ASC")
+    suspend fun getImagesForSpot(spotId: Long): List<SpotImage>
 }

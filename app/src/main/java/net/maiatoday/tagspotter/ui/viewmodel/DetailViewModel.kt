@@ -440,6 +440,18 @@ class DetailViewModel(
         }
     }
 
+    fun deleteImage(image: SpotImage) {
+        if (spotId != -1L) {
+            viewModelScope.launch {
+                repository.deleteImage(image)
+            }
+        } else {
+            val details = _draftDetails.value ?: return
+            val updatedImages = details.images.filter { it.imagePath != image.imagePath }
+            _draftDetails.value = details.copy(images = updatedImages)
+        }
+    }
+
     fun deleteSpot(spotDetails: SpotDetails, onDeleted: () -> Unit) {
         if (spotId != -1L) {
             viewModelScope.launch {

@@ -399,6 +399,35 @@ fun DetailScreen(
 
     var showPermissionDisclosure by remember { mutableStateOf(false) }
     var showLimitExceededDialog by remember { mutableStateOf(false) }
+    var imageToDelete by remember { mutableStateOf<SpotImage?>(null) }
+
+    if (imageToDelete != null) {
+        val targetImg = imageToDelete!!
+        AlertDialog(
+            onDismissRequest = { imageToDelete = null },
+            title = { Text("Delete Photo?") },
+            text = { Text("Are you sure you want to delete this photo from the timeline? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteImage(targetImg)
+                        imageToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { imageToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     // Collect UI events
     LaunchedEffect(viewModel) {
@@ -626,7 +655,8 @@ fun DetailScreen(
                                 pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                             },
                             onImageClick = { zoomImage = it },
-                            onHeartClick = { viewModel.setMainImage(it.id) }
+                            onHeartClick = { viewModel.setMainImage(it.id) },
+                            onDeleteClick = { imageToDelete = it }
                         )
                     } else {
                         // Actions row in landscape creation mode
@@ -778,7 +808,8 @@ fun DetailScreen(
                                     pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                                 },
                                 onImageClick = { zoomImage = it },
-                                onHeartClick = { viewModel.setMainImage(it.id) }
+                                onHeartClick = { viewModel.setMainImage(it.id) },
+                                onDeleteClick = { imageToDelete = it }
                             )
 
                             DetailNotesSection(
@@ -2112,7 +2143,8 @@ fun SpotTimelineCard(
     image: SpotImage,
     isMain: Boolean,
     onHeartClick: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -2149,6 +2181,22 @@ fun SpotTimelineCard(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
+
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .size(32.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), shape = CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete image",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
 
                 IconButton(
                     onClick = onHeartClick,
@@ -2192,6 +2240,7 @@ private fun DetailPhotoTimeline(
     onAddPhotoClick: () -> Unit,
     onImageClick: (SpotImage) -> Unit,
     onHeartClick: (SpotImage) -> Unit,
+    onDeleteClick: (SpotImage) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -2234,7 +2283,8 @@ private fun DetailPhotoTimeline(
                     image = image,
                     isMain = image.isMain,
                     onHeartClick = { onHeartClick(image) },
-                    onClick = { onImageClick(image) }
+                    onClick = { onImageClick(image) },
+                    onDeleteClick = { onDeleteClick(image) }
                 )
             }
         }

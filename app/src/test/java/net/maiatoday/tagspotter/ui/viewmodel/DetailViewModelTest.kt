@@ -5,6 +5,7 @@ import net.maiatoday.tagspotter.data.FakeSettingsRepository
 import net.maiatoday.tagspotter.data.FakeSpotRepository
 import net.maiatoday.tagspotter.data.Spot
 import net.maiatoday.tagspotter.data.SpotDetails
+import net.maiatoday.tagspotter.data.SpotImage
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -119,6 +120,45 @@ class DetailViewModelTest {
         }
         assertNull(viewModel.spotDetails.value)
         assertEquals(true, deleted)
+    }
+
+    @Test
+    fun deleteImageWorksCorrectly() = runTest {
+        val spotId = 124L
+        val spot = Spot(
+            id = spotId,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Original Description",
+            tags = listOf("tagA"),
+            category = "graffiti",
+            status = "active"
+        )
+        val image1 = SpotImage(id = 1L, spotId = spotId, imagePath = "/path/1.png", thumbnailPath = "/path/1_thumb.png", timestamp = 1000L, isMain = true)
+        val image2 = SpotImage(id = 2L, spotId = spotId, imagePath = "/path/2.png", thumbnailPath = "/path/2_thumb.png", timestamp = 1100L, isMain = false)
+        val spotDetails = SpotDetails(spot, listOf(image1, image2), emptyList())
+        repository.setSpots(listOf(spotDetails))
+
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository)
+
+        // Collect StateFlow in backgroundScope
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+
+        // Verify initially two images, image 1 is main
+        assertEquals(2, viewModel.spotDetails.value?.images?.size)
+        assertEquals(true, viewModel.spotDetails.value?.images?.find { it.id == 1L }?.isMain)
+
+        // Delete the main image (image1)
+        viewModel.deleteImage(image1)
+
+        // Verify only 1 image remains, and it should be promoted to main
+        assertEquals(1, viewModel.spotDetails.value?.images?.size)
+        val remainingImage = viewModel.spotDetails.value?.images?.first()
+        assertEquals(2L, remainingImage?.id)
+        assertEquals(true, remainingImage?.isMain)
     }
 
     @Test
