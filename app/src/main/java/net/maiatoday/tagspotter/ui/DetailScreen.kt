@@ -93,6 +93,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -115,6 +122,7 @@ import net.maiatoday.tagspotter.ui.components.OsmMapView
 import net.maiatoday.tagspotter.ui.components.OsmMarker
 import net.maiatoday.tagspotter.ui.screens.ZoomableImageOverlay
 import net.maiatoday.tagspotter.ui.viewmodel.AiState
+import net.maiatoday.tagspotter.ui.viewmodel.WikiSearchState
 import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
 import net.maiatoday.tagspotter.utils.ImageOptimizer
 import java.io.File
@@ -170,6 +178,7 @@ fun DetailScreen(
 
     val aiState by viewModel.aiState.collectAsStateWithLifecycle()
     val isArtistRecognitionEnabled by viewModel.isArtistRecognitionEnabled.collectAsStateWithLifecycle()
+    val wikiSearchState by viewModel.wikiSearchState.collectAsStateWithLifecycle()
 
     val mainImage = sortedImages.firstOrNull { it.isMain } ?: sortedImages.firstOrNull()
     val mainImagePath = mainImage?.imagePath ?: ""
@@ -392,6 +401,74 @@ fun DetailScreen(
                 }
             }
         )
+    }
+
+    // Wikipedia AI Search Dialog / States
+    when (val state = wikiSearchState) {
+        is WikiSearchState.Searching -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.resetWikiSearchState() },
+                confirmButton = {},
+                title = { Text("Searching Wikipedia...") },
+                text = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            )
+        }
+        is WikiSearchState.Success -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.resetWikiSearchState() },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Wikipedia Link")
+                    }
+                },
+                text = {
+                    Text("Found relevant Wikipedia page for \"${state.title}\":\n\n${state.url}\n\nWould you like to add this to the field notes?")
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.addNote(state.url, System.currentTimeMillis())
+                            viewModel.resetWikiSearchState()
+                        }
+                    ) {
+                        Text("Add")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.resetWikiSearchState() }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        is WikiSearchState.NotFound -> {
+            LaunchedEffect(state) {
+                Toast.makeText(context, "No relevant Wikipedia page found.", Toast.LENGTH_SHORT).show()
+                viewModel.resetWikiSearchState()
+            }
+        }
+        is WikiSearchState.Error -> {
+            LaunchedEffect(state) {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                viewModel.resetWikiSearchState()
+            }
+        }
+        WikiSearchState.Idle -> {}
     }
 
     var noteInput by remember { mutableStateOf("") }
@@ -740,7 +817,9 @@ fun DetailScreen(
                                     viewModel.addNote(noteText, System.currentTimeMillis())
                                     noteInput = ""
                                 }
-                            }
+                            },
+                            isArtistRecognitionEnabled = isArtistRecognitionEnabled,
+                            onWikiSearchClick = { viewModel.searchWikipediaForSpot() }
                         )
                     }
                 }
@@ -827,7 +906,9 @@ fun DetailScreen(
                                         viewModel.addNote(noteText, System.currentTimeMillis())
                                         noteInput = ""
                                     }
-                                }
+                                },
+                                isArtistRecognitionEnabled = isArtistRecognitionEnabled,
+                                onWikiSearchClick = { viewModel.searchWikipediaForSpot() }
                             )
                         }
                     }
@@ -2484,6 +2565,8 @@ private fun DetailNotesSection(
     noteInput: String,
     onNoteInputChange: (String) -> Unit,
     onSendNote: () -> Unit,
+    isArtistRecognitionEnabled: Boolean,
+    onWikiSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -2504,6 +2587,20 @@ private fun DetailNotesSection(
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
+            if (isArtistRecognitionEnabled) {
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = onWikiSearchClick,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = "Search Wikipedia using AI",
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -2536,8 +2633,9 @@ private fun DetailNotesSection(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
+                        val annotatedText = rememberLinkifiedText(note.noteText)
                         Text(
-                            text = note.noteText,
+                            text = annotatedText,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -2587,6 +2685,42 @@ private fun DetailNotesSection(
                     contentDescription = "Send note",
                     tint = MaterialTheme.colorScheme.background
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun rememberLinkifiedText(text: String): AnnotatedString {
+    val linkColor = MaterialTheme.colorScheme.primary
+    return remember(text, linkColor) {
+        val urlRegex = """(https?://[^\s]+)""".toRegex()
+        buildAnnotatedString {
+            var lastIdx = 0
+            urlRegex.findAll(text).forEach { matchResult ->
+                val start = matchResult.range.first
+                val end = matchResult.range.last + 1
+                if (start > lastIdx) {
+                    append(text.substring(lastIdx, start))
+                }
+                val url = matchResult.value
+                withLink(
+                    LinkAnnotation.Url(
+                        url = url,
+                        styles = TextLinkStyles(
+                            style = SpanStyle(
+                                color = linkColor,
+                                textDecoration = TextDecoration.Underline
+                            )
+                        )
+                    )
+                ) {
+                    append(url)
+                }
+                lastIdx = end
+            }
+            if (lastIdx < text.length) {
+                append(text.substring(lastIdx))
             }
         }
     }

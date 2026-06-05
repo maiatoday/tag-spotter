@@ -37,20 +37,20 @@ class FakeSpotRepository : SpotRepository {
         }
     }
 
-    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String): Long {
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int): Long {
         val id = if (spot.id == 0L) (spotsMap.keys.maxOrNull() ?: 0L) + 1L else spot.id
         val newSpot = spot.copy(id = id)
-        val images = listOf(SpotImage(id = 1L, spotId = id, imagePath = imagePath, thumbnailPath = thumbnailPath, timestamp = spot.createdAt))
+        val images = listOf(SpotImage(id = 1L, spotId = id, imagePath = imagePath, thumbnailPath = thumbnailPath, timestamp = spot.createdAt, rating = rating))
         val details = SpotDetails(newSpot, images, emptyList())
         spotsMap[id] = details
         updateFlow()
         return id
     }
 
-    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long): Long {
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int): Long {
         val details = spotsMap[spotId] ?: return -1L
         val nextImageId = (details.images.maxOfOrNull { it.id } ?: 0L) + 1L
-        val updatedImages = details.images + SpotImage(id = nextImageId, spotId = spotId, imagePath = imagePath, thumbnailPath = thumbnailPath, timestamp = timestamp)
+        val updatedImages = details.images + SpotImage(id = nextImageId, spotId = spotId, imagePath = imagePath, thumbnailPath = thumbnailPath, timestamp = timestamp, rating = rating)
         spotsMap[spotId] = details.copy(images = updatedImages)
         updateFlow()
         return nextImageId
@@ -252,6 +252,21 @@ class FakeSpotRepository : SpotRepository {
             }
         }
         spotsMap[image.spotId] = details.copy(images = updatedImages)
+        updateFlow()
+    }
+
+    override suspend fun updateImageRating(imageId: Long, rating: Int) {
+        val spotEntry = spotsMap.values.find { details -> details.images.any { it.id == imageId } } ?: return
+        val updatedImages = spotEntry.images.map { img ->
+            if (img.id == imageId) img.copy(rating = rating) else img
+        }
+        spotsMap[spotEntry.spot.id] = spotEntry.copy(images = updatedImages)
+        updateFlow()
+    }
+
+    override suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String) {
+        val details = spotsMap[spotId] ?: return
+        spotsMap[spotId] = details.copy(spot = details.spot.copy(artworkDate = artworkDate))
         updateFlow()
     }
 }

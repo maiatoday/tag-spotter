@@ -18,6 +18,8 @@ import org.junit.Test
 
 import net.maiatoday.tagspotter.ui.viewmodel.AiState
 import net.maiatoday.tagspotter.ui.viewmodel.AiSuggestion
+import net.maiatoday.tagspotter.ui.viewmodel.WikiSearchState
+import net.maiatoday.tagspotter.ui.viewmodel.WikiSuggestion
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
@@ -269,5 +271,87 @@ class DetailViewModelTest {
         
         // Verification: should set error to MissingKey since API Key is empty
         assertEquals(AiState.Error.MissingKey, viewModel.aiState.value)
+    }
+
+    @Test
+    fun searchWikipediaForSpotFailsWhenDescriptionIsEmpty() = runTest {
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.wikiSearchState.collect {}
+        }
+
+        assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
+
+        // Trigger Wikipedia search on spot with empty title
+        viewModel.searchWikipediaForSpot()
+
+        // Should return Error state indicating description is empty
+        val state = viewModel.wikiSearchState.value
+        assert(state is WikiSearchState.Error)
+        assertEquals("No title logged. Please set a title/description first.", (state as WikiSearchState.Error).message)
+    }
+
+    @Test
+    fun searchWikipediaForSpotFailsWhenApiKeyIsMissing() = runTest {
+        // Set up a draft spot details with a title/description
+        val spotId = 125L
+        val spot = Spot(
+            id = spotId,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Some Spot Title",
+            tags = emptyList(),
+            category = "graffiti",
+            status = "active"
+        )
+        val spotDetails = SpotDetails(spot, emptyList(), emptyList())
+        repository.setSpots(listOf(spotDetails))
+
+        settingsRepository.updateGeminiApiKey("")
+
+        val viewModel = DetailViewModel(
+            spotId = spotId,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            buildConfigApiKey = ""
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+            viewModel.wikiSearchState.collect {}
+        }
+
+        assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
+
+        // Trigger Wikipedia search
+        viewModel.searchWikipediaForSpot()
+
+        // Verification: should set error to missing key since API key is empty
+        val state = viewModel.wikiSearchState.value
+        assert(state is WikiSearchState.Error)
+        assertEquals("Missing Gemini API Key. Please configure it in Settings.", (state as WikiSearchState.Error).message)
+    }
+
+    @Test
+    fun resetWikiSearchStateResetsToIdle() = runTest {
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.wikiSearchState.collect {}
+        }
+
+        // Search Wikipedia on draft spot (should fail due to empty description)
+        viewModel.searchWikipediaForSpot()
+        assert(viewModel.wikiSearchState.value is WikiSearchState.Error)
+
+        // Reset
+        viewModel.resetWikiSearchState()
+        assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
     }
 }

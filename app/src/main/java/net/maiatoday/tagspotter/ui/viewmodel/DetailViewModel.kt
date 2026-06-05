@@ -105,6 +105,13 @@ class DetailViewModel(
         _aiState.value = AiState.Idle
     }
 
+    private val _wikiSearchState = MutableStateFlow<WikiSearchState>(WikiSearchState.Idle)
+    val wikiSearchState: StateFlow<WikiSearchState> = _wikiSearchState.asStateFlow()
+
+    fun resetWikiSearchState() {
+        _wikiSearchState.value = WikiSearchState.Idle
+    }
+
     private suspend fun decodeScaledBitmap(context: Context?, imagePath: String, maxDimension: Int): Bitmap? = withContext(Dispatchers.IO) {
         try {
             if (context == null || (!imagePath.startsWith("content://") && !imagePath.startsWith("file://"))) {
@@ -267,6 +274,87 @@ class DetailViewModel(
                 } else {
                     _aiState.value = AiState.Error.Generic(message.ifEmpty { "An unexpected error occurred." })
                 }
+            }
+        }
+    }
+
+    fun searchWikipediaForSpot() {
+        val title = spotDetails.value?.spot?.description ?: ""
+        if (title.isBlank()) {
+            _wikiSearchState.value = WikiSearchState.Error("No title logged. Please set a title/description first.")
+            return
+        }
+
+        viewModelScope.launch {
+            _wikiSearchState.value = WikiSearchState.Searching
+            try {
+                // 1. Resolve API Key
+                var apiKey = buildConfigApiKey
+                if (apiKey.isEmpty()) {
+                    apiKey = settingsRepository.geminiApiKey.first()
+                }
+                if (apiKey.isEmpty()) {
+                    _wikiSearchState.value = WikiSearchState.Error("Missing Gemini API Key. Please configure it in Settings.")
+                    return@launch
+                }
+
+                // 2. Initialize Gemini
+                val model = GenerativeModel(
+                    modelName = "gemini-2.5-flash",
+                    apiKey = apiKey
+                )
+
+                val prompt = """
+                    You are an assistant that finds the most relevant, official Wikipedia page URL for a given subject.
+                    Subject: "$title"
+                    
+                    Find the Wikipedia page for this subject.
+                    If a relevant Wikipedia page exists, return the URL.
+                    If no relevant page exists on Wikipedia, return null.
+                    
+                    Return the response in strict JSON format using exactly this schema:
+                    {
+                      "url": "https://en.wikipedia.org/wiki/..." 
+                    }
+                    If no page is found, set "url" to null.
+                    Do not include any markdown styling, backticks, or extra text. Return only the raw JSON.
+                """.trimIndent()
+
+                val response = model.generateContent(prompt)
+                val responseText = response.text ?: ""
+                if (responseText.isEmpty()) {
+                    _wikiSearchState.value = WikiSearchState.Error("Empty response from AI model.")
+                    return@launch
+                }
+
+                // Clean the JSON string (in case markdown backticks were returned)
+                val cleanJson = if (responseText.contains("```")) {
+                    responseText
+                        .substringAfter("```json")
+                        .substringAfter("```")
+                        .substringBefore("```")
+                        .trim()
+                } else {
+                    responseText.trim()
+                }
+
+                val suggestion = try {
+                    Json.decodeFromString<WikiSuggestion>(cleanJson)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _wikiSearchState.value = WikiSearchState.Error("Failed to parse AI response.")
+                    return@launch
+                }
+
+                val url = suggestion.url
+                if (!url.isNullOrBlank()) {
+                    _wikiSearchState.value = WikiSearchState.Success(url, title)
+                } else {
+                    _wikiSearchState.value = WikiSearchState.NotFound
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _wikiSearchState.value = WikiSearchState.Error(e.message ?: "An unexpected error occurred.")
             }
         }
     }
@@ -557,5 +645,18 @@ sealed interface AiState {
         object SafetyBlocked : Error
         data class Generic(val message: String) : Error
     }
+}
+
+@Serializable
+data class WikiSuggestion(
+    val url: String? = null
+)
+
+sealed interface WikiSearchState {
+    object Idle : WikiSearchState
+    object Searching : WikiSearchState
+    data class Success(val url: String, val title: String) : WikiSearchState
+    object NotFound : WikiSearchState
+    data class Error(val message: String) : WikiSearchState
 }
 
