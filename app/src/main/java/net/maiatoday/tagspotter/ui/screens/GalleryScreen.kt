@@ -104,6 +104,7 @@ fun GalleryScreen(
     val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val showStarredOnly by viewModel.showStarredOnly.collectAsStateWithLifecycle()
 
     val activeFilterCenter by viewModel.activeFilterCenter.collectAsStateWithLifecycle()
     val activeRadiusMeters by viewModel.activeRadiusMeters.collectAsStateWithLifecycle()
@@ -509,12 +510,13 @@ fun GalleryScreen(
                     }
                 }
 
-                // Location Filter Header
+                // Location and Starred Filter Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (activeFilterCenter != null) {
                         FilterChip(
@@ -543,12 +545,40 @@ fun GalleryScreen(
                         FilterChip(
                             selected = false,
                             onClick = { showFilterBottomSheet = true },
-                            label = { Text("+ Add Location Filter") },
+                            label = { Text("+ Add Location") },
                             colors = FilterChipDefaults.filterChipColors(
                                 labelColor = Color.Gray
                             )
                         )
                     }
+
+                    FilterChip(
+                        selected = showStarredOnly,
+                        onClick = { viewModel.toggleShowStarredOnly() },
+                        label = { Text("Starred Only") },
+                        leadingIcon = {
+                            if (showStarredOnly) {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Color(0xFFFFD700)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.StarBorder,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Color.Gray
+                                )
+                            }
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            labelColor = Color.Gray
+                        )
+                    )
                 }
             }
         } else {
@@ -599,36 +629,68 @@ fun GalleryScreen(
             }
         }
 
-        // Active location chip in normal mode
-        if (!isSearchExpanded && activeFilterCenter != null) {
+        // Active location and starred chips in normal mode
+        if (!isSearchExpanded && (activeFilterCenter != null || showStarredOnly)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(
-                    selected = true,
-                    onClick = { showFilterBottomSheet = true },
-                    label = {
-                        Text(
-                            text = "${activeFilterCenter?.displayName} within ${LocationUtils.getRadiusLabel(activeRadiusMeters)}"
+                if (activeFilterCenter != null) {
+                    FilterChip(
+                        selected = true,
+                        onClick = { showFilterBottomSheet = true },
+                        label = {
+                            Text(
+                                text = "${activeFilterCenter?.displayName} within ${LocationUtils.getRadiusLabel(activeRadiusMeters)}"
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear location filter",
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable { viewModel.clearLocationFilter() }
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                    },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Clear location filter",
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clickable { viewModel.clearLocationFilter() }
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                )
+                }
+
+                if (showStarredOnly) {
+                    FilterChip(
+                        selected = true,
+                        onClick = { viewModel.toggleShowStarredOnly() },
+                        label = { Text("Starred Only") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color(0xFFFFD700)
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear starred filter",
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable { viewModel.toggleShowStarredOnly() }
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
             }
         }
 
@@ -637,7 +699,9 @@ fun GalleryScreen(
                 category = selectedCategory,
                 query = searchQuery,
                 activeFilterCenter = activeFilterCenter,
-                onClearLocationFilter = { viewModel.clearLocationFilter() }
+                showStarredOnly = showStarredOnly,
+                onClearLocationFilter = { viewModel.clearLocationFilter() },
+                onClearStarredFilter = { if (showStarredOnly) viewModel.toggleShowStarredOnly() }
             )
         } else {
             val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -1064,7 +1128,9 @@ fun EmptyGalleryState(
     category: String,
     query: String = "",
     activeFilterCenter: FilterCenter? = null,
-    onClearLocationFilter: () -> Unit = {}
+    showStarredOnly: Boolean = false,
+    onClearLocationFilter: () -> Unit = {},
+    onClearStarredFilter: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -1089,6 +1155,8 @@ fun EmptyGalleryState(
         Text(
             text = if (activeFilterCenter != null) {
                 "No spots found within range of ${activeFilterCenter.displayName}."
+            } else if (showStarredOnly) {
+                "No starred spots found."
             } else if (query.isNotEmpty()) {
                 "No spots match '$query'."
             } else if (category == "All") {
@@ -1100,10 +1168,13 @@ fun EmptyGalleryState(
             color = Color.Gray,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        if (activeFilterCenter != null) {
+        if (activeFilterCenter != null || showStarredOnly) {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = onClearLocationFilter,
+                onClick = {
+                    onClearLocationFilter()
+                    onClearStarredFilter()
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary
                 )

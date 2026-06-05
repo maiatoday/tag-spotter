@@ -224,4 +224,36 @@ class GalleryViewModelTest {
         assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
         assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
     }
+
+    @Test
+    fun spotsFilteredByStarredOnlyCorrectly() = runTest {
+        val spot1 = Spot(id = 1L, latitude = 1.0, longitude = 2.0, createdAt = 1000L, description = "A", tags = emptyList(), category = "graffiti", status = "active", isStarred = true)
+        val spot2 = Spot(id = 2L, latitude = 3.0, longitude = 4.0, createdAt = 2000L, description = "B", tags = emptyList(), category = "sculpture", status = "active", isStarred = false)
+        val spotDetails1 = SpotDetails(spot1, emptyList(), emptyList())
+        val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
+        
+        repository.setSpots(listOf(spotDetails1, spotDetails2))
+
+        val viewModel = GalleryViewModel(repository, settingsRepository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spots.collect {}
+        }
+
+        // Initially showStarredOnly is false, so returns both
+        assertEquals(false, viewModel.showStarredOnly.value)
+        assertEquals(2, viewModel.spots.value.size)
+
+        // Toggle showStarredOnly to true, should only return spot1 (starred)
+        viewModel.toggleShowStarredOnly()
+        assertEquals(true, viewModel.showStarredOnly.value)
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(1L, viewModel.spots.value[0].spot.id)
+
+        // Toggle showStarredOnly back to false, should return both
+        viewModel.toggleShowStarredOnly()
+        assertEquals(false, viewModel.showStarredOnly.value)
+        assertEquals(2, viewModel.spots.value.size)
+    }
 }
+

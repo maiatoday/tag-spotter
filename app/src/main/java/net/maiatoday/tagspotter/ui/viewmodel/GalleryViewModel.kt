@@ -48,6 +48,9 @@ class GalleryViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _showStarredOnly = MutableStateFlow(false)
+    val showStarredOnly: StateFlow<Boolean> = _showStarredOnly.asStateFlow()
+
     private val _activeFilterCenter = MutableStateFlow<net.maiatoday.tagspotter.utils.FilterCenter?>(null)
     val activeFilterCenter: StateFlow<net.maiatoday.tagspotter.utils.FilterCenter?> = _activeFilterCenter.asStateFlow()
 
@@ -59,18 +62,24 @@ class GalleryViewModel(
         val source: String,
         val query: String,
         val filterCenter: net.maiatoday.tagspotter.utils.FilterCenter?,
-        val radiusMeters: Double
+        val radiusMeters: Double,
+        val showStarredOnly: Boolean
     )
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val spots: StateFlow<List<SpotDetails>> = combine(
-        _selectedCategory,
-        _selectedSource,
-        _searchQuery,
-        _activeFilterCenter,
-        _activeRadiusMeters
-    ) { category, source, query, filterCenter, radiusMeters ->
-        FilterState(category, source, query, filterCenter, radiusMeters)
+        combine(
+            _selectedCategory,
+            _selectedSource,
+            _searchQuery,
+            _activeFilterCenter,
+            _activeRadiusMeters
+        ) { category, source, query, filterCenter, radiusMeters ->
+            FilterState(category, source, query, filterCenter, radiusMeters, false)
+        },
+        _showStarredOnly
+    ) { state, showStarredOnly ->
+        state.copy(showStarredOnly = showStarredOnly)
     }.flatMapLatest { state ->
         repository.getSpotsByCategory(state.category).map { list ->
             // First apply source filtering
@@ -79,12 +88,18 @@ class GalleryViewModel(
                 "Imported" -> list.filter { it.spot.isImported }
                 else -> list
             }
+            // Apply starred filtering
+            val starredFiltered = if (state.showStarredOnly) {
+                sourceFiltered.filter { it.spot.isStarred }
+            } else {
+                sourceFiltered
+            }
             // Then apply search query filtering
             val queryFiltered = if (state.query.isBlank()) {
-                sourceFiltered
+                starredFiltered
             } else {
                 val q = state.query.trim().lowercase()
-                sourceFiltered.filter { detail ->
+                starredFiltered.filter { detail ->
                     val spot = detail.spot
                     val matchTags = spot.tags.any { it.lowercase().contains(q) }
                     val matchArtists = spot.artists.any { it.lowercase().contains(q) }
@@ -113,6 +128,10 @@ class GalleryViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    fun toggleShowStarredOnly() {
+        _showStarredOnly.value = !_showStarredOnly.value
+    }
 
     fun setLocationFilter(center: net.maiatoday.tagspotter.utils.FilterCenter?, radiusMeters: Double) {
         _activeFilterCenter.value = center
