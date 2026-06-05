@@ -1,96 +1,181 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Glowing spray paint stream/cone from nozzle -->
-    <path
-        android:pathData="M 46,29 L 18,17 C 12,21 12,33 18,37 L 46,31 Z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="46"
-                android:startY="30"
-                android:endX="18"
-                android:endY="27">
-                <item android:color="#CC00FF88" android:offset="0.0" />
-                <item android:color="#7700F0FF" android:offset="0.6" />
-                <item android:color="#0000F0FF" android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    <!-- Group with scale and translation to fit inside the 66dp adaptive icon safe zone -->
+    <group
+        android:pivotX="54"
+        android:pivotY="56"
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateX="0"
+        android:translateY="-2">
 
-    <!-- Spray mist particles (droplets) -->
-    <!-- Large mist particle -->
-    <path
-        android:fillColor="#00FF88"
-        android:pathData="M 16,27 A 3,3 0 1,1 16,26.99 Z" />
-    <!-- Medium mist particles -->
-    <path
-        android:fillColor="#00F0FF"
-        android:pathData="M 22,17 A 2.2,2.2 0 1,1 22,16.99 Z" />
-    <path
-        android:fillColor="#00FF88"
-        android:pathData="M 20,36 A 2.5,2.5 0 1,1 20,35.99 Z" />
-    <!-- Small splatter droplets -->
-    <path
-        android:fillColor="#FF007F"
-        android:pathData="M 12,22 A 1.2,1.2 0 1,1 12,21.99 Z" />
-    <path
-        android:fillColor="#00FF88"
-        android:pathData="M 28,14 A 1.5,1.5 0 1,1 28,13.99 Z" />
-    <path
-        android:fillColor="#00F0FF"
-        android:pathData="M 31,33 A 1.2,1.2 0 1,1 31,32.99 Z" />
+        <!-- Left side: Cyan (#00E5FF) -->
+        <group>
+            <!-- Outer Pin Left Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 54,16 A 28,28 0 0,0 26,44 C 26,62 40,80 54,96"
+                android:strokeColor="#00E5FF"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
 
-    <!-- Spray Actuator (Cap) -->
-    <path
-        android:fillColor="#25252B"
-        android:pathData="M 46,33 v -3 c 0,-2.2 1.8,-4 4,-4 h 8 c 2.2,0 4,1.8 4,4 v 3 Z" />
+            <!-- Spray Can Body Left Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 44,44 L 44,72 L 54,96"
+                android:strokeColor="#00E5FF"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
 
-    <!-- Nozzle orifice (red/pink inset spray hole) -->
-    <path
-        android:fillColor="#FF007F"
-        android:pathData="M 46,28.5 h 1.5 v 2 h -1.5 z" />
+            <!-- Highlight inside Can Body -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 49,50 L 49,68"
+                android:strokeColor="#00E5FF"
+                android:strokeWidth="2.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
 
-    <!-- Spray Can Collar -->
-    <path
-        android:fillColor="#E4E4E9"
-        android:pathData="M 42,33 h 24 v 3 h -24 z" />
+            <!-- Dome Left Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 44,44 A 10,10 0 0,1 54,34"
+                android:strokeColor="#00E5FF"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
 
-    <!-- Spray Can Body -->
-    <path
-        android:pathData="M 38,36 h 32 v 40 c 0,3 -2,5 -5,5 h -22 c -3,0 -5,-2 -5,-5 z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="linear"
-                android:startX="38"
-                android:startY="36"
-                android:endX="70"
-                android:endY="81">
-                <item android:color="#00FF88" android:offset="0.0" />
-                <item android:color="#00F0FF" android:offset="0.5" />
-                <item android:color="#FF007F" android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+            <!-- Highlight inside Dome -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 47,42 A 7,7 0 0,1 54,37"
+                android:strokeColor="#00E5FF"
+                android:strokeWidth="2.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
 
-    <!-- Stylized emblem background (dark circle in center of can) -->
-    <path
-        android:fillColor="#0F0F11"
-        android:pathData="M 54,58 m -9,0 a 9,9 0 1,0 18,0 a 9,9 0 1,0 -18,0" />
+            <!-- Collar Left Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 40,44 L 54,44"
+                android:strokeColor="#00E5FF"
+                android:strokeWidth="4.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
 
-    <!-- Stylized Map Pin Emblem inside the dark circle -->
-    <path
-        android:fillColor="#FF007F"
-        android:pathData="M 54,52.5 c -2,0 -3.5,1.5 -3.5,3.5 c 0,2.5 3.5,6 3.5,6 c 0,0 3.5,-3.5 3.5,-6 c 0,-2 -1.5,-3.5 -3.5,-3.5 z" />
-    
-    <!-- Pin hole cutout -->
-    <path
-        android:fillColor="#0F0F11"
-        android:pathData="M 54,56 m -1,0 a 1,1 0 1,0 2,0 a 1,1 0 1,0 -2,0" />
+            <!-- Actuator Cap Left Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 54,34 L 49,34 L 49,24 L 54,24"
+                android:strokeColor="#00E5FF"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+        </group>
 
+        <!-- Right side: Hot Pink (#FF007F) -->
+        <group>
+            <!-- Outer Pin Right Half (Shorter, ends before the spray cloud) -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 54,96 C 68,80 82,62 82,44 A 28,28 0 0,0 80,36"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Spray Can Body Right Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 64,44 L 64,72 L 54,96"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Paint Drips on the right side of the body -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 64,44 L 64,58"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 61,44 L 61,52"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="2.5"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Dome Right Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 54,34 A 10,10 0 0,1 64,44"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Collar Right Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 54,44 L 68,44"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="4.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Actuator Cap Right Half -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 54,24 L 59,24 L 59,34 L 54,34"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Nozzle orifice -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 56,28 L 58,28"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="2.0"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Spray Streams -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 59,27 L 73,21"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="2.0"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 59,31 L 73,37"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="2.0"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+
+            <!-- Spray Cloud (Puffy cloud contour) -->
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M 75,25 A 7,7 0 0,1 85,17 A 6,6 0 0,1 94,27 A 7,7 0 0,1 82,37 A 6,6 0 0,1 75,25 Z"
+                android:strokeColor="#FF007F"
+                android:strokeWidth="3.2"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+        </group>
+    </group>
 </vector>
