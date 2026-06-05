@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.ui.screens
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.compose.ui.platform.LocalContext
@@ -76,8 +77,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.ui.viewmodel.GalleryViewModel
+import net.maiatoday.tagspotter.utils.KmlExporter
 import net.maiatoday.tagspotter.utils.PackManager
 import java.io.File
 import java.text.SimpleDateFormat
@@ -101,6 +105,7 @@ fun GalleryScreen(
     var isMultiSelectMode by remember { mutableStateOf(false) }
     val selectedSpotIds = remember { mutableStateListOf<Long>() }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var isShareMenuExpanded by remember { mutableStateOf(false) }
 
     var showPermissionDisclosure by remember { mutableStateOf(false) }
     var showLimitExceededDialog by remember { mutableStateOf(false) }
@@ -294,17 +299,85 @@ fun GalleryScreen(
                         )
                     }
 
-                    IconButton(
-                        onClick = {
-                            createDocumentLauncher.launch("spots_export.ts_pack")
-                        },
-                        enabled = selectedSpotIds.isNotEmpty()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Export",
-                            tint = if (selectedSpotIds.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray
-                        )
+                    Box {
+                        IconButton(
+                            onClick = {
+                                isShareMenuExpanded = true
+                            },
+                            enabled = selectedSpotIds.isNotEmpty()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Export",
+                                tint = if (selectedSpotIds.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = isShareMenuExpanded,
+                            onDismissRequest = { isShareMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Export Tag Spotter Pack (.ts_pack)") },
+                                onClick = {
+                                    isShareMenuExpanded = false
+                                    createDocumentLauncher.launch("spots_export.ts_pack")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Get Route in Google Maps") },
+                                onClick = {
+                                    isShareMenuExpanded = false
+                                    val selectedSpots = selectedSpotIds.mapNotNull { id -> spots.find { it.spot.id == id } }
+                                    if (selectedSpots.isNotEmpty()) {
+                                        val destinationSpot = selectedSpots.last().spot
+                                        val waypointSpots = selectedSpots.dropLast(1)
+                                        val base = "https://www.google.com/maps/dir/?api=1"
+                                        val destParam = "&destination=${destinationSpot.latitude},${destinationSpot.longitude}"
+                                        val waypointsParam = if (waypointSpots.isNotEmpty()) {
+                                            "&waypoints=" + waypointSpots.joinToString("|") { "${it.spot.latitude},${it.spot.longitude}" }
+                                        } else {
+                                            ""
+                                        }
+                                        val url = base + destParam + waypointsParam
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        try {
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "No app available to open route.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Share KML for Google My Maps") },
+                                onClick = {
+                                    isShareMenuExpanded = false
+                                    val selectedSpots = selectedSpotIds.mapNotNull { id -> spots.find { it.spot.id == id } }
+                                    if (selectedSpots.isNotEmpty()) {
+                                        val kmlString = KmlExporter.generateKml(selectedSpots)
+                                        try {
+                                            val sdf = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault())
+                                            val timestamp = sdf.format(Date())
+                                            val filename = "spots_export_$timestamp.kml"
+                                            val cacheFile = File(context.cacheDir, filename)
+                                            cacheFile.writeText(kmlString)
+                                            val authority = "${context.packageName}.fileprovider"
+                                            val uri = FileProvider.getUriForFile(context, authority, cacheFile)
+                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                type = "application/vnd.google-earth.kml+xml"
+                                                putExtra(Intent.EXTRA_STREAM, uri)
+                                                putExtra(Intent.EXTRA_SUBJECT, "Tag Spotter KML Export")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Share KML"))
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                            Toast.makeText(context, "Failed to share KML: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                            )
+                        }
                     }
 
                     IconButton(

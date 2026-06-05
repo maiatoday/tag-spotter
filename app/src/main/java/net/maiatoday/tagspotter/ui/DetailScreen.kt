@@ -37,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
@@ -1189,6 +1190,7 @@ fun DetailMetadataCard(
     onUpdateDescription: (String) -> Unit,
     onMapPickerClick: () -> Unit
 ) {
+    val context = LocalContext.current
     var isEditingArtists by remember { mutableStateOf(isCreationMode) }
     var artistEditInput by remember { mutableStateOf("") }
     val localArtistsList = remember { mutableStateListOf<String>() }
@@ -1773,10 +1775,9 @@ fun DetailMetadataCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Location coordinates & "Map It" or "Refine" button
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column {
                     Text(
@@ -1793,25 +1794,72 @@ fun DetailMetadataCard(
                     )
                 }
 
-                Button(
-                    onClick = onMapPickerClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.background
-                    ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(6.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (isCreationMode) Icons.Default.EditLocationAlt else Icons.Default.Map,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isCreationMode) "REFINE" else "MAP IT",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                    )
+                    if (!isCreationMode) {
+                        Button(
+                            onClick = {
+                                val labelText = when {
+                                    details.spot.description.isNotEmpty() -> details.spot.description
+                                    details.spot.artists.isNotEmpty() -> "by ${details.spot.artists.joinToString(", ")}"
+                                    else -> "Spot Location"
+                                }
+                                val encodedLabel = Uri.encode(labelText)
+                                val gmmIntentUri = Uri.parse("geo:0,0?q=${details.spot.latitude},${details.spot.longitude}($encodedLabel)")
+                                val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                try {
+                                    context.startActivity(mapIntent)
+                                } catch (e: Exception) {
+                                    val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${details.spot.latitude},${details.spot.longitude}")
+                                    val webIntent = Intent(Intent.ACTION_VIEW, webUri)
+                                    context.startActivity(webIntent)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Navigation,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "NAVIGATE",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = onMapPickerClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.background
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = if (isCreationMode) Modifier.fillMaxWidth() else Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = if (isCreationMode) Icons.Default.EditLocationAlt else Icons.Default.Map,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isCreationMode) "REFINE" else "MAP IT",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
                 }
             }
         }
