@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
@@ -15,6 +17,17 @@ android {
         versionCode = 5
         versionName = "0.0.5"
         testInstrumentationRunner = "net.maiatoday.tagspotter.TagSpotterTestRunner"
+
+        // Load local.properties for developer-level Gemini API Key
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { stream ->
+                localProperties.load(stream)
+            }
+        }
+        val apiKey = localProperties.getProperty("gemini.api.key") ?: ""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
     }
 
     buildTypes {
@@ -30,7 +43,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
 
@@ -129,4 +142,8 @@ dependencies {
 
   // Coil (Image Loading)
   implementation(libs.coil.compose)
+
+  // Gemini & Security Crypto
+  implementation(libs.google.generativeai)
+  implementation(libs.androidx.security.crypto)
 }

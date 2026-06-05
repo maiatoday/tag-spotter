@@ -15,6 +15,9 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
+import net.maiatoday.tagspotter.ui.viewmodel.AiState
+import net.maiatoday.tagspotter.ui.viewmodel.AiSuggestion
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
 
@@ -186,5 +189,45 @@ class DetailViewModelTest {
         viewModel.toggleStarred()
         assertEquals(true, limitExceededEmitted)
         assertEquals(false, viewModel.spotDetails.value?.spot?.isStarred)
+    }
+
+    @Test
+    fun artistRecognitionSettingPropagatedCorrectly() = runTest {
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.isArtistRecognitionEnabled.collect {}
+        }
+
+        // Default is true
+        assertEquals(true, viewModel.isArtistRecognitionEnabled.value)
+
+        // Toggle to false
+        settingsRepository.updateArtistRecognitionEnabled(false)
+        assertEquals(false, viewModel.isArtistRecognitionEnabled.value)
+    }
+
+    @Test
+    fun identifyArtistFailsWhenApiKeyIsMissing() = runTest {
+        settingsRepository.updateGeminiApiKey("")
+        
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            buildConfigApiKey = ""
+        )
+        
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.aiState.collect {}
+        }
+        
+        assertEquals(AiState.Idle, viewModel.aiState.value)
+        
+        // Trigger identification with a dummy path
+        viewModel.identifyArtist("some_path.png")
+        
+        // Verification: should set error to MissingKey since API Key is empty
+        assertEquals(AiState.Error.MissingKey, viewModel.aiState.value)
     }
 }

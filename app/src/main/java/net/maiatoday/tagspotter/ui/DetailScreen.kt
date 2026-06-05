@@ -98,6 +98,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -112,12 +113,20 @@ import net.maiatoday.tagspotter.theme.categoryColors
 import net.maiatoday.tagspotter.ui.components.OsmMapView
 import net.maiatoday.tagspotter.ui.components.OsmMarker
 import net.maiatoday.tagspotter.ui.screens.ZoomableImageOverlay
+import net.maiatoday.tagspotter.ui.viewmodel.AiState
 import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
 import net.maiatoday.tagspotter.utils.ImageOptimizer
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+import android.content.Intent
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.ImageSearch
+import androidx.compose.material.icons.filled.AutoAwesome
+import net.maiatoday.tagspotter.ui.viewmodel.AiSuggestion
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -157,6 +166,232 @@ fun DetailScreen(
     val sortedImages = remember(spotDetails) { spotDetails?.images?.sortedBy { it.timestamp } ?: emptyList() }
     val defaultPhotographer by viewModel.defaultPhotographer.collectAsStateWithLifecycle()
     val recentCustomTags by viewModel.recentCustomTags.collectAsStateWithLifecycle()
+
+    val aiState by viewModel.aiState.collectAsStateWithLifecycle()
+    val isArtistRecognitionEnabled by viewModel.isArtistRecognitionEnabled.collectAsStateWithLifecycle()
+
+    val mainImage = sortedImages.firstOrNull { it.isMain } ?: sortedImages.firstOrNull()
+    val mainImagePath = mainImage?.imagePath ?: ""
+
+    val onSearchImage: () -> Unit = {
+        if (mainImagePath.isNotEmpty()) {
+            try {
+                val file = File(mainImagePath)
+                if (file.exists()) {
+                    val authority = "${context.packageName}.fileprovider"
+                    val uri = FileProvider.getUriForFile(context, authority, file)
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "image/*"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Search Artist"))
+                } else {
+                    Toast.makeText(context, "Image file not found.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Failed to share image: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "No image available to search.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val onIdentifyArtist: () -> Unit = {
+        if (mainImagePath.isNotEmpty()) {
+            viewModel.identifyArtist(mainImagePath, context)
+        } else {
+            Toast.makeText(context, "No image available to analyze.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // AI Suggestions Dialog
+    if (aiState is AiState.Success) {
+        val suggestion = (aiState as AiState.Success).suggestion
+        var importArtist by remember { mutableStateOf(suggestion.artist != null) }
+        var importTitle by remember { mutableStateOf(suggestion.title != null) }
+        var importTags by remember { mutableStateOf(suggestion.tags.isNotEmpty()) }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.resetAiState() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("AI Recognition Suggestions")
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Gemini identified the following details from your photo. Select which ones to apply:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+
+                    if (suggestion.artist != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { importArtist = !importArtist }
+                        ) {
+                            Checkbox(
+                                checked = importArtist,
+                                onCheckedChange = { importArtist = it }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Artist / Crew", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(suggestion.artist, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+
+                    if (suggestion.title != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { importTitle = !importTitle }
+                        ) {
+                            Checkbox(
+                                checked = importTitle,
+                                onCheckedChange = { importTitle = it }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Suggested Title", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(suggestion.title, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+
+                    if (suggestion.tags.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { importTags = !importTags }
+                        ) {
+                            Checkbox(
+                                checked = importTags,
+                                onCheckedChange = { importTags = it }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Suggested Tags", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    suggestion.tags.forEach { tag ->
+                                        Box(
+                                            modifier = Modifier
+                                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                                                .border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = "#$tag",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onBackground
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (importArtist && suggestion.artist != null) {
+                            viewModel.updateArtists(listOf(suggestion.artist))
+                        }
+                        if (importTitle && suggestion.title != null) {
+                            viewModel.updateDescription(suggestion.title)
+                        }
+                        if (importTags && suggestion.tags.isNotEmpty()) {
+                            val currentTags = spotDetails?.spot?.tags ?: emptyList()
+                            val merged = (currentTags + suggestion.tags).distinct()
+                            viewModel.updateTags(merged)
+                        }
+                        viewModel.resetAiState()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Text("Apply Selected")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.resetAiState() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // AI Error Dialog
+    if (aiState is AiState.Error) {
+        val error = aiState as AiState.Error
+        val (title, message) = when (error) {
+            is AiState.Error.MissingKey -> {
+                "Gemini API Key Missing" to "A Gemini API Key is required for in-app recognition. Please configure it in Settings."
+            }
+            is AiState.Error.InvalidKey -> {
+                "Invalid API Key" to "The configured Gemini API Key is invalid or unauthorized. Please verify it in Settings."
+            }
+            is AiState.Error.QuotaExceeded -> {
+                "API Quota Exceeded" to "You have exceeded your Gemini API limit. Please wait a while before trying again."
+            }
+            is AiState.Error.SafetyBlocked -> {
+                "Safety Blocked" to "The image was flagged by Gemini's safety filters and could not be analyzed."
+            }
+            is AiState.Error.Generic -> {
+                "Recognition Error" to error.message
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.resetAiState() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(title)
+                }
+            },
+            text = { Text(message) },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.resetAiState() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                ) {
+                    Text("OK")
+                }
+            }
+        )
+    }
 
     var noteInput by remember { mutableStateOf("") }
     var zoomImage by remember { mutableStateOf<SpotImage?>(null) }
@@ -435,6 +670,11 @@ fun DetailScreen(
                         details = details,
                         isCreationMode = isCreationMode,
                         defaultPhotographer = defaultPhotographer,
+                        isArtistRecognitionEnabled = isArtistRecognitionEnabled,
+                        aiState = aiState,
+                        hasImage = mainImagePath.isNotEmpty(),
+                        onSearchImage = onSearchImage,
+                        onIdentifyArtist = onIdentifyArtist,
                         onUpdateStatus = { viewModel.updateStatus(it) },
                         onUpdateCategory = { viewModel.updateCategory(it) },
                         onUpdateArtists = { viewModel.updateArtists(it) },
@@ -505,6 +745,11 @@ fun DetailScreen(
                             details = details,
                             isCreationMode = isCreationMode,
                             defaultPhotographer = defaultPhotographer,
+                            isArtistRecognitionEnabled = isArtistRecognitionEnabled,
+                            aiState = aiState,
+                            hasImage = mainImagePath.isNotEmpty(),
+                            onSearchImage = onSearchImage,
+                            onIdentifyArtist = onIdentifyArtist,
                             onUpdateStatus = { viewModel.updateStatus(it) },
                             onUpdateCategory = { viewModel.updateCategory(it) },
                             onUpdateArtists = { viewModel.updateArtists(it) },
@@ -901,6 +1146,11 @@ fun DetailMetadataCard(
     details: SpotDetails,
     isCreationMode: Boolean,
     defaultPhotographer: String,
+    isArtistRecognitionEnabled: Boolean,
+    aiState: AiState,
+    hasImage: Boolean,
+    onSearchImage: () -> Unit,
+    onIdentifyArtist: () -> Unit,
     onUpdateStatus: (String) -> Unit,
     onUpdateCategory: (String) -> Unit,
     onUpdateArtists: (List<String>) -> Unit,
@@ -1121,12 +1371,50 @@ fun DetailMetadataCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "ARTIST / CREW",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "ARTIST / CREW",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            if (isArtistRecognitionEnabled && hasImage) {
+                                if (aiState is AiState.Identifying) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                } else {
+                                    IconButton(
+                                        onClick = onSearchImage,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ImageSearch,
+                                            contentDescription = "Search artist with Lens",
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = onIdentifyArtist,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = "Identify artist with AI",
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         if (!isCreationMode) {
                             Row {

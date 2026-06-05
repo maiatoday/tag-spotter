@@ -20,6 +20,12 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
     private val _darkMapEnabled = MutableStateFlow(false)
     override val darkMapEnabled: Flow<Boolean> = _darkMapEnabled.asStateFlow()
 
+    private val _artistRecognitionEnabled = MutableStateFlow(true)
+    override val artistRecognitionEnabled: Flow<Boolean> = _artistRecognitionEnabled.asStateFlow()
+
+    private val _geminiApiKey = MutableStateFlow("")
+    override val geminiApiKey: Flow<String> = _geminiApiKey.asStateFlow()
+
     override suspend fun updatePhotographerName(name: String) {
         _photographerName.value = name
     }
@@ -38,5 +44,13 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
 
     override suspend fun updateDarkMapEnabled(enabled: Boolean) {
         _darkMapEnabled.value = enabled
+    }
+
+    override suspend fun updateArtistRecognitionEnabled(enabled: Boolean) {
+        _artistRecognitionEnabled.value = enabled
+    }
+
+    override suspend fun updateGeminiApiKey(key: String) {
+        _geminiApiKey.value = key
     }
 }

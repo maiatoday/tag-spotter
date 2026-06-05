@@ -10,24 +10,39 @@ import net.maiatoday.tagspotter.data.Spot
 import net.maiatoday.tagspotter.data.SpotImage
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotRepository
+import net.maiatoday.tagspotter.BuildConfig
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.File
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class DetailViewModel(
     private val spotId: Long,
     private val repository: SpotRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     draftImagePath: String? = null,
     draftThumbnailPath: String? = null,
     draftLatitude: Double? = null,
     draftLongitude: Double? = null,
     draftCategory: String? = null,
-    draftCaptureTime: Long? = null
+    draftCaptureTime: Long? = null,
+    private val buildConfigApiKey: String = BuildConfig.GEMINI_API_KEY
 ) : ViewModel() {
 
     sealed interface UiEvent {
@@ -75,6 +90,186 @@ class DetailViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = if (spotId == -1L) _draftDetails.value else null
     )
+
+    val isArtistRecognitionEnabled: StateFlow<Boolean> = settingsRepository.artistRecognitionEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    private val _aiState = MutableStateFlow<AiState>(AiState.Idle)
+    val aiState: StateFlow<AiState> = _aiState.asStateFlow()
+
+    fun resetAiState() {
+        _aiState.value = AiState.Idle
+    }
+
+    private suspend fun decodeScaledBitmap(context: Context?, imagePath: String, maxDimension: Int): Bitmap? = withContext(Dispatchers.IO) {
+        try {
+            if (context == null || (!imagePath.startsWith("content://") && !imagePath.startsWith("file://"))) {
+                val file = File(imagePath)
+                if (!file.exists()) return@withContext null
+                
+                // Get dimensions
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeFile(imagePath, options)
+                
+                val srcWidth = options.outWidth
+                val srcHeight = options.outHeight
+                if (srcWidth <= 0 || srcHeight <= 0) return@withContext null
+                
+                // Calculate sample size (power of 2)
+                var inSampleSize = 1
+                val maxSrcDim = maxOf(srcWidth, srcHeight)
+                while (maxSrcDim / (inSampleSize * 2) >= maxDimension) {
+                    inSampleSize *= 2
+                }
+                
+                val decodeOptions = BitmapFactory.Options().apply {
+                    this.inSampleSize = inSampleSize
+                }
+                BitmapFactory.decodeFile(imagePath, decodeOptions)
+            } else {
+                val uri = Uri.parse(imagePath)
+                // Get dimensions
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    BitmapFactory.decodeStream(inputStream, null, options)
+                }
+                
+                val srcWidth = options.outWidth
+                val srcHeight = options.outHeight
+                if (srcWidth <= 0 || srcHeight <= 0) return@withContext null
+                
+                // Calculate sample size (power of 2)
+                var inSampleSize = 1
+                val maxSrcDim = maxOf(srcWidth, srcHeight)
+                while (maxSrcDim / (inSampleSize * 2) >= maxDimension) {
+                    inSampleSize *= 2
+                }
+                
+                val decodeOptions = BitmapFactory.Options().apply {
+                    this.inSampleSize = inSampleSize
+                }
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    BitmapFactory.decodeStream(inputStream, null, decodeOptions)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun identifyArtist(imagePath: String, context: Context? = null) {
+        val appContext = context?.applicationContext
+        viewModelScope.launch {
+            _aiState.value = AiState.Identifying
+            try {
+                // 1. Resolve API Key
+                var apiKey = buildConfigApiKey
+                if (apiKey.isEmpty()) {
+                    apiKey = settingsRepository.geminiApiKey.first()
+                }
+                if (apiKey.isEmpty()) {
+                    _aiState.value = AiState.Error.MissingKey
+                    return@launch
+                }
+                
+                // 2. Load and downscale image
+                val bitmap = decodeScaledBitmap(appContext, imagePath, 1024)
+                if (bitmap == null) {
+                    _aiState.value = AiState.Error.Generic("Failed to load image.")
+                    return@launch
+                }
+                
+                // 3. Initialize Gemini
+                val model = GenerativeModel(
+                    modelName = "gemini-2.5-flash",
+                    apiKey = apiKey
+                )
+                
+                val category = spotDetails.value?.spot?.category ?: "graffiti"
+                val artistRoleDescription = when (category) {
+                    "sculpture" -> "sculptor, artist, designer, or creator"
+                    "architecture" -> "architect, designer, or builder"
+                    "nature" -> "landscape artist, gardener, designer, or photographer"
+                    "public_place" -> "artist, sculptor, architect, designer, or creator"
+                    else -> "street art artist, graffiti writer, crew, or painter"
+                }
+
+                val prompt = """
+                    Analyze this image of a spot in the category: "$category".
+                    Identify the $artistRoleDescription (if known), suggest a title for the art/spot, and suggest tags (from: mural, stencil, throwup, pasteup, sticker, or others appropriate for this category).
+                    ${if (category == "nature") "Specifically, since the category is \"nature\", for the \"title\" field try to identify the specific plant, flower, tree species, or geological/natural feature visible in the image." else ""}
+                    Return the response in strict JSON format using exactly these keys:
+                    {
+                      "artist": "Name or null",
+                      "title": "Suggested Title or null",
+                      "tags": ["tag1", "tag2"]
+                    }
+                    If you do not know the artist/creator/architect, set the "artist" field to null. If you cannot suggest a title, set the "title" field to null.
+                    Do not add markdown formatting or backticks around the JSON. Return only the raw JSON.
+                """.trimIndent()
+                
+                val response = model.generateContent(
+                    content {
+                        image(bitmap)
+                        text(prompt)
+                    }
+                )
+                
+                val responseText = response.text ?: ""
+                if (responseText.isEmpty()) {
+                    _aiState.value = AiState.Error.Generic("Empty response from AI model.")
+                    return@launch
+                }
+                
+                // Clean the JSON string (in case markdown backticks were returned)
+                val cleanJson = if (responseText.contains("```")) {
+                    responseText
+                        .substringAfter("```json")
+                        .substringAfter("```")
+                        .substringBefore("```")
+                        .trim()
+                } else {
+                    responseText.trim()
+                }
+                
+                // Parse suggestion
+                val suggestion = try {
+                    Json.decodeFromString<AiSuggestion>(cleanJson)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _aiState.value = AiState.Error.Generic("Failed to parse AI response.")
+                    return@launch
+                }
+                
+                _aiState.value = AiState.Success(suggestion)
+                
+            } catch (e: Exception) {
+                e.printStackTrace()
+                val message = e.message ?: ""
+                val className = e.javaClass.simpleName
+                if (className.contains("ResponseStoppedException", ignoreCase = true) || message.contains("stopped", ignoreCase = true)) {
+                    _aiState.value = AiState.Error.SafetyBlocked
+                } else if (className.contains("ServerException", ignoreCase = true) || message.contains("quota", ignoreCase = true) || message.contains("429", ignoreCase = true)) {
+                    _aiState.value = AiState.Error.QuotaExceeded
+                } else if (className.contains("InvalidAPIKeyException", ignoreCase = true) || message.contains("API key", ignoreCase = true) || message.contains("403", ignoreCase = true)) {
+                    _aiState.value = AiState.Error.InvalidKey
+                } else if (message.contains("Unable to resolve host", ignoreCase = true) || message.contains("connect", ignoreCase = true)) {
+                    _aiState.value = AiState.Error.Generic("No internet connection. Please connect and try again.")
+                } else {
+                    _aiState.value = AiState.Error.Generic(message.ifEmpty { "An unexpected error occurred." })
+                }
+            }
+        }
+    }
 
     val defaultPhotographer: StateFlow<String> = settingsRepository.photographerName
         .stateIn(
@@ -301,3 +496,24 @@ class DetailViewModel(
         }
     }
 }
+
+@Serializable
+data class AiSuggestion(
+    val artist: String? = null,
+    val title: String? = null,
+    val tags: List<String> = emptyList()
+)
+
+sealed interface AiState {
+    object Idle : AiState
+    object Identifying : AiState
+    data class Success(val suggestion: AiSuggestion) : AiState
+    sealed interface Error : AiState {
+        object MissingKey : Error
+        object InvalidKey : Error
+        object QuotaExceeded : Error
+        object SafetyBlocked : Error
+        data class Generic(val message: String) : Error
+    }
+}
+

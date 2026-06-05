@@ -2,6 +2,8 @@ package net.maiatoday.tagspotter.data
 
 import android.content.Context
 import androidx.core.content.edit
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,11 +19,29 @@ interface SettingsRepository {
     suspend fun updateNotificationsEnabled(enabled: Boolean)
     val darkMapEnabled: Flow<Boolean>
     suspend fun updateDarkMapEnabled(enabled: Boolean)
+    val artistRecognitionEnabled: Flow<Boolean>
+    suspend fun updateArtistRecognitionEnabled(enabled: Boolean)
+    val geminiApiKey: Flow<String>
+    suspend fun updateGeminiApiKey(key: String)
 }
 
 class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository {
     private val sharedPreferences = context.getSharedPreferences("tag_spotter_settings", Context.MODE_PRIVATE)
     
+    private val securePreferences = try {
+        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        EncryptedSharedPreferences.create(
+            "secure_tag_spotter_settings",
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        e.printStackTrace()
+        sharedPreferences
+    }
+
     private val _photographerName = MutableStateFlow(getSavedName())
     override val photographerName: Flow<String> = _photographerName.asStateFlow()
 
@@ -36,6 +56,12 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
 
     private val _darkMapEnabled = MutableStateFlow(getSavedDarkMapEnabled())
     override val darkMapEnabled: Flow<Boolean> = _darkMapEnabled.asStateFlow()
+
+    private val _artistRecognitionEnabled = MutableStateFlow(getSavedArtistRecognitionEnabled())
+    override val artistRecognitionEnabled: Flow<Boolean> = _artistRecognitionEnabled.asStateFlow()
+
+    private val _geminiApiKey = MutableStateFlow(getSavedGeminiApiKey())
+    override val geminiApiKey: Flow<String> = _geminiApiKey.asStateFlow()
 
     private fun getSavedName(): String {
         return sharedPreferences.getString("photographer_name", "") ?: ""
@@ -55,6 +81,14 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
 
     private fun getSavedDarkMapEnabled(): Boolean {
         return sharedPreferences.getBoolean("dark_map_enabled", false)
+    }
+
+    private fun getSavedArtistRecognitionEnabled(): Boolean {
+        return sharedPreferences.getBoolean("artist_recognition_enabled", true)
+    }
+
+    private fun getSavedGeminiApiKey(): String {
+        return securePreferences.getString("gemini_api_key", "") ?: ""
     }
 
     override suspend fun updatePhotographerName(name: String) {
@@ -80,5 +114,15 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     override suspend fun updateDarkMapEnabled(enabled: Boolean) {
         sharedPreferences.edit { putBoolean("dark_map_enabled", enabled) }
         _darkMapEnabled.value = enabled
+    }
+
+    override suspend fun updateArtistRecognitionEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("artist_recognition_enabled", enabled) }
+        _artistRecognitionEnabled.value = enabled
+    }
+
+    override suspend fun updateGeminiApiKey(key: String) {
+        securePreferences.edit { putString("gemini_api_key", key) }
+        _geminiApiKey.value = key
     }
 }
