@@ -269,4 +269,11 @@ class FakeSpotRepository : SpotRepository {
         spotsMap[spotId] = details.copy(spot = details.spot.copy(artworkDate = artworkDate))
         updateFlow()
     }
+
+    override suspend fun deleteNote(noteId: Long) {
+        val spotEntry = spotsMap.values.find { details -> details.notes.any { it.id == noteId } } ?: return
+        val updatedNotes = spotEntry.notes.filter { it.id != noteId }
+        spotsMap[spotEntry.spot.id] = spotEntry.copy(notes = updatedNotes)
+        updateFlow()
+    }
 }

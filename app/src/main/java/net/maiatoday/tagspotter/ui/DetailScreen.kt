@@ -507,6 +507,36 @@ fun DetailScreen(
         )
     }
 
+    var noteToDelete by remember { mutableStateOf<SpotNote?>(null) }
+
+    if (noteToDelete != null) {
+        val targetNote = noteToDelete!!
+        AlertDialog(
+            onDismissRequest = { noteToDelete = null },
+            title = { Text("Delete Note?") },
+            text = { Text("Are you sure you want to delete this note? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteNote(targetNote.id)
+                        noteToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { noteToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // Collect UI events
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
@@ -819,7 +849,8 @@ fun DetailScreen(
                                 }
                             },
                             isArtistRecognitionEnabled = isArtistRecognitionEnabled,
-                            onWikiSearchClick = { viewModel.searchWikipediaForSpot() }
+                            onWikiSearchClick = { viewModel.searchWikipediaForSpot() },
+                            onDeleteNote = { noteToDelete = it }
                         )
                     }
                 }
@@ -908,7 +939,8 @@ fun DetailScreen(
                                     }
                                 },
                                 isArtistRecognitionEnabled = isArtistRecognitionEnabled,
-                                onWikiSearchClick = { viewModel.searchWikipediaForSpot() }
+                                onWikiSearchClick = { viewModel.searchWikipediaForSpot() },
+                                onDeleteNote = { noteToDelete = it }
                             )
                         }
                     }
@@ -2567,6 +2599,7 @@ private fun DetailNotesSection(
     onSendNote: () -> Unit,
     isArtistRecognitionEnabled: Boolean,
     onWikiSearchClick: () -> Unit,
+    onDeleteNote: (SpotNote) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -2626,12 +2659,29 @@ private fun DetailNotesSection(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         val sdf = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault())
-                        Text(
-                            text = sdf.format(Date(note.timestamp)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = sdf.format(Date(note.timestamp)),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = { onDeleteNote(note) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete note",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         val annotatedText = rememberLinkifiedText(note.noteText)
                         Text(

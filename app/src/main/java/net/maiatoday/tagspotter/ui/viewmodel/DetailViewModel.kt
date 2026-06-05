@@ -514,6 +514,14 @@ class DetailViewModel(
         }
     }
 
+    fun deleteNote(noteId: Long) {
+        if (spotId != -1L) {
+            viewModelScope.launch {
+                repository.deleteNote(noteId)
+            }
+        }
+    }
+
     fun addImage(imagePath: String, thumbnailPath: String, timestamp: Long) {
         if (spotId != -1L) {
             viewModelScope.launch {

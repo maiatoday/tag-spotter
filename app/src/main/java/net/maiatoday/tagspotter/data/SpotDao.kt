@@ -98,4 +98,7 @@ interface SpotDao {
 
     @Query("UPDATE spots SET artworkDate = :artworkDate WHERE id = :spotId")
     suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String)
+
+    @Query("DELETE FROM spot_notes WHERE id = :noteId")
+    suspend fun deleteNoteById(noteId: Long)
 }

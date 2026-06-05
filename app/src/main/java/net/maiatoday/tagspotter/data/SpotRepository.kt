@@ -33,6 +33,7 @@ interface SpotRepository {
     suspend fun deleteImage(image: SpotImage)
     suspend fun updateImageRating(imageId: Long, rating: Int)
     suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String)
+    suspend fun deleteNote(noteId: Long)
 }
 
 class LocalSpotRepository(
@@ -340,6 +341,10 @@ class LocalSpotRepository(
 
     override suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String) {
         spotDao.updateSpotArtworkDate(spotId, artworkDate)
+    }
+
+    override suspend fun deleteNote(noteId: Long) {
+        spotDao.deleteNoteById(noteId)
     }
 
     companion object {
