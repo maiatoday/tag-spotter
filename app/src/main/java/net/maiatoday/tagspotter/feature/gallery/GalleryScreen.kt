@@ -1074,7 +1074,7 @@ fun SpotGridCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "\"${spotDetails.spot.description.ifEmpty { "No description added." }}\"",
+                    text = spotDetails.spot.description.ifEmpty { "No description added." },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary,
                     fontWeight = FontWeight.Bold,
