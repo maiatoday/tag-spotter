@@ -6,8 +6,11 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 
 class ImportSpotsTest {
 
@@ -21,7 +24,7 @@ class ImportSpotsTest {
         // Assert initial spots are NOT marked as imported
         val initialSpots = repository.getAllSpots().first()
         initialSpots.forEach {
-            Assert.assertTrue(!it.spot.isImported)
+            assertTrue(!it.spot.isImported)
         }
 
         // 2. Prepare imported spots:
@@ -29,7 +32,7 @@ class ImportSpotsTest {
         // - Spot B: unique coordinates and createdAt (should be imported)
         val now = System.currentTimeMillis()
         val mockSpot1Details = repository.getSpotById(9001L).first()
-        Assert.assertNotNull(mockSpot1Details)
+        assertNotNull(mockSpot1Details)
 
         val spotA = Spot(
             id = 9999L, // different ID, but coordinates and time match
@@ -67,22 +70,22 @@ class ImportSpotsTest {
         val importedCount = repository.importSpots(listOf(detailsA, detailsB))
 
         // Spot A should be skipped as duplicate, Spot B should be imported
-        Assert.assertEquals(1, importedCount)
+        assertEquals(1, importedCount)
 
         // Verify Spot B exists in repo with a newly generated ID (not 8888L)
         val allSpots = repository.getAllSpots().first()
-        Assert.assertEquals(4, allSpots.size) // 3 initial + 1 imported
+        assertEquals(4, allSpots.size) // 3 initial + 1 imported
 
         val importedSpotDetails =
             allSpots.find { it.spot.description == "New unique imported spot" }
-        Assert.assertNotNull(importedSpotDetails)
-        Assert.assertNotEquals(8888L, importedSpotDetails!!.spot.id)
-        Assert.assertEquals("imgB", importedSpotDetails.images.first().imagePath)
-        Assert.assertEquals(importedSpotDetails.spot.id, importedSpotDetails.images.first().spotId)
-        Assert.assertEquals("Note B", importedSpotDetails.notes.first().noteText)
-        Assert.assertEquals(importedSpotDetails.spot.id, importedSpotDetails.notes.first().spotId)
+        assertNotNull(importedSpotDetails)
+        assertNotEquals(8888L, importedSpotDetails!!.spot.id)
+        assertEquals("imgB", importedSpotDetails.images.first().imagePath)
+        assertEquals(importedSpotDetails.spot.id, importedSpotDetails.images.first().spotId)
+        assertEquals("Note B", importedSpotDetails.notes.first().noteText)
+        assertEquals(importedSpotDetails.spot.id, importedSpotDetails.notes.first().spotId)
 
         // Assert imported spot IS marked as imported
-        Assert.assertTrue(importedSpotDetails.spot.isImported)
+        assertTrue(importedSpotDetails.spot.isImported)
     }
 }

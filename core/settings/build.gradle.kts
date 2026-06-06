@@ -14,6 +14,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+    
+    testFixtures {
+        enable = true
+    }
+
+    testOptions {
+        unitTests {
+            all {
+                it.useJUnitPlatform()
+            }
+        }
+    }
 }
 
 dependencies {
@@ -27,8 +39,13 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.koin.android)
     
-    // Testing
-    testImplementation(libs.junit)
+    // Testing & Test Fixtures
+    testFixturesApi(libs.kotlinx.coroutines.test)
+    testFixturesImplementation(project(":core:model"))
+    
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.test.core) // For mock context in repo test
 }

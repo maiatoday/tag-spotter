@@ -15,6 +15,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+    
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {
@@ -27,4 +31,7 @@ dependencies {
     // Koin
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.core)
+    
+    // Test Fixtures
+    testFixturesImplementation(project(":core:model"))
 }

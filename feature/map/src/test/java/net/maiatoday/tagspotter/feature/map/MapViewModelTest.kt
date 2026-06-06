@@ -4,20 +4,23 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import net.maiatoday.tagspotter.MainDispatcherRule
+import net.maiatoday.tagspotter.MainDispatcherExtension
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
-import org.junit.Assert
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelTest {
 
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
+    @JvmField
+    @RegisterExtension
+    val mainDispatcherExtension = MainDispatcherExtension()
 
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository()
@@ -57,23 +60,23 @@ class MapViewModelTest {
         }
 
         // Verify loaded spots pins (default category is "All")
-        Assert.assertEquals(2, viewModel.spots.value.size)
+        assertEquals(2, viewModel.spots.value.size)
 
         // Verify initial selection is null
-        Assert.assertNull(viewModel.selectedSpot.value)
+        assertNull(viewModel.selectedSpot.value)
 
         // Select a spot
         viewModel.selectSpot(spotDetails1)
-        Assert.assertEquals(spotDetails1, viewModel.selectedSpot.value)
+        assertEquals(spotDetails1, viewModel.selectedSpot.value)
 
         // Select category "sculpture" and verify filtered pins
         viewModel.selectCategory("sculpture")
-        Assert.assertEquals(1, viewModel.spots.value.size)
-        Assert.assertEquals(2L, viewModel.spots.value[0].spot.id)
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(2L, viewModel.spots.value[0].spot.id)
 
         // Deselect spot
         viewModel.selectSpot(null)
-        Assert.assertNull(viewModel.selectedSpot.value)
+        assertNull(viewModel.selectedSpot.value)
     }
 
     @Test
@@ -89,16 +92,16 @@ class MapViewModelTest {
 
         // Milan coords: (45.4642, 9.1900)
         val milanCenter = viewModel.initialMapCenter.value
-        Assert.assertNotNull(milanCenter)
-        Assert.assertEquals(45.4642, milanCenter!!.latitude, 0.0001)
-        Assert.assertEquals(9.1900, milanCenter.longitude, 0.0001)
+        assertNotNull(milanCenter)
+        assertEquals(45.4642, milanCenter!!.latitude, 0.0001)
+        assertEquals(9.1900, milanCenter.longitude, 0.0001)
 
         // 2. Change home city to "London" with no spots
         settingsRepo.updateHomeCity("London")
         val londonCenter = viewModel.initialMapCenter.value
-        Assert.assertNotNull(londonCenter)
-        Assert.assertEquals(51.5074, londonCenter!!.latitude, 0.0001)
-        Assert.assertEquals(-0.1278, londonCenter.longitude, 0.0001)
+        assertNotNull(londonCenter)
+        assertEquals(51.5074, londonCenter!!.latitude, 0.0001)
+        assertEquals(-0.1278, londonCenter.longitude, 0.0001)
 
         // 3. Add spots in Paris (48.8566, 2.3522) and San Francisco (37.7749, -122.4194)
         // Let's add 2 spots in Paris and 1 in SF
@@ -146,30 +149,30 @@ class MapViewModelTest {
         val avgParisLng = (2.3520 + 2.3530) / 2.0
 
         val parisClusterCenter = viewModel.initialMapCenter.value
-        Assert.assertNotNull(parisClusterCenter)
-        Assert.assertEquals(avgParisLat, parisClusterCenter!!.latitude, 0.0001)
-        Assert.assertEquals(avgParisLng, parisClusterCenter.longitude, 0.0001)
+        assertNotNull(parisClusterCenter)
+        assertEquals(avgParisLat, parisClusterCenter!!.latitude, 0.0001)
+        assertEquals(avgParisLng, parisClusterCenter.longitude, 0.0001)
 
         // 4. Clear spots and check Berlin
         repository.setSpots(emptyList())
         settingsRepo.updateHomeCity("Berlin")
         val berlinCenter = viewModel.initialMapCenter.value
-        Assert.assertNotNull(berlinCenter)
-        Assert.assertEquals(52.5200, berlinCenter!!.latitude, 0.0001)
-        Assert.assertEquals(13.4050, berlinCenter.longitude, 0.0001)
+        assertNotNull(berlinCenter)
+        assertEquals(52.5200, berlinCenter!!.latitude, 0.0001)
+        assertEquals(13.4050, berlinCenter.longitude, 0.0001)
 
         // 5. Check Custom Coordinates
         settingsRepo.updateHomeCity("Custom: 12.3456, -78.9012")
         val customCenter = viewModel.initialMapCenter.value
-        Assert.assertNotNull(customCenter)
-        Assert.assertEquals(12.3456, customCenter!!.latitude, 0.0001)
-        Assert.assertEquals(-78.9012, customCenter.longitude, 0.0001)
+        assertNotNull(customCenter)
+        assertEquals(12.3456, customCenter!!.latitude, 0.0001)
+        assertEquals(-78.9012, customCenter.longitude, 0.0001)
 
         // 6. Check bad Custom Coordinates fallback (should default to Milan)
         settingsRepo.updateHomeCity("Custom: invalid, coordinates")
         val fallbackCenter = viewModel.initialMapCenter.value
-        Assert.assertNotNull(fallbackCenter)
-        Assert.assertEquals(45.4642, fallbackCenter!!.latitude, 0.0001)
-        Assert.assertEquals(9.1900, fallbackCenter.longitude, 0.0001)
+        assertNotNull(fallbackCenter)
+        assertEquals(45.4642, fallbackCenter!!.latitude, 0.0001)
+        assertEquals(9.1900, fallbackCenter.longitude, 0.0001)
     }
 }

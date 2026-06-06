@@ -14,6 +14,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+    
+    testFixtures {
+        enable = true
+    }
 }
 
 dependencies {
@@ -25,4 +29,7 @@ dependencies {
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.core)
     implementation(libs.koin.android) // because it uses androidContext()
+    
+    // Test Fixtures
+    testFixturesImplementation(project(":core:model"))
 }

@@ -4,21 +4,23 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import net.maiatoday.tagspotter.MainDispatcherRule
+import net.maiatoday.tagspotter.MainDispatcherExtension
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
-import org.junit.Assert
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalleryViewModelTest {
 
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
+    @JvmField
+    @RegisterExtension
+    val mainDispatcherExtension = MainDispatcherExtension()
 
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository()
@@ -59,30 +61,30 @@ class GalleryViewModelTest {
         }
 
         // Default category is "All"
-        Assert.assertEquals("All", viewModel.selectedCategory.value)
+        assertEquals("All", viewModel.selectedCategory.value)
         var spots = viewModel.spots.value
-        Assert.assertEquals(2, spots.size)
+        assertEquals(2, spots.size)
 
         // Select "graffiti"
         viewModel.selectCategory("graffiti")
-        Assert.assertEquals("graffiti", viewModel.selectedCategory.value)
+        assertEquals("graffiti", viewModel.selectedCategory.value)
 
         spots = viewModel.spots.value
-        Assert.assertEquals(1, spots.size)
-        Assert.assertEquals(1L, spots[0].spot.id)
+        assertEquals(1, spots.size)
+        assertEquals(1L, spots[0].spot.id)
 
         // Select "sculpture"
         viewModel.selectCategory("sculpture")
-        Assert.assertEquals("sculpture", viewModel.selectedCategory.value)
+        assertEquals("sculpture", viewModel.selectedCategory.value)
         spots = viewModel.spots.value
-        Assert.assertEquals(1, spots.size)
-        Assert.assertEquals(2L, spots[0].spot.id)
+        assertEquals(1, spots.size)
+        assertEquals(2L, spots[0].spot.id)
 
         // Select non-existing category
         viewModel.selectCategory("nature")
-        Assert.assertEquals("nature", viewModel.selectedCategory.value)
+        assertEquals("nature", viewModel.selectedCategory.value)
         spots = viewModel.spots.value
-        Assert.assertTrue(spots.isEmpty())
+        assertTrue(spots.isEmpty())
     }
 
     @Test
@@ -108,27 +110,27 @@ class GalleryViewModelTest {
         }
 
         // Initially no query, returns both
-        Assert.assertEquals("", viewModel.searchQuery.value)
-        Assert.assertEquals(2, viewModel.spots.value.size)
+        assertEquals("", viewModel.searchQuery.value)
+        assertEquals(2, viewModel.spots.value.size)
 
         // Search by tag
         viewModel.setSearchQuery("milan")
-        Assert.assertEquals(1, viewModel.spots.value.size)
-        Assert.assertEquals(1L, viewModel.spots.value[0].spot.id)
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(1L, viewModel.spots.value[0].spot.id)
 
         // Search by artist
         viewModel.setSearchQuery("Famous")
-        Assert.assertEquals(1, viewModel.spots.value.size)
-        Assert.assertEquals(2L, viewModel.spots.value[0].spot.id)
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(2L, viewModel.spots.value[0].spot.id)
 
         // Search by photographer
         viewModel.setSearchQuery("Alice")
-        Assert.assertEquals(1, viewModel.spots.value.size)
-        Assert.assertEquals(1L, viewModel.spots.value[0].spot.id)
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(1L, viewModel.spots.value[0].spot.id)
 
         // Non-matching search
         viewModel.setSearchQuery("xyz")
-        Assert.assertTrue(viewModel.spots.value.isEmpty())
+        assertTrue(viewModel.spots.value.isEmpty())
     }
 
     @Test
@@ -170,7 +172,7 @@ class GalleryViewModelTest {
         }
 
         // Initially no location filter, returns both
-        Assert.assertEquals(2, viewModel.spots.value.size)
+        assertEquals(2, viewModel.spots.value.size)
 
         // Apply Milan filter (radius 5km)
         viewModel.setLocationFilter(
@@ -178,12 +180,12 @@ class GalleryViewModelTest {
             5000.0
         )
 
-        Assert.assertEquals(1, viewModel.spots.value.size)
-        Assert.assertEquals(1L, viewModel.spots.value[0].spot.id)
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(1L, viewModel.spots.value[0].spot.id)
 
         // Clear location filter
         viewModel.clearLocationFilter()
-        Assert.assertEquals(2, viewModel.spots.value.size)
+        assertEquals(2, viewModel.spots.value.size)
     }
 
     @Test
@@ -222,26 +224,26 @@ class GalleryViewModelTest {
         }
 
         // Initially not starred
-        Assert.assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
-        Assert.assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
 
         // Bulk star both spots
         var completed = false
         viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = true) {
             completed = true
         }
-        Assert.assertTrue(completed)
-        Assert.assertEquals(true, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
-        Assert.assertEquals(true, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+        assertTrue(completed)
+        assertEquals(true, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(true, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
 
         // Bulk unstar both spots
         completed = false
         viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = false) {
             completed = true
         }
-        Assert.assertTrue(completed)
-        Assert.assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
-        Assert.assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+        assertTrue(completed)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
 
         // Now mock 99 starred spots, and try to bulk star the 2 spots (would exceed 100 limit: 99 + 2 = 101)
         val starredSpots = (1..99).map { i ->
@@ -277,10 +279,10 @@ class GalleryViewModelTest {
         viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = true) {
             completed = true
         }
-        Assert.assertEquals(false, completed)
-        Assert.assertTrue(limitExceededEmitted)
-        Assert.assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
-        Assert.assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
+        assertEquals(false, completed)
+        assertTrue(limitExceededEmitted)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
+        assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
     }
 
     @Test
@@ -319,18 +321,18 @@ class GalleryViewModelTest {
         }
 
         // Initially showStarredOnly is false, so returns both
-        Assert.assertEquals(false, viewModel.showStarredOnly.value)
-        Assert.assertEquals(2, viewModel.spots.value.size)
+        assertEquals(false, viewModel.showStarredOnly.value)
+        assertEquals(2, viewModel.spots.value.size)
 
         // Toggle showStarredOnly to true, should only return spot1 (starred)
         viewModel.toggleShowStarredOnly()
-        Assert.assertEquals(true, viewModel.showStarredOnly.value)
-        Assert.assertEquals(1, viewModel.spots.value.size)
-        Assert.assertEquals(1L, viewModel.spots.value[0].spot.id)
+        assertEquals(true, viewModel.showStarredOnly.value)
+        assertEquals(1, viewModel.spots.value.size)
+        assertEquals(1L, viewModel.spots.value[0].spot.id)
 
         // Toggle showStarredOnly back to false, should return both
         viewModel.toggleShowStarredOnly()
-        Assert.assertEquals(false, viewModel.showStarredOnly.value)
-        Assert.assertEquals(2, viewModel.spots.value.size)
+        assertEquals(false, viewModel.showStarredOnly.value)
+        assertEquals(2, viewModel.spots.value.size)
     }
 }

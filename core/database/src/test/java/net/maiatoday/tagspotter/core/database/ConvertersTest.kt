@@ -1,7 +1,7 @@
 package net.maiatoday.tagspotter.core.database
 
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 class ConvertersTest {
     private val converters = Converters()
@@ -11,7 +11,7 @@ class ConvertersTest {
         val list = listOf("tag1", "tag2", "tag3")
         val json = converters.fromStringList(list)
         val deserialized = converters.toStringList(json)
-        Assert.assertEquals(list, deserialized)
+        assertEquals(list, deserialized)
     }
 
     @Test
@@ -19,7 +19,7 @@ class ConvertersTest {
         val list = listOf("tag,one", "tag,two", "tag three")
         val json = converters.fromStringList(list)
         val deserialized = converters.toStringList(json)
-        Assert.assertEquals(list, deserialized)
+        assertEquals(list, deserialized)
     }
 
     @Test
@@ -27,7 +27,7 @@ class ConvertersTest {
         val oldFormat = "tag1,tag2,tag3"
         val expected = listOf("tag1", "tag2", "tag3")
         val deserialized = converters.toStringList(oldFormat)
-        Assert.assertEquals(expected, deserialized)
+        assertEquals(expected, deserialized)
     }
 
     @Test
@@ -35,6 +35,6 @@ class ConvertersTest {
         val empty = ""
         val expected = emptyList<String>()
         val deserialized = converters.toStringList(empty)
-        Assert.assertEquals(expected, deserialized)
+        assertEquals(expected, deserialized)
     }
 }

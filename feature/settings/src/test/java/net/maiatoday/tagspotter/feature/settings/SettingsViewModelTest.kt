@@ -4,18 +4,21 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import net.maiatoday.tagspotter.MainDispatcherRule
+import net.maiatoday.tagspotter.MainDispatcherExtension
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
-import org.junit.Assert
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
 
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
+    @JvmField
+    @RegisterExtension
+    val mainDispatcherExtension = MainDispatcherExtension()
 
     private val settingsRepository = FakeSettingsRepository("Initial Photographer", "Milan")
     private val spotRepository = FakeSpotRepository()
@@ -43,42 +46,42 @@ class SettingsViewModelTest {
         }
 
         // Verify initial state
-        Assert.assertEquals("Initial Photographer", viewModel.photographerName.value)
-        Assert.assertEquals("Milan", viewModel.homeCity.value)
-        Assert.assertFalse(viewModel.showTestData.value)
-        Assert.assertFalse(viewModel.notificationsEnabled.value)
-        Assert.assertFalse(viewModel.darkMapEnabled.value)
+        assertEquals("Initial Photographer", viewModel.photographerName.value)
+        assertEquals("Milan", viewModel.homeCity.value)
+        assertFalse(viewModel.showTestData.value)
+        assertFalse(viewModel.notificationsEnabled.value)
+        assertFalse(viewModel.darkMapEnabled.value)
 
         // Update photographer name
         viewModel.updatePhotographerName("New Photographer")
-        Assert.assertEquals("New Photographer", viewModel.photographerName.value)
+        assertEquals("New Photographer", viewModel.photographerName.value)
 
         // Update home city
         viewModel.updateHomeCity("London")
-        Assert.assertEquals("London", viewModel.homeCity.value)
+        assertEquals("London", viewModel.homeCity.value)
 
         // Toggle mock data on
         viewModel.updateShowTestData(true)
-        Assert.assertTrue(viewModel.showTestData.value)
+        assertTrue(viewModel.showTestData.value)
 
         // Toggle mock data off
         viewModel.updateShowTestData(false)
-        Assert.assertFalse(viewModel.showTestData.value)
+        assertFalse(viewModel.showTestData.value)
 
         // Toggle notifications on
         viewModel.updateNotificationsEnabled(true)
-        Assert.assertTrue(viewModel.notificationsEnabled.value)
+        assertTrue(viewModel.notificationsEnabled.value)
 
         // Toggle notifications off
         viewModel.updateNotificationsEnabled(false)
-        Assert.assertFalse(viewModel.notificationsEnabled.value)
+        assertFalse(viewModel.notificationsEnabled.value)
 
         // Toggle dark map off
         viewModel.updateDarkMapEnabled(false)
-        Assert.assertFalse(viewModel.darkMapEnabled.value)
+        assertFalse(viewModel.darkMapEnabled.value)
 
         // Toggle dark map on
         viewModel.updateDarkMapEnabled(true)
-        Assert.assertTrue(viewModel.darkMapEnabled.value)
+        assertTrue(viewModel.darkMapEnabled.value)
     }
 }

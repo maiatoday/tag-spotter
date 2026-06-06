@@ -19,6 +19,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests {
+            all {
+                it.useJUnitPlatform()
+            }
+        }
+    }
 }
 
 dependencies {
@@ -46,7 +54,10 @@ dependencies {
     implementation(libs.koin.compose.viewmodel)
     
     // Testing
-    testImplementation(project(":core:testing"))
-    testImplementation(libs.junit)
+    testImplementation(testFixtures(project(":core:database")))
+    testImplementation(testFixtures(project(":core:settings")))
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kotlinx.coroutines.test)
 }

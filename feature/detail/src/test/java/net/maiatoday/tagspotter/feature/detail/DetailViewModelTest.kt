@@ -1,9 +1,12 @@
 package net.maiatoday.tagspotter.feature.detail
 
 import android.graphics.Bitmap
-import net.maiatoday.tagspotter.MainDispatcherRule
+import net.maiatoday.tagspotter.MainDispatcherExtension
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
+import net.maiatoday.tagspotter.core.photo.FakePhotoProcessor
+import net.maiatoday.tagspotter.core.ai.FakeAiRecognitionService
+import net.maiatoday.tagspotter.core.settings.FakeSecretsProvider
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
@@ -17,48 +20,19 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Rule
-import org.junit.Test
-
-class FakePhotoProcessor : PhotoProcessor {
-    override suspend fun saveImageToPublicGallery(filePath: String): String? = null
-    override suspend fun createThumbnailFromFile(filePath: String): String? = null
-    override suspend fun createThumbnailFromUri(uriString: String): String? = null
-    override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? = null
-    override fun createTempCameraFile(): TempFileDetails = TempFileDetails("", "")
-    override fun deleteFile(filePath: String): Boolean = false
-    override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): Bitmap? = null
-}
-
-class FakeAiRecognitionService : AiRecognitionService {
-    var identifyArtistResult: AiSuggestion? = null
-    var identifyArtistException: Exception? = null
-    var searchWikipediaResult: String? = null
-    var searchWikipediaException: Exception? = null
-
-    override suspend fun identifyArtist(imagePath: String, apiKey: String, category: String): AiSuggestion? {
-        identifyArtistException?.let { throw it }
-        return identifyArtistResult
-    }
-
-    override suspend fun searchWikipediaForSpot(title: String, apiKey: String): String? {
-        searchWikipediaException?.let { throw it }
-        return searchWikipediaResult
-    }
-}
-
-class FakeSecretsProvider(var apiKey: String = "") : SecretsProvider {
-    override fun getGeminiApiKey(): String = apiKey
-}
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
 
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
+    @JvmField
+    @RegisterExtension
+    val mainDispatcherExtension = MainDispatcherExtension()
 
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository("Initial Photographer")
@@ -402,7 +376,7 @@ class DetailViewModelTest {
 
         // Should return Error state indicating description is empty
         val state = viewModel.wikiSearchState.value
-        assert(state is WikiSearchState.Error)
+        assertTrue(state is WikiSearchState.Error)
         assertEquals("No title logged. Please set a title/description first.", (state as WikiSearchState.Error).message)
     }
 
@@ -444,7 +418,7 @@ class DetailViewModelTest {
 
         // Verification: should set error to missing key since API key is empty
         val state = viewModel.wikiSearchState.value
-        assert(state is WikiSearchState.Error)
+        assertTrue(state is WikiSearchState.Error)
         assertEquals("Missing Gemini API Key. Please configure it in Settings.", (state as WikiSearchState.Error).message)
     }
 
@@ -499,7 +473,7 @@ class DetailViewModelTest {
 
         // Search Wikipedia on draft spot (should fail due to empty description)
         viewModel.searchWikipediaForSpot()
-        assert(viewModel.wikiSearchState.value is WikiSearchState.Error)
+        assertTrue(viewModel.wikiSearchState.value is WikiSearchState.Error)
 
         // Reset
         viewModel.resetWikiSearchState()

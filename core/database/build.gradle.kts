@@ -16,6 +16,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
+    testFixtures {
+        enable = true
+    }
+
+    testOptions {
+        unitTests {
+            all {
+                it.useJUnitPlatform()
+            }
+        }
+    }
 }
 
 dependencies {
@@ -39,10 +51,17 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.koin.android)
     
-    // Testing
-    testImplementation(project(":core:testing"))
-    testImplementation(libs.junit)
+    // Testing & Test Fixtures
+    testFixturesApi(libs.junit.jupiter.api)
+    testFixturesApi(libs.kotlinx.coroutines.test)
+    testFixturesImplementation(project(":core:model"))
+    testFixturesImplementation(project(":core:settings")) // FakeSpotRepository references settings to import fakes or load test data
+    
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(testFixtures(project(":core:settings"))) // to use FakeSettingsRepository in database tests
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

@@ -52,6 +52,11 @@ android {
       }
     }
     testOptions {
+        unitTests {
+            all {
+                it.useJUnitPlatform()
+            }
+        }
         suites {
             create("journeysTest") {
                 assets {
@@ -132,8 +137,13 @@ dependencies {
   implementation(libs.room.ktx)
 
   // Local tests: jUnit, coroutines, Android runner
-  testImplementation(project(":core:testing"))
-  testImplementation(libs.junit)
+  testImplementation(testFixtures(project(":core:database")))
+  testImplementation(testFixtures(project(":core:settings")))
+  testImplementation(testFixtures(project(":core:photo")))
+  testImplementation(testFixtures(project(":core:location")))
+  testImplementation(libs.junit.jupiter.api)
+  testRuntimeOnly(libs.junit.jupiter.engine)
+  testRuntimeOnly(libs.junit.platform.launcher)
   testImplementation(libs.kotlinx.coroutines.test)
 
   // Instrumented tests: jUnit rules and runners

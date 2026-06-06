@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import net.maiatoday.tagspotter.MainDispatcherRule
+import net.maiatoday.tagspotter.MainDispatcherExtension
 import net.maiatoday.tagspotter.core.location.LocationData
 import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.core.photo.PhotoMetadata
@@ -14,15 +14,21 @@ import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.photo.TempFileDetails
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
-import org.junit.Assert
-import org.junit.Rule
-import org.junit.Test
+import net.maiatoday.tagspotter.core.location.FakeLocationProvider
+import net.maiatoday.tagspotter.core.photo.FakePhotoProcessor
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
 
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
+    @JvmField
+    @RegisterExtension
+    val mainDispatcherExtension = MainDispatcherExtension()
 
     private val settingsRepository = FakeSettingsRepository("Initial Photographer", "Milan")
     private val spotRepository = FakeSpotRepository()
@@ -39,13 +45,13 @@ class MainViewModelTest {
             UnconfinedTestDispatcher(testScheduler)
         )
 
-        Assert.assertFalse(viewModel.uiState.value.hasLocationPermission)
+        assertFalse(viewModel.uiState.value.hasLocationPermission)
 
         viewModel.updateLocationPermission(true)
-        Assert.assertTrue(viewModel.uiState.value.hasLocationPermission)
+        assertTrue(viewModel.uiState.value.hasLocationPermission)
 
         viewModel.updateLocationPermission(false)
-        Assert.assertFalse(viewModel.uiState.value.hasLocationPermission)
+        assertFalse(viewModel.uiState.value.hasLocationPermission)
     }
 
     @Test
@@ -58,17 +64,17 @@ class MainViewModelTest {
             UnconfinedTestDispatcher(testScheduler)
         )
 
-        Assert.assertNull(viewModel.uiState.value.tempPhotoUri)
-        Assert.assertNull(viewModel.uiState.value.tempPhotoFilePath)
+        assertNull(viewModel.uiState.value.tempPhotoUri)
+        assertNull(viewModel.uiState.value.tempPhotoFilePath)
 
         val expectedUri = "temp_uri"
         photoProcessor.tempCameraFileResult = TempFileDetails(expectedUri, "temp_path")
 
         val returnedUri = viewModel.prepareCameraCapture()
 
-        Assert.assertEquals(expectedUri, returnedUri)
-        Assert.assertEquals(expectedUri, viewModel.uiState.value.tempPhotoUri)
-        Assert.assertEquals("temp_path", viewModel.uiState.value.tempPhotoFilePath)
+        assertEquals(expectedUri, returnedUri)
+        assertEquals(expectedUri, viewModel.uiState.value.tempPhotoUri)
+        assertEquals("temp_path", viewModel.uiState.value.tempPhotoFilePath)
     }
 
     @Test
@@ -96,18 +102,18 @@ class MainViewModelTest {
         viewModel.handleCameraCaptureSuccess()
 
         // Verify that loading was toggled and temp file was deleted
-        Assert.assertEquals("temp_path", photoProcessor.deleteFileCalledWith)
-        Assert.assertEquals("temp_path", photoProcessor.saveImageCalledWith)
-        Assert.assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals("temp_path", photoProcessor.deleteFileCalledWith)
+        assertEquals("temp_path", photoProcessor.saveImageCalledWith)
+        assertFalse(viewModel.uiState.value.isLoading)
 
         // Verify emitted event
-        Assert.assertEquals(1, eventsList.size)
+        assertEquals(1, eventsList.size)
         val event = eventsList[0] as MainEvent.PhotoProcessed
-        Assert.assertEquals("public_uri", event.imagePath)
-        Assert.assertEquals("thumb_path", event.thumbnailPath)
-        Assert.assertEquals(45.4642, event.latitude, 0.0001)
-        Assert.assertEquals(9.1900, event.longitude, 0.0001)
-        Assert.assertFalse(event.isFallback)
+        assertEquals("public_uri", event.imagePath)
+        assertEquals("thumb_path", event.thumbnailPath)
+        assertEquals(45.4642, event.latitude, 0.0001)
+        assertEquals(9.1900, event.longitude, 0.0001)
+        assertFalse(event.isFallback)
     }
 
     @Test
@@ -129,17 +135,17 @@ class MainViewModelTest {
 
         viewModel.handlePhotoPicked("some_uri")
 
-        Assert.assertFalse(viewModel.uiState.value.isLoading)
+        assertFalse(viewModel.uiState.value.isLoading)
 
         // Verify emitted event
-        Assert.assertEquals(1, eventsList.size)
+        assertEquals(1, eventsList.size)
         val event = eventsList[0] as MainEvent.PhotoProcessed
-        Assert.assertEquals("some_uri", event.imagePath)
-        Assert.assertEquals("thumb_path", event.thumbnailPath)
-        Assert.assertEquals(45.4642, event.latitude, 0.0001)
-        Assert.assertEquals(9.1900, event.longitude, 0.0001)
-        Assert.assertFalse(event.isFallback)
-        Assert.assertEquals(123456789L, event.captureTime)
+        assertEquals("some_uri", event.imagePath)
+        assertEquals("thumb_path", event.thumbnailPath)
+        assertEquals(45.4642, event.latitude, 0.0001)
+        assertEquals(9.1900, event.longitude, 0.0001)
+        assertFalse(event.isFallback)
+        assertEquals(123456789L, event.captureTime)
     }
 
     @Test
@@ -164,11 +170,11 @@ class MainViewModelTest {
         viewModel.handlePhotoPicked("some_uri")
 
         // Verify fallback coordinates
-        Assert.assertEquals(1, eventsList.size)
+        assertEquals(1, eventsList.size)
         val event = eventsList[0] as MainEvent.PhotoProcessed
-        Assert.assertEquals(45.4642, event.latitude, 0.0001)
-        Assert.assertEquals(9.1900, event.longitude, 0.0001)
-        Assert.assertTrue(event.isFallback)
+        assertEquals(45.4642, event.latitude, 0.0001)
+        assertEquals(9.1900, event.longitude, 0.0001)
+        assertTrue(event.isFallback)
     }
 
     @Test
@@ -185,57 +191,9 @@ class MainViewModelTest {
             viewModel.showTestData.collect {}
         }
 
-        Assert.assertFalse(viewModel.showTestData.value)
+        assertFalse(viewModel.showTestData.value)
 
         viewModel.updateShowTestData(true)
-        Assert.assertTrue(viewModel.showTestData.value)
-    }
-
-    // Fakes for testing
-    private class FakeLocationProvider(var locationToReturn: LocationData? = null) :
-        LocationProvider {
-        override suspend fun getCurrentLocation(): LocationData? = locationToReturn
-    }
-
-    private class FakePhotoProcessor : PhotoProcessor {
-        var saveToPublicResult: String? = "public_uri"
-        var createThumbFileResult: String? = "thumb_path"
-        var createThumbUriResult: String? = "thumb_path"
-        var metadataResult: PhotoMetadata? = PhotoMetadata(12.34, 56.78, 123456789L)
-        var deleteFileResult: Boolean = true
-        var tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
-
-        var deleteFileCalledWith: String? = null
-        var saveImageCalledWith: String? = null
-
-        override suspend fun saveImageToPublicGallery(filePath: String): String? {
-            saveImageCalledWith = filePath
-            return saveToPublicResult
-        }
-
-        override suspend fun createThumbnailFromFile(filePath: String): String? {
-            return createThumbFileResult
-        }
-
-        override suspend fun createThumbnailFromUri(uriString: String): String? {
-            return createThumbUriResult
-        }
-
-        override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? {
-            return metadataResult
-        }
-
-        override fun createTempCameraFile(): TempFileDetails {
-            return tempCameraFileResult
-        }
-
-        override fun deleteFile(filePath: String): Boolean {
-            deleteFileCalledWith = filePath
-            return deleteFileResult
-        }
-
-        override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): Bitmap? {
-            return null
-        }
+        assertTrue(viewModel.showTestData.value)
     }
 }

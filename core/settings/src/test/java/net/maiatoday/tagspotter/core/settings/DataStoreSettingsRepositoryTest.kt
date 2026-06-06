@@ -7,23 +7,24 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DataStoreSettingsRepositoryTest {
 
-    @get:Rule
-    val tempFolder = TemporaryFolder()
+    @TempDir
+    lateinit var tempFolder: File
 
     private val fakeContext = FakeContext()
 
     private fun createRepository(): DataStoreSettingsRepository {
         val testDataStore = PreferenceDataStoreFactory.create(
-            produceFile = { File(tempFolder.root, "test_settings.preferences_pb") }
+            produceFile = { File(tempFolder, "test_settings.preferences_pb") }
         )
         return DataStoreSettingsRepository(fakeContext, testDataStore)
     }
@@ -32,12 +33,12 @@ class DataStoreSettingsRepositoryTest {
     fun defaultValuesAreReturnedCorrectly() = runTest {
         val repository = createRepository()
 
-        Assert.assertEquals("", repository.photographerName.first())
-        Assert.assertEquals("Milan", repository.homeCity.first())
-        Assert.assertFalse(repository.showTestData.first())
-        Assert.assertFalse(repository.notificationsEnabled.first())
-        Assert.assertFalse(repository.darkMapEnabled.first())
-        Assert.assertTrue(repository.artistRecognitionEnabled.first())
+        assertEquals("", repository.photographerName.first())
+        assertEquals("Milan", repository.homeCity.first())
+        assertFalse(repository.showTestData.first())
+        assertFalse(repository.notificationsEnabled.first())
+        assertFalse(repository.darkMapEnabled.first())
+        assertTrue(repository.artistRecognitionEnabled.first())
     }
 
     @Test
@@ -45,22 +46,22 @@ class DataStoreSettingsRepositoryTest {
         val repository = createRepository()
 
         repository.updatePhotographerName("Alice")
-        Assert.assertEquals("Alice", repository.photographerName.first())
+        assertEquals("Alice", repository.photographerName.first())
 
         repository.updateHomeCity("Rome")
-        Assert.assertEquals("Rome", repository.homeCity.first())
+        assertEquals("Rome", repository.homeCity.first())
 
         repository.updateShowTestData(true)
-        Assert.assertTrue(repository.showTestData.first())
+        assertTrue(repository.showTestData.first())
 
         repository.updateNotificationsEnabled(true)
-        Assert.assertTrue(repository.notificationsEnabled.first())
+        assertTrue(repository.notificationsEnabled.first())
 
         repository.updateDarkMapEnabled(true)
-        Assert.assertTrue(repository.darkMapEnabled.first())
+        assertTrue(repository.darkMapEnabled.first())
 
         repository.updateArtistRecognitionEnabled(false)
-        Assert.assertFalse(repository.artistRecognitionEnabled.first())
+        assertFalse(repository.artistRecognitionEnabled.first())
     }
 
     @Test
@@ -75,12 +76,12 @@ class DataStoreSettingsRepositoryTest {
         val repository = createRepository()
 
         // Verify it reads the key correctly
-        Assert.assertEquals("secure_key_123", repository.geminiApiKey.first())
+        assertEquals("secure_key_123", repository.geminiApiKey.first())
 
         // Verify updating it changes the flow and writes to secure preferences
         repository.updateGeminiApiKey("new_secure_key")
-        Assert.assertEquals("new_secure_key", repository.geminiApiKey.first())
-        Assert.assertEquals("new_secure_key", sharedPrefs.getString("gemini_api_key", ""))
+        assertEquals("new_secure_key", repository.geminiApiKey.first())
+        assertEquals("new_secure_key", sharedPrefs.getString("gemini_api_key", ""))
     }
 
     class FakeContext : ContextWrapper(null) {
