@@ -1,9 +1,9 @@
 package net.maiatoday.tagspotter
 
 import androidx.room.Room
-import net.maiatoday.tagspotter.data.LocalSpotRepository
-import net.maiatoday.tagspotter.domain.GeofenceService
-import net.maiatoday.tagspotter.data.SpotDatabase
+import net.maiatoday.tagspotter.core.database.LocalSpotRepository
+import net.maiatoday.tagspotter.core.location.GeofenceService
+import net.maiatoday.tagspotter.core.database.SpotDatabase
 
 class TestTagSpotterApplication : TagSpotterApplication() {
     private val inMemoryDatabase by lazy {

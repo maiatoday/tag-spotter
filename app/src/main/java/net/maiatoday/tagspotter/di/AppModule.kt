@@ -1,63 +1,28 @@
 package net.maiatoday.tagspotter.di
 
-import net.maiatoday.tagspotter.data.LocalSpotRepository
-import net.maiatoday.tagspotter.data.DataStoreSettingsRepository
-import net.maiatoday.tagspotter.data.SpotDatabase
-import net.maiatoday.tagspotter.data.SpotRepository
-import net.maiatoday.tagspotter.data.SettingsRepository
-import net.maiatoday.tagspotter.domain.LocationProvider
-import net.maiatoday.tagspotter.domain.PhotoProcessor
-import net.maiatoday.tagspotter.domain.AiRecognitionService
-import net.maiatoday.tagspotter.data.service.AndroidLocationProvider
-import net.maiatoday.tagspotter.data.service.AndroidPhotoProcessor
-import net.maiatoday.tagspotter.domain.GeofenceService
-import net.maiatoday.tagspotter.data.service.AndroidGeofenceService
-import net.maiatoday.tagspotter.data.service.AndroidAiRecognitionService
-import net.maiatoday.tagspotter.domain.SecretsProvider
-import net.maiatoday.tagspotter.data.service.AndroidSecretsProvider
-import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
-import net.maiatoday.tagspotter.ui.viewmodel.GalleryViewModel
-import net.maiatoday.tagspotter.ui.viewmodel.MainViewModel
-import net.maiatoday.tagspotter.ui.viewmodel.MapViewModel
-import net.maiatoday.tagspotter.ui.viewmodel.SettingsViewModel
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.module.dsl.viewModel
+import net.maiatoday.tagspotter.core.ai.aiModule
+import net.maiatoday.tagspotter.core.database.databaseModule
+import net.maiatoday.tagspotter.core.location.locationModule
+import net.maiatoday.tagspotter.core.photo.photoModule
+import net.maiatoday.tagspotter.core.settings.coreSettingsModule
+import net.maiatoday.tagspotter.feature.detail.detailModule
+import net.maiatoday.tagspotter.feature.gallery.galleryModule
+import net.maiatoday.tagspotter.feature.main.mainModule
+import net.maiatoday.tagspotter.feature.map.mapModule
+import net.maiatoday.tagspotter.feature.settings.settingsModule
 import org.koin.dsl.module
 
 val appModule = module {
-    // Database and Dao
-    single { SpotDatabase.getDatabase(androidContext()) }
-    single { get<SpotDatabase>().spotDao() }
-
-    // Repositories
-    single<SpotRepository> { LocalSpotRepository(get(), get()) }
-    single<SettingsRepository> { DataStoreSettingsRepository(androidContext()) }
-
-    // Services
-    single<LocationProvider> { AndroidLocationProvider(androidContext()) }
-    single<PhotoProcessor> { AndroidPhotoProcessor(androidContext()) }
-    single<GeofenceService> { AndroidGeofenceService(androidContext()) }
-    single<AiRecognitionService> { AndroidAiRecognitionService(get()) }
-    single<SecretsProvider> { AndroidSecretsProvider() }
-
-    // ViewModels
-    viewModel { MainViewModel(get(), get(), get(), get()) }
-    viewModel { SettingsViewModel(get(), get()) }
-    viewModel { GalleryViewModel(get(), get()) }
-    viewModel { MapViewModel(get(), get()) }
-    viewModel { params ->
-        DetailViewModel(
-            spotId = params.get(),
-            repository = get(),
-            settingsRepository = get(),
-            aiRecognitionService = get(),
-            secretsProvider = get(),
-            draftImagePath = params.getOrNull(),
-            draftThumbnailPath = params.getOrNull(),
-            draftLatitude = params.getOrNull(),
-            draftLongitude = params.getOrNull(),
-            draftCategory = params.getOrNull(),
-            draftCaptureTime = params.getOrNull()
-        )
-    }
+    includes(
+        databaseModule,
+        coreSettingsModule,
+        locationModule,
+        photoModule,
+        aiModule,
+        mainModule,
+        galleryModule,
+        mapModule,
+        detailModule,
+        settingsModule
+    )
 }

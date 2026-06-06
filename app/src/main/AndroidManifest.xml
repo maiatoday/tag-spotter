@@ -32,7 +32,7 @@
         </provider>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".feature.main.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -69,11 +69,11 @@
         </activity>
 
         <receiver
-            android:name=".receivers.GeofenceBroadcastReceiver"
+            android:name=".core.location.GeofenceBroadcastReceiver"
             android:exported="true" />
 
         <receiver
-            android:name=".receivers.BootReceiver"
+            android:name=".core.location.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

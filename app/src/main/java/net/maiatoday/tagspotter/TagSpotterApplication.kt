@@ -1,13 +1,13 @@
 package net.maiatoday.tagspotter
 
 import android.app.Application
-import net.maiatoday.tagspotter.data.LocalSpotRepository
-import net.maiatoday.tagspotter.data.DataStoreSettingsRepository
-import net.maiatoday.tagspotter.data.SettingsRepository
-import net.maiatoday.tagspotter.data.SpotDatabase
-import net.maiatoday.tagspotter.data.service.AndroidGeofenceService
+import net.maiatoday.tagspotter.core.database.LocalSpotRepository
+import net.maiatoday.tagspotter.core.settings.DataStoreSettingsRepository
+import net.maiatoday.tagspotter.core.settings.SettingsRepository
+import net.maiatoday.tagspotter.core.database.SpotDatabase
+import net.maiatoday.tagspotter.core.location.AndroidGeofenceService
 import net.maiatoday.tagspotter.di.appModule
-import net.maiatoday.tagspotter.domain.GeofenceService
+import net.maiatoday.tagspotter.core.location.GeofenceService
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.osmdroid.config.Configuration
