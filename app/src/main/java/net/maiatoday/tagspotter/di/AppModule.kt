@@ -7,8 +7,10 @@ import net.maiatoday.tagspotter.data.SpotRepository
 import net.maiatoday.tagspotter.data.SettingsRepository
 import net.maiatoday.tagspotter.domain.LocationProvider
 import net.maiatoday.tagspotter.domain.PhotoProcessor
+import net.maiatoday.tagspotter.domain.AiRecognitionService
 import net.maiatoday.tagspotter.data.service.AndroidLocationProvider
 import net.maiatoday.tagspotter.data.service.AndroidPhotoProcessor
+import net.maiatoday.tagspotter.data.service.AndroidAiRecognitionService
 import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.GalleryViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.MainViewModel
@@ -30,6 +32,7 @@ val appModule = module {
     // Services
     single<LocationProvider> { AndroidLocationProvider(androidContext()) }
     single<PhotoProcessor> { AndroidPhotoProcessor(androidContext()) }
+    single<AiRecognitionService> { AndroidAiRecognitionService(get()) }
 
     // ViewModels
     viewModel { MainViewModel(get(), get(), get(), get()) }
@@ -41,6 +44,8 @@ val appModule = module {
             spotId = params.get(),
             repository = get(),
             settingsRepository = get(),
+            aiRecognitionService = get(),
+            photoProcessor = get(),
             draftImagePath = params.getOrNull(),
             draftThumbnailPath = params.getOrNull(),
             draftLatitude = params.getOrNull(),

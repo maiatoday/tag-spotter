@@ -11,14 +11,9 @@ import net.maiatoday.tagspotter.data.SpotImage
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotRepository
 import net.maiatoday.tagspotter.BuildConfig
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import java.io.File
+import net.maiatoday.tagspotter.domain.AiRecognitionService
+import net.maiatoday.tagspotter.domain.AiSuggestion
+import net.maiatoday.tagspotter.domain.PhotoProcessor
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -28,14 +23,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.net.Uri
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 class DetailViewModel(
     private val spotId: Long,
     private val repository: SpotRepository,
     private val settingsRepository: SettingsRepository,
+    private val aiRecognitionService: AiRecognitionService,
+    private val photoProcessor: PhotoProcessor,
     draftImagePath: String? = null,
     draftThumbnailPath: String? = null,
     draftLatitude: Double? = null,
@@ -112,69 +106,7 @@ class DetailViewModel(
         _wikiSearchState.value = WikiSearchState.Idle
     }
 
-    private suspend fun decodeScaledBitmap(context: Context?, imagePath: String, maxDimension: Int): Bitmap? = withContext(Dispatchers.IO) {
-        try {
-            if (context == null || (!imagePath.startsWith("content://") && !imagePath.startsWith("file://"))) {
-                val file = File(imagePath)
-                if (!file.exists()) return@withContext null
-                
-                // Get dimensions
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-                BitmapFactory.decodeFile(imagePath, options)
-                
-                val srcWidth = options.outWidth
-                val srcHeight = options.outHeight
-                if (srcWidth <= 0 || srcHeight <= 0) return@withContext null
-                
-                // Calculate sample size (power of 2)
-                var inSampleSize = 1
-                val maxSrcDim = maxOf(srcWidth, srcHeight)
-                while (maxSrcDim / (inSampleSize * 2) >= maxDimension) {
-                    inSampleSize *= 2
-                }
-                
-                val decodeOptions = BitmapFactory.Options().apply {
-                    this.inSampleSize = inSampleSize
-                }
-                BitmapFactory.decodeFile(imagePath, decodeOptions)
-            } else {
-                val uri = Uri.parse(imagePath)
-                // Get dimensions
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    BitmapFactory.decodeStream(inputStream, null, options)
-                }
-                
-                val srcWidth = options.outWidth
-                val srcHeight = options.outHeight
-                if (srcWidth <= 0 || srcHeight <= 0) return@withContext null
-                
-                // Calculate sample size (power of 2)
-                var inSampleSize = 1
-                val maxSrcDim = maxOf(srcWidth, srcHeight)
-                while (maxSrcDim / (inSampleSize * 2) >= maxDimension) {
-                    inSampleSize *= 2
-                }
-                
-                val decodeOptions = BitmapFactory.Options().apply {
-                    this.inSampleSize = inSampleSize
-                }
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    BitmapFactory.decodeStream(inputStream, null, decodeOptions)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    fun identifyArtist(imagePath: String, context: Context? = null) {
-        val appContext = context?.applicationContext
+    fun identifyArtist(imagePath: String) {
         viewModelScope.launch {
             _aiState.value = AiState.Identifying
             try {
@@ -188,72 +120,11 @@ class DetailViewModel(
                     return@launch
                 }
                 
-                // 2. Load and downscale image
-                val bitmap = decodeScaledBitmap(appContext, imagePath, 1024)
-                if (bitmap == null) {
-                    _aiState.value = AiState.Error.Generic("Failed to load image.")
-                    return@launch
-                }
-                
-                // 3. Initialize Gemini
-                val model = GenerativeModel(
-                    modelName = "gemini-2.5-flash",
-                    apiKey = apiKey
-                )
-                
                 val category = spotDetails.value?.spot?.category ?: "graffiti"
-                val artistRoleDescription = when (category) {
-                    "sculpture" -> "sculptor, artist, designer, or creator"
-                    "architecture" -> "architect, designer, or builder"
-                    "nature" -> "landscape artist, gardener, designer, or photographer"
-                    "public_place" -> "artist, sculptor, architect, designer, or creator"
-                    else -> "street art artist, graffiti writer, crew, or painter"
-                }
-
-                val prompt = """
-                    Analyze this image of a spot in the category: "$category".
-                    Identify the $artistRoleDescription (if known), suggest a title for the art/spot, and suggest tags (from: mural, stencil, throwup, pasteup, sticker, or others appropriate for this category).
-                    ${if (category == "nature") "Specifically, since the category is \"nature\", for the \"title\" field try to identify the specific plant, flower, tree species, or geological/natural feature visible in the image." else ""}
-                    Return the response in strict JSON format using exactly these keys:
-                    {
-                      "artist": "Name or null",
-                      "title": "Suggested Title or null",
-                      "tags": ["tag1", "tag2"]
-                    }
-                    If you do not know the artist/creator/architect, set the "artist" field to null. If you cannot suggest a title, set the "title" field to null.
-                    Do not add markdown formatting or backticks around the JSON. Return only the raw JSON.
-                """.trimIndent()
                 
-                val response = model.generateContent(
-                    content {
-                        image(bitmap)
-                        text(prompt)
-                    }
-                )
-                
-                val responseText = response.text ?: ""
-                if (responseText.isEmpty()) {
-                    _aiState.value = AiState.Error.Generic("Empty response from AI model.")
-                    return@launch
-                }
-                
-                // Clean the JSON string (in case markdown backticks were returned)
-                val cleanJson = if (responseText.contains("```")) {
-                    responseText
-                        .substringAfter("```json")
-                        .substringAfter("```")
-                        .substringBefore("```")
-                        .trim()
-                } else {
-                    responseText.trim()
-                }
-                
-                // Parse suggestion
-                val suggestion = try {
-                    Json.decodeFromString<AiSuggestion>(cleanJson)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    _aiState.value = AiState.Error.Generic("Failed to parse AI response.")
+                val suggestion = aiRecognitionService.identifyArtist(imagePath, apiKey, category)
+                if (suggestion == null) {
+                    _aiState.value = AiState.Error.Generic("Failed to load image.")
                     return@launch
                 }
                 
@@ -298,55 +169,7 @@ class DetailViewModel(
                     return@launch
                 }
 
-                // 2. Initialize Gemini
-                val model = GenerativeModel(
-                    modelName = "gemini-2.5-flash",
-                    apiKey = apiKey
-                )
-
-                val prompt = """
-                    You are an assistant that finds the most relevant, official Wikipedia page URL for a given subject.
-                    Subject: "$title"
-                    
-                    Find the Wikipedia page for this subject.
-                    If a relevant Wikipedia page exists, return the URL.
-                    If no relevant page exists on Wikipedia, return null.
-                    
-                    Return the response in strict JSON format using exactly this schema:
-                    {
-                      "url": "https://en.wikipedia.org/wiki/..." 
-                    }
-                    If no page is found, set "url" to null.
-                    Do not include any markdown styling, backticks, or extra text. Return only the raw JSON.
-                """.trimIndent()
-
-                val response = model.generateContent(prompt)
-                val responseText = response.text ?: ""
-                if (responseText.isEmpty()) {
-                    _wikiSearchState.value = WikiSearchState.Error("Empty response from AI model.")
-                    return@launch
-                }
-
-                // Clean the JSON string (in case markdown backticks were returned)
-                val cleanJson = if (responseText.contains("```")) {
-                    responseText
-                        .substringAfter("```json")
-                        .substringAfter("```")
-                        .substringBefore("```")
-                        .trim()
-                } else {
-                    responseText.trim()
-                }
-
-                val suggestion = try {
-                    Json.decodeFromString<WikiSuggestion>(cleanJson)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    _wikiSearchState.value = WikiSearchState.Error("Failed to parse AI response.")
-                    return@launch
-                }
-
-                val url = suggestion.url
+                val url = aiRecognitionService.searchWikipediaForSpot(title, apiKey)
                 if (!url.isNullOrBlank()) {
                     _wikiSearchState.value = WikiSearchState.Success(url, title)
                 } else {
@@ -611,6 +434,8 @@ class DetailViewModel(
             spotId: Long,
             repository: SpotRepository,
             settingsRepository: SettingsRepository,
+            aiRecognitionService: AiRecognitionService,
+            photoProcessor: PhotoProcessor,
             draftImagePath: String? = null,
             draftThumbnailPath: String? = null,
             draftLatitude: Double? = null,
@@ -623,6 +448,8 @@ class DetailViewModel(
                     spotId,
                     repository,
                     settingsRepository,
+                    aiRecognitionService,
+                    photoProcessor,
                     draftImagePath,
                     draftThumbnailPath,
                     draftLatitude,
@@ -634,13 +461,6 @@ class DetailViewModel(
         }
     }
 }
-
-@Serializable
-data class AiSuggestion(
-    val artist: String? = null,
-    val title: String? = null,
-    val tags: List<String> = emptyList()
-)
 
 sealed interface AiState {
     object Idle : AiState
@@ -655,11 +475,6 @@ sealed interface AiState {
     }
 }
 
-@Serializable
-data class WikiSuggestion(
-    val url: String? = null
-)
-
 sealed interface WikiSearchState {
     object Idle : WikiSearchState
     object Searching : WikiSearchState
@@ -667,4 +482,3 @@ sealed interface WikiSearchState {
     object NotFound : WikiSearchState
     data class Error(val message: String) : WikiSearchState
 }
-

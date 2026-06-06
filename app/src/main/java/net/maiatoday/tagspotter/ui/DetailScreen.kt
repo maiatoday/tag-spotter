@@ -135,7 +135,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.AutoAwesome
-import net.maiatoday.tagspotter.ui.viewmodel.AiSuggestion
+import net.maiatoday.tagspotter.domain.AiSuggestion
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -209,7 +209,7 @@ fun DetailScreen(
 
     val onIdentifyArtist: () -> Unit = {
         if (mainImagePath.isNotEmpty()) {
-            viewModel.identifyArtist(mainImagePath, context)
+            viewModel.identifyArtist(mainImagePath)
         } else {
             Toast.makeText(context, "No image available to analyze.", Toast.LENGTH_SHORT).show()
         }
