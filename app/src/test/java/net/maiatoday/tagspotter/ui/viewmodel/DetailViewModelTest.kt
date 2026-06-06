@@ -9,6 +9,7 @@ import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotImage
 import net.maiatoday.tagspotter.domain.AiRecognitionService
 import net.maiatoday.tagspotter.domain.AiSuggestion
+import net.maiatoday.tagspotter.domain.SecretsProvider
 import net.maiatoday.tagspotter.domain.PhotoMetadata
 import net.maiatoday.tagspotter.domain.PhotoProcessor
 import net.maiatoday.tagspotter.domain.TempFileDetails
@@ -49,6 +50,10 @@ class FakeAiRecognitionService : AiRecognitionService {
     }
 }
 
+class FakeSecretsProvider(var apiKey: String = "") : SecretsProvider {
+    override fun getGeminiApiKey(): String = apiKey
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
 
@@ -58,6 +63,7 @@ class DetailViewModelTest {
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository("Initial Photographer")
     private val aiRecognitionService = FakeAiRecognitionService()
+    private val secretsProvider = FakeSecretsProvider()
 
     @Test
     fun loadSpotDetailsAndUpdatesWorkCorrectly() = runTest {
@@ -77,7 +83,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, secretsProvider)
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -176,7 +182,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, listOf(image1, image2), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, secretsProvider)
 
         // Collect StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -214,7 +220,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, secretsProvider)
 
         // Collect spotDetails StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -269,7 +275,7 @@ class DetailViewModelTest {
 
     @Test
     fun artistRecognitionSettingPropagatedCorrectly() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.isArtistRecognitionEnabled.collect {}
@@ -286,13 +292,13 @@ class DetailViewModelTest {
     @Test
     fun identifyArtistFailsWhenApiKeyIsMissing() = runTest {
         settingsRepository.updateGeminiApiKey("")
-        
+        secretsProvider.apiKey = ""
         val viewModel = DetailViewModel(
             spotId = -1L,
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            buildConfigApiKey = ""
+            secretsProvider = secretsProvider
         )
         
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -312,13 +318,13 @@ class DetailViewModelTest {
     fun identifyArtistSuccess() = runTest {
         val expectedSuggestion = AiSuggestion("Mocked Artist", "Mocked Title", listOf("stencil"))
         aiRecognitionService.identifyArtistResult = expectedSuggestion
-
+        secretsProvider.apiKey = "valid_key"
         val viewModel = DetailViewModel(
             spotId = -1L,
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            buildConfigApiKey = "valid_key"
+            secretsProvider = secretsProvider
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -333,13 +339,13 @@ class DetailViewModelTest {
     @Test
     fun identifyArtistFailsOnException() = runTest {
         aiRecognitionService.identifyArtistException = RuntimeException("quota exceeded")
-
+        secretsProvider.apiKey = "valid_key"
         val viewModel = DetailViewModel(
             spotId = -1L,
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            buildConfigApiKey = "valid_key"
+            secretsProvider = secretsProvider
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -357,7 +363,8 @@ class DetailViewModelTest {
             spotId = -1L,
             repository = repository,
             settingsRepository = settingsRepository,
-            aiRecognitionService = aiRecognitionService
+            aiRecognitionService = aiRecognitionService,
+            secretsProvider = secretsProvider
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -393,13 +400,13 @@ class DetailViewModelTest {
         repository.setSpots(listOf(spotDetails))
 
         settingsRepository.updateGeminiApiKey("")
-
+        secretsProvider.apiKey = ""
         val viewModel = DetailViewModel(
             spotId = spotId,
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            buildConfigApiKey = ""
+            secretsProvider = secretsProvider
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -434,13 +441,13 @@ class DetailViewModelTest {
         repository.setSpots(listOf(spotDetails))
 
         aiRecognitionService.searchWikipediaResult = "https://en.wikipedia.org/wiki/Some_Spot_Title"
-
+        secretsProvider.apiKey = "valid_key"
         val viewModel = DetailViewModel(
             spotId = spotId,
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            buildConfigApiKey = "valid_key"
+            secretsProvider = secretsProvider
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -454,7 +461,7 @@ class DetailViewModelTest {
 
     @Test
     fun resetWikiSearchStateResetsToIdle() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.wikiSearchState.collect {}

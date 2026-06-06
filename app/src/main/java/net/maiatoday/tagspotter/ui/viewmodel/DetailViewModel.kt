@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import net.maiatoday.tagspotter.BuildConfig
+import net.maiatoday.tagspotter.domain.SecretsProvider
 import net.maiatoday.tagspotter.data.SettingsRepository
 import net.maiatoday.tagspotter.data.Spot
 import net.maiatoday.tagspotter.data.SpotDetails
@@ -25,13 +25,13 @@ class DetailViewModel(
     private val repository: SpotRepository,
     private val settingsRepository: SettingsRepository,
     private val aiRecognitionService: AiRecognitionService,
+    private val secretsProvider: SecretsProvider,
     draftImagePath: String? = null,
     draftThumbnailPath: String? = null,
     draftLatitude: Double? = null,
     draftLongitude: Double? = null,
     draftCategory: String? = null,
-    draftCaptureTime: Long? = null,
-    private val buildConfigApiKey: String = BuildConfig.GEMINI_API_KEY
+    draftCaptureTime: Long? = null
 ) : ViewModel() {
 
     sealed interface UiEvent {
@@ -106,7 +106,7 @@ class DetailViewModel(
             _aiState.value = AiState.Identifying
             try {
                 // 1. Resolve API Key
-                var apiKey = buildConfigApiKey
+                var apiKey = secretsProvider.getGeminiApiKey()
                 if (apiKey.isEmpty()) {
                     apiKey = settingsRepository.geminiApiKey.first()
                 }
@@ -155,7 +155,7 @@ class DetailViewModel(
             _wikiSearchState.value = WikiSearchState.Searching
             try {
                 // 1. Resolve API Key
-                var apiKey = buildConfigApiKey
+                var apiKey = secretsProvider.getGeminiApiKey()
                 if (apiKey.isEmpty()) {
                     apiKey = settingsRepository.geminiApiKey.first()
                 }
