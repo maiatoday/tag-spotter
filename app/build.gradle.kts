@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "net.maiatoday.tagspotter"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "net.maiatoday.tagspotter"
         minSdk = 29

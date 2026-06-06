@@ -25,7 +25,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             val triggeringLocation = geofencingEvent.triggeringLocation
 
             if (!triggeringGeofences.isNullOrEmpty()) {
-                val spotIds = triggeringGeofences.map { it.requestId }.toTypedArray()
+                val spotIds = triggeringGeofences.map { it.requestId }.toTypedArray<String?>()
                 
                 val dataBuilder = Data.Builder()
                     .putStringArray("spot_ids", spotIds)
