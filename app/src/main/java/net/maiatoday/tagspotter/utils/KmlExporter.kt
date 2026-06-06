@@ -18,7 +18,7 @@ object KmlExporter {
 
         for (spotDetails in spots) {
             val spot = spotDetails.spot
-            val name = if (spot.description.isNotEmpty()) spot.description else "Spot #${spot.id}"
+            val name = spot.description.ifEmpty { "Spot #${spot.id}" }
 
             val detailsSb = StringBuilder()
             detailsSb.append("Category: ${spot.category.replace("_", " ").uppercase()}\n")

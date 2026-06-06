@@ -48,7 +48,6 @@ val appModule = module {
             repository = get(),
             settingsRepository = get(),
             aiRecognitionService = get(),
-            photoProcessor = get(),
             draftImagePath = params.getOrNull(),
             draftThumbnailPath = params.getOrNull(),
             draftLatitude = params.getOrNull(),

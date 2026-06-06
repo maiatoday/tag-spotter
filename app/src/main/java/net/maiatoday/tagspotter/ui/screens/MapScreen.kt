@@ -14,12 +14,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,9 +32,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import net.maiatoday.tagspotter.theme.categoryColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,21 +47,20 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.androidx.compose.koinViewModel
 import coil.compose.AsyncImage
+import net.maiatoday.tagspotter.theme.categoryColors
+import net.maiatoday.tagspotter.ui.components.FilterBottomSheet
 import net.maiatoday.tagspotter.ui.components.OsmMapView
 import net.maiatoday.tagspotter.ui.components.OsmMarker
 import net.maiatoday.tagspotter.ui.viewmodel.MapViewModel
+import net.maiatoday.tagspotter.utils.LocationUtils
+import org.koin.androidx.compose.koinViewModel
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import java.io.File
-import androidx.core.net.toUri
-import androidx.compose.runtime.LaunchedEffect
-import net.maiatoday.tagspotter.ui.components.FilterBottomSheet
-import net.maiatoday.tagspotter.utils.FilterCenter
-import net.maiatoday.tagspotter.utils.LocationUtils
-import org.osmdroid.util.BoundingBox
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

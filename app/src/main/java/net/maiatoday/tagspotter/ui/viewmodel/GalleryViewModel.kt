@@ -1,28 +1,24 @@
 package net.maiatoday.tagspotter.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import net.maiatoday.tagspotter.TagSpotterApplication
-import net.maiatoday.tagspotter.data.SpotDetails
-import net.maiatoday.tagspotter.data.SpotRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import net.maiatoday.tagspotter.data.SpotDetails
+import net.maiatoday.tagspotter.data.SpotRepository
 
 class GalleryViewModel(
     private val repository: SpotRepository,
-    private val settingsRepository: net.maiatoday.tagspotter.data.SettingsRepository
+    settingsRepository: net.maiatoday.tagspotter.data.SettingsRepository
 ) : ViewModel() {
 
     val homeCity: StateFlow<String> = settingsRepository.homeCity
@@ -184,15 +180,6 @@ class GalleryViewModel(
                 repository.updateSpotStarred(id, isStarred)
             }
             onCompleted()
-        }
-    }
-
-    companion object {
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as TagSpotterApplication
-                GalleryViewModel(app.repository, app.settingsRepository)
-            }
         }
     }
 }

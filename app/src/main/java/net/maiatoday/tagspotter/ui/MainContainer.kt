@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,6 +72,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.TextUnit
 import org.koin.androidx.compose.koinViewModel
+import androidx.core.net.toUri
 
 enum class Tab {
     Gallery,
@@ -181,7 +181,7 @@ fun MainContainer(
         val uriStr = viewModel.prepareCameraCapture()
         if (uriStr != null) {
             try {
-                takePictureLauncher.launch(Uri.parse(uriStr))
+                takePictureLauncher.launch(uriStr.toUri())
             } catch (e: Exception) {
                 e.printStackTrace()
                 Toast.makeText(context, "Failed to launch device camera.", Toast.LENGTH_SHORT).show()

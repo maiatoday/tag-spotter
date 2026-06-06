@@ -1,5 +1,6 @@
 package net.maiatoday.tagspotter.ui
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.widget.Toast
@@ -37,19 +38,21 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.EditLocationAlt
+import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.StarBorder
@@ -58,6 +61,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,17 +96,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -109,8 +114,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.androidx.compose.koinViewModel
-import org.koin.core.parameter.parametersOf
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -122,20 +125,15 @@ import net.maiatoday.tagspotter.ui.components.OsmMapView
 import net.maiatoday.tagspotter.ui.components.OsmMarker
 import net.maiatoday.tagspotter.ui.screens.ZoomableImageOverlay
 import net.maiatoday.tagspotter.ui.viewmodel.AiState
-import net.maiatoday.tagspotter.ui.viewmodel.WikiSearchState
 import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
+import net.maiatoday.tagspotter.ui.viewmodel.WikiSearchState
 import net.maiatoday.tagspotter.utils.ImageOptimizer
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-import android.content.Intent
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material.icons.filled.ImageSearch
-import androidx.compose.material.icons.filled.AutoAwesome
-import net.maiatoday.tagspotter.domain.AiSuggestion
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -552,14 +550,10 @@ fun DetailScreen(
         android.Manifest.permission.ACCESS_FINE_LOCATION
     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-    val hasBackgroundLocation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-        androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    } else {
-        true
-    }
+    val hasBackgroundLocation = androidx.core.content.ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
     val hasNotificationPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
         androidx.core.content.ContextCompat.checkSelfPermission(
@@ -599,7 +593,7 @@ fun DetailScreen(
             try {
                 context.contentResolver.takePersistableUriPermission(
                     uri,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1134,11 +1128,7 @@ fun DetailScreen(
                 TextButton(
                     onClick = {
                         showPermissionDisclosure = false
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        } else {
-                            viewModel.toggleStarred()
-                        }
+                        backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                     }
                 ) {
                     Text("Continue")
@@ -2035,12 +2025,12 @@ fun DetailMetadataCard(
                                     else -> "Spot Location"
                                 }
                                 val encodedLabel = Uri.encode(labelText)
-                                val gmmIntentUri = Uri.parse("geo:0,0?q=${details.spot.latitude},${details.spot.longitude}($encodedLabel)")
+                                val gmmIntentUri = "geo:0,0?q=${details.spot.latitude},${details.spot.longitude}($encodedLabel)".toUri()
                                 val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                                 try {
                                     context.startActivity(mapIntent)
-                                } catch (e: Exception) {
-                                    val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${details.spot.latitude},${details.spot.longitude}")
+                                } catch (_: Exception) {
+                                    val webUri = "https://www.google.com/maps/dir/?api=1&destination=${details.spot.latitude},${details.spot.longitude}".toUri()
                                     val webIntent = Intent(Intent.ACTION_VIEW, webUri)
                                     context.startActivity(webIntent)
                                 }
@@ -2743,7 +2733,7 @@ private fun DetailNotesSection(
 fun rememberLinkifiedText(text: String): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     return remember(text, linkColor) {
-        val urlRegex = """(https?://[^\s]+)""".toRegex()
+        val urlRegex = """(https?://\S+)""".toRegex()
         buildAnnotatedString {
             var lastIdx = 0
             urlRegex.findAll(text).forEach { matchResult ->

@@ -1,35 +1,30 @@
 package net.maiatoday.tagspotter.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import net.maiatoday.tagspotter.data.SettingsRepository
-import net.maiatoday.tagspotter.data.Spot
-import net.maiatoday.tagspotter.data.SpotImage
-import net.maiatoday.tagspotter.data.SpotDetails
-import net.maiatoday.tagspotter.data.SpotRepository
-import net.maiatoday.tagspotter.BuildConfig
-import net.maiatoday.tagspotter.domain.AiRecognitionService
-import net.maiatoday.tagspotter.domain.AiSuggestion
-import net.maiatoday.tagspotter.domain.PhotoProcessor
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import net.maiatoday.tagspotter.BuildConfig
+import net.maiatoday.tagspotter.data.SettingsRepository
+import net.maiatoday.tagspotter.data.Spot
+import net.maiatoday.tagspotter.data.SpotDetails
+import net.maiatoday.tagspotter.data.SpotImage
+import net.maiatoday.tagspotter.data.SpotRepository
+import net.maiatoday.tagspotter.domain.AiRecognitionService
+import net.maiatoday.tagspotter.domain.AiSuggestion
 
 class DetailViewModel(
     private val spotId: Long,
     private val repository: SpotRepository,
     private val settingsRepository: SettingsRepository,
     private val aiRecognitionService: AiRecognitionService,
-    private val photoProcessor: PhotoProcessor,
     draftImagePath: String? = null,
     draftThumbnailPath: String? = null,
     draftLatitude: Double? = null,
@@ -46,7 +41,7 @@ class DetailViewModel(
     private val _uiEvent = MutableSharedFlow<UiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
-    private val _draftDetails = MutableStateFlow<SpotDetails?>(
+    private val _draftDetails = MutableStateFlow(
         if (spotId == -1L) {
             SpotDetails(
                 spot = Spot(
@@ -429,37 +424,6 @@ class DetailViewModel(
         }
     }
 
-    companion object {
-        fun provideFactory(
-            spotId: Long,
-            repository: SpotRepository,
-            settingsRepository: SettingsRepository,
-            aiRecognitionService: AiRecognitionService,
-            photoProcessor: PhotoProcessor,
-            draftImagePath: String? = null,
-            draftThumbnailPath: String? = null,
-            draftLatitude: Double? = null,
-            draftLongitude: Double? = null,
-            draftCategory: String? = null,
-            draftCaptureTime: Long? = null
-        ): ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                DetailViewModel(
-                    spotId,
-                    repository,
-                    settingsRepository,
-                    aiRecognitionService,
-                    photoProcessor,
-                    draftImagePath,
-                    draftThumbnailPath,
-                    draftLatitude,
-                    draftLongitude,
-                    draftCategory,
-                    draftCaptureTime
-                )
-            }
-        }
-    }
 }
 
 sealed interface AiState {

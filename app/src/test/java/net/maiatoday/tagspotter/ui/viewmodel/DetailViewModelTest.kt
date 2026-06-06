@@ -78,7 +78,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, photoProcessor)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService)
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
         val collectJobDetails = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -177,7 +177,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, listOf(image1, image2), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, photoProcessor)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService)
 
         // Collect StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -215,7 +215,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, photoProcessor)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService)
 
         // Collect spotDetails StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -270,7 +270,7 @@ class DetailViewModelTest {
 
     @Test
     fun artistRecognitionSettingPropagatedCorrectly() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, photoProcessor)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.isArtistRecognitionEnabled.collect {}
@@ -293,7 +293,6 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            photoProcessor = photoProcessor,
             buildConfigApiKey = ""
         )
         
@@ -320,7 +319,6 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            photoProcessor = photoProcessor,
             buildConfigApiKey = "valid_key"
         )
 
@@ -342,7 +340,6 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            photoProcessor = photoProcessor,
             buildConfigApiKey = "valid_key"
         )
 
@@ -361,8 +358,7 @@ class DetailViewModelTest {
             spotId = -1L,
             repository = repository,
             settingsRepository = settingsRepository,
-            aiRecognitionService = aiRecognitionService,
-            photoProcessor = photoProcessor
+            aiRecognitionService = aiRecognitionService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -404,7 +400,6 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            photoProcessor = photoProcessor,
             buildConfigApiKey = ""
         )
 
@@ -447,7 +442,6 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            photoProcessor = photoProcessor,
             buildConfigApiKey = "valid_key"
         )
 
@@ -463,7 +457,7 @@ class DetailViewModelTest {
 
     @Test
     fun resetWikiSearchStateResetsToIdle() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, photoProcessor)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.wikiSearchState.collect {}

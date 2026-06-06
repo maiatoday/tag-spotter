@@ -1,16 +1,13 @@
 package net.maiatoday.tagspotter.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import net.maiatoday.tagspotter.data.SettingsRepository
-import net.maiatoday.tagspotter.data.SpotRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import net.maiatoday.tagspotter.data.SettingsRepository
+import net.maiatoday.tagspotter.data.SpotRepository
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
@@ -113,14 +110,4 @@ class SettingsViewModel(
         }
     }
 
-    companion object {
-        fun provideFactory(
-            settingsRepository: SettingsRepository,
-            spotRepository: SpotRepository
-        ): ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                SettingsViewModel(settingsRepository, spotRepository)
-            }
-        }
-    }
 }

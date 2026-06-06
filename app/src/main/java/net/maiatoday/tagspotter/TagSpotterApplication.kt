@@ -23,10 +23,6 @@ open class TagSpotterApplication : Application() {
     open val repository by lazy { LocalSpotRepository(this, database.spotDao(), geofenceService) }
     open val settingsRepository by lazy { SharedPreferencesSettingsRepository(this) }
     
-    // Services
-    open val locationProvider: LocationProvider by lazy { AndroidLocationProvider(this) }
-    open val photoProcessor: PhotoProcessor by lazy { AndroidPhotoProcessor(this) }
-
     override fun onCreate() {
         super.onCreate()
         

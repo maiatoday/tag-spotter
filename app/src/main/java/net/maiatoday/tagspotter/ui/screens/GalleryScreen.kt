@@ -1,25 +1,21 @@
 package net.maiatoday.tagspotter.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
-import androidx.core.content.FileProvider
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,68 +25,69 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
-import net.maiatoday.tagspotter.theme.categoryColors
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.androidx.compose.koinViewModel
 import coil.compose.AsyncImage
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import net.maiatoday.tagspotter.data.SpotDetails
+import net.maiatoday.tagspotter.theme.categoryColors
+import net.maiatoday.tagspotter.ui.components.FilterBottomSheet
 import net.maiatoday.tagspotter.ui.viewmodel.GalleryViewModel
+import net.maiatoday.tagspotter.utils.FilterCenter
 import net.maiatoday.tagspotter.utils.KmlExporter
+import net.maiatoday.tagspotter.utils.LocationUtils
 import net.maiatoday.tagspotter.utils.PackManager
+import org.koin.androidx.compose.koinViewModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.core.net.toUri
-import net.maiatoday.tagspotter.ui.components.FilterBottomSheet
-import net.maiatoday.tagspotter.utils.FilterCenter
-import net.maiatoday.tagspotter.utils.LocationUtils
 
 @Composable
 fun GalleryScreen(
@@ -120,7 +117,7 @@ fun GalleryScreen(
     var showPermissionDisclosure by remember { mutableStateOf(false) }
     var showLimitExceededDialog by remember { mutableStateOf(false) }
     var isSearchExpanded by remember { mutableStateOf(false) }
-    var exportMinRatingThreshold by remember { mutableStateOf(0) }
+    var exportMinRatingThreshold by remember { mutableIntStateOf(0) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
 
     androidx.compose.runtime.LaunchedEffect(viewModel) {
@@ -138,14 +135,11 @@ fun GalleryScreen(
         android.Manifest.permission.ACCESS_FINE_LOCATION
     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-    val hasBackgroundLocation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+    val hasBackgroundLocation =
         androidx.core.content.ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    } else {
-        true
-    }
 
     val hasNotificationPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
         androidx.core.content.ContextCompat.checkSelfPermission(
@@ -351,10 +345,10 @@ fun GalleryScreen(
                                             ""
                                         }
                                         val url = base + destParam + waypointsParam
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                                         try {
                                             context.startActivity(intent)
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             Toast.makeText(context, "No app available to open route.", Toast.LENGTH_SHORT).show()
                                         }
                                     }
@@ -770,15 +764,7 @@ fun GalleryScreen(
                 TextButton(
                     onClick = {
                         showPermissionDisclosure = false
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        } else {
-                            viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
-                                selectedSpotIds.clear()
-                                isMultiSelectMode = false
-                                Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        backgroundLocationLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                     }
                 ) {
                     Text("Continue")
@@ -808,7 +794,7 @@ fun GalleryScreen(
     }
 
     if (showExportOptionsDialog) {
-        var tempMinRating by remember { mutableStateOf(0) }
+        var tempMinRating by remember { mutableIntStateOf(0) }
         AlertDialog(
             onDismissRequest = { showExportOptionsDialog = false },
             title = { Text("Export Pack Options") },

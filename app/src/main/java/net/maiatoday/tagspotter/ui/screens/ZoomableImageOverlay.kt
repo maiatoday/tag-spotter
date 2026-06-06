@@ -221,7 +221,7 @@ suspend fun PointerInputScope.detectTransformGestures(
                     val centroid = event.calculateCentroid(useCurrent = false)
                     val panMotion = pan.getDistance()
                     val zoomMotion = abs(1 - zoom) * centroid.getDistance()
-                    val rotationMotion = abs(rotation * 3.1415926535f / 180f) * centroid.getDistance()
+                    val rotationMotion = abs(rotation * 3.1415927f / 180f) * centroid.getDistance()
 
                     if (panMotion > touchSlop ||
                         zoomMotion > touchSlop ||

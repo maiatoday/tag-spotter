@@ -1,16 +1,18 @@
 package net.maiatoday.tagspotter.utils
 
 import android.content.Context
-import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.core.net.toUri
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotImage
 import net.maiatoday.tagspotter.data.SpotRepository
-import java.io.*
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -21,7 +23,7 @@ object PackManager {
     fun getImageFileName(context: Context, image: SpotImage): String {
         val path = image.imagePath
         return if (path.startsWith("content://")) {
-            val uri = Uri.parse(path)
+            val uri = path.toUri()
             var name: String? = null
             try {
                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -30,7 +32,7 @@ object PackManager {
                         if (idx != -1) name = cursor.getString(idx)
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore query failure
             }
             name ?: ((uri.lastPathSegment ?: "image_${image.id}") + ".jpg")
@@ -86,7 +88,7 @@ object PackManager {
                         val path = image.imagePath
                         try {
                             if (path.startsWith("content://")) {
-                                val uri = Uri.parse(path)
+                                val uri = path.toUri()
                                 context.contentResolver.openInputStream(uri)?.use { input ->
                                     zos.putNextEntry(ZipEntry("images/${getImageFileName(context, image)}"))
                                     input.copyTo(zos)

@@ -5,13 +5,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.MainActivity
 import net.maiatoday.tagspotter.TagSpotterApplication
 import net.maiatoday.tagspotter.utils.PackManager
@@ -42,13 +43,15 @@ class ImportPackWorker(
 
         return try {
             val currentPhotographer = settingsRepository.photographerName.first()
-            val importedCount = FileInputStream(tempFile).use { inputStream ->
-                PackManager.importPack(
-                    context = applicationContext,
-                    repository = repository,
-                    inputStream = inputStream,
-                    currentPhotographerName = currentPhotographer
-                )
+            val importedCount = withContext(Dispatchers.IO) {
+                FileInputStream(tempFile).use { inputStream ->
+                    PackManager.importPack(
+                        context = applicationContext,
+                        repository = repository,
+                        inputStream = inputStream,
+                        currentPhotographerName = currentPhotographer
+                    )
+                }
             }
             Log.i(TAG, "Successfully imported $importedCount spots")
             showImportNotification(
@@ -88,16 +91,14 @@ class ImportPackWorker(
         val channelId = "import_status_channel"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Import Status Alerts",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Notifies you when a spot pack import finishes."
-            }
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            channelId,
+            "Import Status Alerts",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Notifies you when a spot pack import finishes."
         }
+        notificationManager.createNotificationChannel(channel)
 
         val launchIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
