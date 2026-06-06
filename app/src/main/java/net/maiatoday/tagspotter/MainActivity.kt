@@ -92,7 +92,10 @@ class MainActivity : ComponentActivity() {
     val uri = intent.data ?: return
 
     val fileName = getFileName(uri)
-    if (fileName != null && !fileName.endsWith(".ts_pack", ignoreCase = true)) {
+    val isFileScheme = uri.scheme == "file"
+    if (isFileScheme && fileName != null && 
+        !fileName.endsWith(".ts_pack", ignoreCase = true) && 
+        !fileName.endsWith(".zip", ignoreCase = true)) {
       Toast.makeText(this, "Not a valid Tag Spotter Pack (.ts_pack)", Toast.LENGTH_LONG).show()
       return
     }
