@@ -8,28 +8,24 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
-import net.maiatoday.tagspotter.core.model.Spot
-import net.maiatoday.tagspotter.core.model.SpotDetails
-import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.model.SpotNote
 
 @Dao
 interface SpotDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSpot(spot: Spot): Long
+    suspend fun insertSpot(spot: SpotEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertImage(image: SpotImage): Long
+    suspend fun insertImage(image: SpotImageEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNote(note: SpotNote): Long
+    suspend fun insertNote(note: SpotNoteEntity): Long
 
     @Update
-    suspend fun updateSpot(spot: Spot)
+    suspend fun updateSpot(spot: SpotEntity)
 
     @Delete
-    suspend fun deleteSpot(spot: Spot)
+    suspend fun deleteSpot(spot: SpotEntity)
 
     @Query("DELETE FROM spots WHERE id = :spotId")
     suspend fun deleteSpotById(spotId: Long)
@@ -57,15 +53,15 @@ interface SpotDao {
 
     @Transaction
     @Query("SELECT * FROM spots WHERE id = :id")
-    fun getSpotDetails(id: Long): Flow<SpotDetails?>
+    fun getSpotDetails(id: Long): Flow<SpotDetailsEntity?>
 
     @Transaction
     @Query("SELECT * FROM spots ORDER BY createdAt DESC")
-    fun getAllSpotsDetails(): Flow<List<SpotDetails>>
+    fun getAllSpotsDetails(): Flow<List<SpotDetailsEntity>>
 
     @Transaction
     @Query("SELECT * FROM spots WHERE category = :category ORDER BY createdAt DESC")
-    fun getAllSpotsDetailsByCategory(category: String): Flow<List<SpotDetails>>
+    fun getAllSpotsDetailsByCategory(category: String): Flow<List<SpotDetailsEntity>>
 
     @Query("SELECT DISTINCT tags FROM spots")
     fun getAllUsedTags(): Flow<List<String>>
@@ -74,7 +70,7 @@ interface SpotDao {
     suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean)
 
     @Query("SELECT * FROM spots WHERE isStarred = 1")
-    suspend fun getStarredSpots(): List<Spot>
+    suspend fun getStarredSpots(): List<SpotEntity>
 
     @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1")
     suspend fun getStarredSpotsCount(): Int
@@ -95,7 +91,7 @@ interface SpotDao {
     suspend fun deleteImageById(imageId: Long)
 
     @Query("SELECT * FROM spot_images WHERE spotId = :spotId ORDER BY timestamp ASC")
-    suspend fun getImagesForSpot(spotId: Long): List<SpotImage>
+    suspend fun getImagesForSpot(spotId: Long): List<SpotImageEntity>
 
     @Query("UPDATE spot_images SET rating = :rating WHERE id = :imageId")
     suspend fun updateImageRating(imageId: Long, rating: Int)

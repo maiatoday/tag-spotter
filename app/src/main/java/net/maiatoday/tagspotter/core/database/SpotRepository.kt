@@ -45,28 +45,32 @@ class LocalSpotRepository(
     private val photoProcessor: PhotoProcessor
 ) : SpotRepository {
 
-
-
     override fun getAllSpots(): Flow<List<SpotDetails>> {
-        return spotDao.getAllSpotsDetails()
+        return spotDao.getAllSpotsDetails().map { list ->
+            list.map { it.toDomain() }
+        }
     }
 
     override fun getSpotsByCategory(category: String): Flow<List<SpotDetails>> {
         if (category == "All") {
-            return spotDao.getAllSpotsDetails()
+            return spotDao.getAllSpotsDetails().map { list ->
+                list.map { it.toDomain() }
+            }
         }
-        return spotDao.getAllSpotsDetailsByCategory(category)
+        return spotDao.getAllSpotsDetailsByCategory(category).map { list ->
+            list.map { it.toDomain() }
+        }
     }
 
     override fun getSpotById(id: Long): Flow<SpotDetails?> {
-        return spotDao.getSpotDetails(id)
+        return spotDao.getSpotDetails(id).map { it?.toDomain() }
     }
 
     override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int): Long {
-        val spotId = spotDao.insertSpot(spot)
+        val spotId = spotDao.insertSpot(spot.toEntity())
         if (imagePath.isNotEmpty()) {
             spotDao.insertImage(
-                SpotImage(
+                SpotImageEntity(
                     spotId = spotId,
                     imagePath = imagePath,
                     thumbnailPath = thumbnailPath,
@@ -80,7 +84,7 @@ class LocalSpotRepository(
 
     override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int): Long {
         return spotDao.insertImage(
-            SpotImage(
+            SpotImageEntity(
                 spotId = spotId,
                 imagePath = imagePath,
                 thumbnailPath = thumbnailPath,
@@ -92,7 +96,7 @@ class LocalSpotRepository(
 
     override suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long {
         return spotDao.insertNote(
-            SpotNote(
+            SpotNoteEntity(
                 spotId = spotId,
                 noteText = noteText,
                 timestamp = timestamp
@@ -216,12 +220,12 @@ class LocalSpotRepository(
             timestamp = now
         )
 
-        spotDao.insertSpot(spot1)
-        spotDao.insertImage(image1)
-        spotDao.insertSpot(spot2)
-        spotDao.insertImage(image2)
-        spotDao.insertSpot(spot3)
-        spotDao.insertImage(image3)
+        spotDao.insertSpot(spot1.toEntity())
+        spotDao.insertImage(image1.toEntity())
+        spotDao.insertSpot(spot2.toEntity())
+        spotDao.insertImage(image2.toEntity())
+        spotDao.insertSpot(spot3.toEntity())
+        spotDao.insertImage(image3.toEntity())
     }
 
     override suspend fun unloadTestData() {
@@ -242,12 +246,12 @@ class LocalSpotRepository(
                         e.longitude == importedSpot.longitude
             }
             if (!isDuplicate) {
-                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L, isImported = true))
+                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L, isImported = true).toEntity())
                 importedDetail.images.forEach { image ->
-                    spotDao.insertImage(image.copy(id = 0L, spotId = newSpotId))
+                    spotDao.insertImage(image.copy(id = 0L, spotId = newSpotId).toEntity())
                 }
                 importedDetail.notes.forEach { note ->
-                    spotDao.insertNote(note.copy(id = 0L, spotId = newSpotId))
+                    spotDao.insertNote(note.copy(id = 0L, spotId = newSpotId).toEntity())
                 }
                 importedCount++
             }
@@ -272,7 +276,7 @@ class LocalSpotRepository(
     }
 
     override suspend fun getStarredSpots(): List<Spot> {
-        return spotDao.getStarredSpots()
+        return spotDao.getStarredSpots().map { it.toDomain() }
     }
 
     override suspend fun getStarredSpotsCount(): Int {

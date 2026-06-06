@@ -1,17 +1,10 @@
 package net.maiatoday.tagspotter.core.model
 
-import androidx.room.Embedded
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.Relation
 import kotlinx.serialization.Serializable
 
-@Entity(tableName = "spots")
 @Serializable
 data class Spot(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val id: Long = 0,
     val latitude: Double,
     val longitude: Double,
     val createdAt: Long,
@@ -26,21 +19,9 @@ data class Spot(
     val artworkDate: String = ""
 )
 
-@Entity(
-    tableName = "spot_images",
-    foreignKeys = [
-        ForeignKey(
-            entity = Spot::class,
-            parentColumns = ["id"],
-            childColumns = ["spotId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["spotId"])]
-)
 @Serializable
 data class SpotImage(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val id: Long = 0,
     val spotId: Long,
     val imagePath: String,
     val timestamp: Long,
@@ -49,21 +30,9 @@ data class SpotImage(
     val rating: Int = 0
 )
 
-@Entity(
-    tableName = "spot_notes",
-    foreignKeys = [
-        ForeignKey(
-            entity = Spot::class,
-            parentColumns = ["id"],
-            childColumns = ["spotId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["spotId"])]
-)
 @Serializable
 data class SpotNote(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val id: Long = 0,
     val spotId: Long,
     val noteText: String,
     val timestamp: Long
@@ -71,15 +40,7 @@ data class SpotNote(
 
 @Serializable
 data class SpotDetails(
-    @Embedded val spot: Spot,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "spotId"
-    )
+    val spot: Spot,
     val images: List<SpotImage>,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "spotId"
-    )
     val notes: List<SpotNote>
 )

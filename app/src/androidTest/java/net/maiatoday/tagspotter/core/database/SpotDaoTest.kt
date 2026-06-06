@@ -6,9 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import net.maiatoday.tagspotter.core.model.Spot
-import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.model.SpotNote
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -35,7 +32,7 @@ class SpotDaoTest {
 
     @Test
     fun insertAndUpdateSpotArtists() = runBlocking {
-        val spot = Spot(
+        val spot = SpotEntity(
             id = 1L,
             latitude = 12.34,
             longitude = 56.78,
@@ -58,7 +55,7 @@ class SpotDaoTest {
 
     @Test
     fun cascadingDeleteOfImagesAndNotes() = runBlocking {
-        val spot = Spot(
+        val spot = SpotEntity(
             id = 1L,
             latitude = 12.34,
             longitude = 56.78,
@@ -71,7 +68,7 @@ class SpotDaoTest {
         dao.insertSpot(spot)
 
         dao.insertImage(
-            SpotImage(
+            SpotImageEntity(
                 id = 10L,
                 spotId = 1L,
                 imagePath = "/path/1.png",
@@ -79,14 +76,14 @@ class SpotDaoTest {
             )
         )
         dao.insertImage(
-            SpotImage(
+            SpotImageEntity(
                 id = 11L,
                 spotId = 1L,
                 imagePath = "/path/2.png",
                 timestamp = 1100L
             )
         )
-        dao.insertNote(SpotNote(id = 20L, spotId = 1L, noteText = "Note 1", timestamp = 1000L))
+        dao.insertNote(SpotNoteEntity(id = 20L, spotId = 1L, noteText = "Note 1", timestamp = 1000L))
 
         // Verify they are inserted and linked
         val details = dao.getSpotDetails(1L).first()
@@ -102,7 +99,7 @@ class SpotDaoTest {
         Assert.assertNull(deletedDetails)
 
         // Verify that inserting a new spot with the same ID doesn't pick up old notes/images
-        val spotNew = Spot(
+        val spotNew = SpotEntity(
             id = 1L,
             latitude = 12.34,
             longitude = 56.78,
@@ -121,7 +118,7 @@ class SpotDaoTest {
 
     @Test
     fun databaseQueryFlows() = runBlocking {
-        val spot1 = Spot(
+        val spot1 = SpotEntity(
             id = 1L,
             latitude = 1.0,
             longitude = 1.0,
@@ -131,7 +128,7 @@ class SpotDaoTest {
             category = "graffiti",
             status = "active"
         )
-        val spot2 = Spot(
+        val spot2 = SpotEntity(
             id = 2L,
             latitude = 2.0,
             longitude = 2.0,
@@ -141,7 +138,7 @@ class SpotDaoTest {
             category = "sculpture",
             status = "active"
         )
-        val spot3 = Spot(
+        val spot3 = SpotEntity(
             id = 3L,
             latitude = 3.0,
             longitude = 3.0,
@@ -179,7 +176,7 @@ class SpotDaoTest {
 
     @Test
     fun setMainImageTransaction() = runBlocking {
-        val spot = Spot(
+        val spot = SpotEntity(
             id = 1L,
             latitude = 12.34,
             longitude = 56.78,
@@ -192,7 +189,7 @@ class SpotDaoTest {
         dao.insertSpot(spot)
 
         dao.insertImage(
-            SpotImage(
+            SpotImageEntity(
                 id = 10L,
                 spotId = 1L,
                 imagePath = "/path/1.png",
@@ -201,7 +198,7 @@ class SpotDaoTest {
             )
         )
         dao.insertImage(
-            SpotImage(
+            SpotImageEntity(
                 id = 11L,
                 spotId = 1L,
                 imagePath = "/path/2.png",

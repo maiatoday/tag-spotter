@@ -10,9 +10,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import net.maiatoday.tagspotter.core.model.Spot
-import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.model.SpotNote
 
 class Converters {
     @TypeConverter
@@ -32,7 +29,7 @@ class Converters {
 }
 
 @Database(
-    entities = [Spot::class, SpotImage::class, SpotNote::class],
+    entities = [SpotEntity::class, SpotImageEntity::class, SpotNoteEntity::class],
     version = 10,
     exportSchema = false
 )
