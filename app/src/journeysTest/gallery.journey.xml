@@ -3,7 +3,7 @@
     <description>Use test data to test the gallery screen</description>
     <actions xml:space="preserve">
         <action>Tap on the hamburger menu icon in the gallery screen to open the drawer</action>
-        <action>Toggle the Load Mock Test Data switch in the drawer to enable test data</action>
+        <action>Toggle the Load Mock Test Data switch in the drawer to enable test data and leave it in the enabled state</action>
         <action>Close the drawer</action>
         <action>Verify that 'Stunning street art stencil near the Duomo in Milan.' is visible.</action>
         <action>Verify that 'Statue of a famous historical figure in central London.' is visible.</action>

@@ -85,7 +85,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import net.maiatoday.tagspotter.core.model.SpotDetails
-import net.maiatoday.tagspotter.theme.categoryColors
+import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.database.PackManager

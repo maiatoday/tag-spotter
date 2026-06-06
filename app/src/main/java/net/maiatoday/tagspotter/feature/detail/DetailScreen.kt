@@ -124,7 +124,7 @@ import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
-import net.maiatoday.tagspotter.theme.categoryColors
+import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.core.ui.OsmMapView
 import net.maiatoday.tagspotter.core.ui.OsmMarker
 import net.maiatoday.tagspotter.core.photo.ImageOptimizer

@@ -1,4 +1,4 @@
-package net.maiatoday.tagspotter.theme
+package net.maiatoday.tagspotter.core.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme

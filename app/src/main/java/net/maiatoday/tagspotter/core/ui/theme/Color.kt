@@ -1,4 +1,4 @@
-package net.maiatoday.tagspotter.theme
+package net.maiatoday.tagspotter.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

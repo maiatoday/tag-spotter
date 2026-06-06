@@ -22,7 +22,7 @@ import androidx.work.workDataOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.maiatoday.tagspotter.theme.MyApplicationTheme
+import net.maiatoday.tagspotter.core.ui.theme.MyApplicationTheme
 import net.maiatoday.tagspotter.core.database.ImportPackWorker
 import java.io.File
 import java.util.UUID
