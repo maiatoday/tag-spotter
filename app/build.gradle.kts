@@ -156,4 +156,7 @@ dependencies {
 
   // WorkManager
   implementation(libs.androidx.work.runtime.ktx)
+
+  // DataStore Preferences
+  implementation(libs.androidx.datastore.preferences)
 }

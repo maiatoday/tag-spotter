@@ -2,11 +2,23 @@ package net.maiatoday.tagspotter.data
 
 import android.content.Context
 import androidx.core.content.edit
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import java.io.IOException
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "tag_spotter_settings")
 
 interface SettingsRepository {
     val photographerName: Flow<String>
@@ -25,8 +37,10 @@ interface SettingsRepository {
     suspend fun updateGeminiApiKey(key: String)
 }
 
-class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository {
-    private val sharedPreferences = context.getSharedPreferences("tag_spotter_settings", Context.MODE_PRIVATE)
+class DataStoreSettingsRepository(
+    private val context: Context,
+    private val dataStore: DataStore<Preferences> = context.dataStore
+) : SettingsRepository {
     
     private val securePreferences = try {
         val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
@@ -37,92 +51,137 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         e.printStackTrace()
-        sharedPreferences
+        context.getSharedPreferences("secure_tag_spotter_settings_fallback", Context.MODE_PRIVATE)
     }
-
-    private val _photographerName = MutableStateFlow(getSavedName())
-    override val photographerName: Flow<String> = _photographerName.asStateFlow()
-
-    private val _homeCity = MutableStateFlow(getSavedHomeCity())
-    override val homeCity: Flow<String> = _homeCity.asStateFlow()
-
-    private val _showTestData = MutableStateFlow(getSavedShowTestData())
-    override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
-
-    private val _notificationsEnabled = MutableStateFlow(getSavedNotificationsEnabled())
-    override val notificationsEnabled: Flow<Boolean> = _notificationsEnabled.asStateFlow()
-
-    private val _darkMapEnabled = MutableStateFlow(getSavedDarkMapEnabled())
-    override val darkMapEnabled: Flow<Boolean> = _darkMapEnabled.asStateFlow()
-
-    private val _artistRecognitionEnabled = MutableStateFlow(getSavedArtistRecognitionEnabled())
-    override val artistRecognitionEnabled: Flow<Boolean> = _artistRecognitionEnabled.asStateFlow()
 
     private val _geminiApiKey = MutableStateFlow(getSavedGeminiApiKey())
     override val geminiApiKey: Flow<String> = _geminiApiKey.asStateFlow()
-
-    private fun getSavedName(): String {
-        return sharedPreferences.getString("photographer_name", "") ?: ""
-    }
-
-    private fun getSavedHomeCity(): String {
-        return sharedPreferences.getString("home_city", "Milan") ?: "Milan"
-    }
-
-    private fun getSavedShowTestData(): Boolean {
-        return sharedPreferences.getBoolean("show_test_data", false)
-    }
-
-    private fun getSavedNotificationsEnabled(): Boolean {
-        return sharedPreferences.getBoolean("notifications_enabled", false)
-    }
-
-    private fun getSavedDarkMapEnabled(): Boolean {
-        return sharedPreferences.getBoolean("dark_map_enabled", false)
-    }
-
-    private fun getSavedArtistRecognitionEnabled(): Boolean {
-        return sharedPreferences.getBoolean("artist_recognition_enabled", true)
-    }
 
     private fun getSavedGeminiApiKey(): String {
         return securePreferences.getString("gemini_api_key", "") ?: ""
     }
 
-    override suspend fun updatePhotographerName(name: String) {
-        sharedPreferences.edit { putString("photographer_name", name) }
-        _photographerName.value = name
-    }
-
-    override suspend fun updateHomeCity(city: String) {
-        sharedPreferences.edit { putString("home_city", city) }
-        _homeCity.value = city
-    }
-
-    override suspend fun updateShowTestData(show: Boolean) {
-        sharedPreferences.edit { putBoolean("show_test_data", show) }
-        _showTestData.value = show
-    }
-
-    override suspend fun updateNotificationsEnabled(enabled: Boolean) {
-        sharedPreferences.edit { putBoolean("notifications_enabled", enabled) }
-        _notificationsEnabled.value = enabled
-    }
-
-    override suspend fun updateDarkMapEnabled(enabled: Boolean) {
-        sharedPreferences.edit { putBoolean("dark_map_enabled", enabled) }
-        _darkMapEnabled.value = enabled
-    }
-
-    override suspend fun updateArtistRecognitionEnabled(enabled: Boolean) {
-        sharedPreferences.edit { putBoolean("artist_recognition_enabled", enabled) }
-        _artistRecognitionEnabled.value = enabled
-    }
-
     override suspend fun updateGeminiApiKey(key: String) {
         securePreferences.edit { putString("gemini_api_key", key) }
         _geminiApiKey.value = key
+    }
+
+    companion object {
+        val PHOTOGRAPHER_NAME = stringPreferencesKey("photographer_name")
+        val HOME_CITY = stringPreferencesKey("home_city")
+        val SHOW_TEST_DATA = booleanPreferencesKey("show_test_data")
+        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val DARK_MAP_ENABLED = booleanPreferencesKey("dark_map_enabled")
+        val ARTIST_RECOGNITION_ENABLED = booleanPreferencesKey("artist_recognition_enabled")
+    }
+
+    override val photographerName: Flow<String> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PHOTOGRAPHER_NAME] ?: ""
+        }
+
+    override val homeCity: Flow<String> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[HOME_CITY] ?: "Milan"
+        }
+
+    override val showTestData: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[SHOW_TEST_DATA] ?: false
+        }
+
+    override val notificationsEnabled: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[NOTIFICATIONS_ENABLED] ?: false
+        }
+
+    override val darkMapEnabled: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[DARK_MAP_ENABLED] ?: false
+        }
+
+    override val artistRecognitionEnabled: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[ARTIST_RECOGNITION_ENABLED] ?: true
+        }
+
+    override suspend fun updatePhotographerName(name: String) {
+        dataStore.edit { preferences ->
+            preferences[PHOTOGRAPHER_NAME] = name
+        }
+    }
+
+    override suspend fun updateHomeCity(city: String) {
+        dataStore.edit { preferences ->
+            preferences[HOME_CITY] = city
+        }
+    }
+
+    override suspend fun updateShowTestData(show: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SHOW_TEST_DATA] = show
+        }
+    }
+
+    override suspend fun updateNotificationsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[NOTIFICATIONS_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun updateDarkMapEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[DARK_MAP_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun updateArtistRecognitionEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[ARTIST_RECOGNITION_ENABLED] = enabled
+        }
     }
 }

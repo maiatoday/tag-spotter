@@ -2,7 +2,8 @@ package net.maiatoday.tagspotter
 
 import android.app.Application
 import net.maiatoday.tagspotter.data.LocalSpotRepository
-import net.maiatoday.tagspotter.data.SharedPreferencesSettingsRepository
+import net.maiatoday.tagspotter.data.DataStoreSettingsRepository
+import net.maiatoday.tagspotter.data.SettingsRepository
 import net.maiatoday.tagspotter.data.SpotDatabase
 import net.maiatoday.tagspotter.data.service.AndroidGeofenceService
 import net.maiatoday.tagspotter.di.appModule
@@ -17,7 +18,7 @@ open class TagSpotterApplication : Application() {
     open val database by lazy { SpotDatabase.getDatabase(this) }
     open val geofenceService: GeofenceService by lazy { AndroidGeofenceService(this) }
     open val repository by lazy { LocalSpotRepository(database.spotDao(), geofenceService) }
-    open val settingsRepository by lazy { SharedPreferencesSettingsRepository(this) }
+    open val settingsRepository: SettingsRepository by lazy { DataStoreSettingsRepository(this) }
 
     override fun onCreate() {
         super.onCreate()

@@ -1,7 +1,7 @@
 package net.maiatoday.tagspotter.di
 
 import net.maiatoday.tagspotter.data.LocalSpotRepository
-import net.maiatoday.tagspotter.data.SharedPreferencesSettingsRepository
+import net.maiatoday.tagspotter.data.DataStoreSettingsRepository
 import net.maiatoday.tagspotter.data.SpotDatabase
 import net.maiatoday.tagspotter.data.SpotRepository
 import net.maiatoday.tagspotter.data.SettingsRepository
@@ -29,7 +29,7 @@ val appModule = module {
 
     // Repositories
     single<SpotRepository> { LocalSpotRepository(get(), get()) }
-    single<SettingsRepository> { SharedPreferencesSettingsRepository(androidContext()) }
+    single<SettingsRepository> { DataStoreSettingsRepository(androidContext()) }
 
     // Services
     single<LocationProvider> { AndroidLocationProvider(androidContext()) }
