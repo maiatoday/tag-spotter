@@ -1,5 +1,6 @@
 package net.maiatoday.tagspotter.ui.viewmodel
 
+import android.graphics.Bitmap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -197,6 +198,10 @@ class MainViewModelTest {
         override fun deleteFile(filePath: String): Boolean {
             deleteFileCalledWith = filePath
             return deleteFileResult
+        }
+
+        override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): Bitmap? {
+            return null
         }
     }
 }

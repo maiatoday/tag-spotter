@@ -1,11 +1,17 @@
 package net.maiatoday.tagspotter.ui.viewmodel
 
+import android.graphics.Bitmap
 import net.maiatoday.tagspotter.MainDispatcherRule
 import net.maiatoday.tagspotter.data.FakeSettingsRepository
 import net.maiatoday.tagspotter.data.FakeSpotRepository
 import net.maiatoday.tagspotter.data.Spot
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotImage
+import net.maiatoday.tagspotter.domain.AiRecognitionService
+import net.maiatoday.tagspotter.domain.AiSuggestion
+import net.maiatoday.tagspotter.domain.PhotoMetadata
+import net.maiatoday.tagspotter.domain.PhotoProcessor
+import net.maiatoday.tagspotter.domain.TempFileDetails
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -16,10 +22,32 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
-import net.maiatoday.tagspotter.ui.viewmodel.AiState
-import net.maiatoday.tagspotter.ui.viewmodel.AiSuggestion
-import net.maiatoday.tagspotter.ui.viewmodel.WikiSearchState
-import net.maiatoday.tagspotter.ui.viewmodel.WikiSuggestion
+class FakePhotoProcessor : PhotoProcessor {
+    override suspend fun saveImageToPublicGallery(filePath: String): String? = null
+    override suspend fun createThumbnailFromFile(filePath: String): String? = null
+    override suspend fun createThumbnailFromUri(uriString: String): String? = null
+    override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? = null
+    override fun createTempCameraFile(): TempFileDetails = TempFileDetails("", "")
+    override fun deleteFile(filePath: String): Boolean = false
+    override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): Bitmap? = null
+}
+
+class FakeAiRecognitionService : AiRecognitionService {
+    var identifyArtistResult: AiSuggestion? = null
+    var identifyArtistException: Exception? = null
+    var searchWikipediaResult: String? = null
+    var searchWikipediaException: Exception? = null
+
+    override suspend fun identifyArtist(imagePath: String, apiKey: String, category: String): AiSuggestion? {
+        identifyArtistException?.let { throw it }
+        return identifyArtistResult
+    }
+
+    override suspend fun searchWikipediaForSpot(title: String, apiKey: String): String? {
+        searchWikipediaException?.let { throw it }
+        return searchWikipediaResult
+    }
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
@@ -29,6 +57,8 @@ class DetailViewModelTest {
 
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository("Initial Photographer")
+    private val aiRecognitionService = FakeAiRecognitionService()
+    private val photoProcessor = FakePhotoProcessor()
 
     @Test
     fun loadSpotDetailsAndUpdatesWorkCorrectly() = runTest {
@@ -48,7 +78,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, photoProcessor)
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
         val collectJobDetails = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -147,7 +177,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, listOf(image1, image2), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, photoProcessor)
 
         // Collect StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -185,7 +215,7 @@ class DetailViewModelTest {
         val spotDetails = SpotDetails(spot, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails))
 
-        val viewModel = DetailViewModel(spotId, repository, settingsRepository)
+        val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService, photoProcessor)
 
         // Collect spotDetails StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -240,7 +270,7 @@ class DetailViewModelTest {
 
     @Test
     fun artistRecognitionSettingPropagatedCorrectly() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, photoProcessor)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.isArtistRecognitionEnabled.collect {}
@@ -262,6 +292,8 @@ class DetailViewModelTest {
             spotId = -1L,
             repository = repository,
             settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            photoProcessor = photoProcessor,
             buildConfigApiKey = ""
         )
         
@@ -279,11 +311,58 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun identifyArtistSuccess() = runTest {
+        val expectedSuggestion = AiSuggestion("Mocked Artist", "Mocked Title", listOf("stencil"))
+        aiRecognitionService.identifyArtistResult = expectedSuggestion
+
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            photoProcessor = photoProcessor,
+            buildConfigApiKey = "valid_key"
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.aiState.collect {}
+        }
+
+        viewModel.identifyArtist("some_path.png")
+
+        assertEquals(AiState.Success(expectedSuggestion), viewModel.aiState.value)
+    }
+
+    @Test
+    fun identifyArtistFailsOnException() = runTest {
+        aiRecognitionService.identifyArtistException = RuntimeException("quota exceeded")
+
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            photoProcessor = photoProcessor,
+            buildConfigApiKey = "valid_key"
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.aiState.collect {}
+        }
+
+        viewModel.identifyArtist("some_path.png")
+
+        assertEquals(AiState.Error.QuotaExceeded, viewModel.aiState.value)
+    }
+
+    @Test
     fun searchWikipediaForSpotFailsWhenDescriptionIsEmpty() = runTest {
         val viewModel = DetailViewModel(
             spotId = -1L,
             repository = repository,
-            settingsRepository = settingsRepository
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            photoProcessor = photoProcessor
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -324,6 +403,8 @@ class DetailViewModelTest {
             spotId = spotId,
             repository = repository,
             settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            photoProcessor = photoProcessor,
             buildConfigApiKey = ""
         )
 
@@ -344,8 +425,45 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun searchWikipediaForSpotSuccess() = runTest {
+        val spotId = 126L
+        val spot = Spot(
+            id = spotId,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Some Spot Title",
+            tags = emptyList(),
+            category = "graffiti",
+            status = "active"
+        )
+        val spotDetails = SpotDetails(spot, emptyList(), emptyList())
+        repository.setSpots(listOf(spotDetails))
+
+        aiRecognitionService.searchWikipediaResult = "https://en.wikipedia.org/wiki/Some_Spot_Title"
+
+        val viewModel = DetailViewModel(
+            spotId = spotId,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            photoProcessor = photoProcessor,
+            buildConfigApiKey = "valid_key"
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+            viewModel.wikiSearchState.collect {}
+        }
+
+        viewModel.searchWikipediaForSpot()
+
+        assertEquals(WikiSearchState.Success("https://en.wikipedia.org/wiki/Some_Spot_Title", "Some Spot Title"), viewModel.wikiSearchState.value)
+    }
+
+    @Test
     fun resetWikiSearchStateResetsToIdle() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, photoProcessor)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.wikiSearchState.collect {}
