@@ -19,3 +19,15 @@ plugins {
 
 rootProject.name = "Tag Spotter"
 include(":app")
+include(":core:model")
+include(":core:photo")
+include(":core:location")
+include(":core:database")
+include(":core:settings")
+include(":core:ai")
+include(":core:ui")
+include(":feature:gallery")
+include(":feature:map")
+include(":feature:detail")
+include(":feature:settings")
+include(":core:testing")

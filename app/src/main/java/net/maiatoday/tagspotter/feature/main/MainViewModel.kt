@@ -167,9 +167,11 @@ class MainViewModel(
                 val thumbnail = result.second
 
                 if (metadata != null) {
-                    if (metadata.latitude != null && metadata.longitude != null) {
-                        lat = metadata.latitude
-                        lng = metadata.longitude
+                    val metaLat = metadata.latitude
+                    val metaLng = metadata.longitude
+                    if (metaLat != null && metaLng != null) {
+                        lat = metaLat
+                        lng = metaLng
                         isFallback = false
                     } else if (hasPermission) {
                         val loc = locationProvider.getCurrentLocation()

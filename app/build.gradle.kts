@@ -4,7 +4,6 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
-  alias(libs.plugins.ksp)
 }
 
 android {
@@ -79,6 +78,19 @@ kotlin {
 }
 
 dependencies {
+  // Modules
+  implementation(project(":core:model"))
+  implementation(project(":core:photo"))
+  implementation(project(":core:location"))
+  implementation(project(":core:database"))
+  implementation(project(":core:settings"))
+  implementation(project(":core:ai"))
+  implementation(project(":core:ui"))
+  implementation(project(":feature:gallery"))
+  implementation(project(":feature:map"))
+  implementation(project(":feature:detail"))
+  implementation(project(":feature:settings"))
+
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)
@@ -95,57 +107,14 @@ dependencies {
 
   // Compose
   implementation(libs.androidx.compose.ui)
-  implementation(libs.androidx.compose.ui.text.google.fonts)
-  implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
-  // Tooling
-  debugImplementation(libs.androidx.compose.ui.tooling)
-  // Instrumented tests
-  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-  debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-  // Local tests: jUnit, coroutines, Android runner
-  testImplementation(libs.junit)
-  testImplementation(libs.kotlinx.coroutines.test)
-
-  // Instrumented tests: jUnit rules and runners
-  androidTestImplementation(libs.androidx.test.core)
-  androidTestImplementation(libs.androidx.test.ext.junit)
-  androidTestImplementation(libs.androidx.test.runner)
-  androidTestImplementation(libs.androidx.test.espresso.core)
 
   // Navigation
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
-
-  // CameraX
-  implementation(libs.androidx.camera.camera2)
-  implementation(libs.androidx.camera.lifecycle)
-  implementation(libs.androidx.camera.view)
-
-  // Location Services
-  implementation(libs.play.services.location)
-
-  // Exif Interface
-  implementation(libs.androidx.exifinterface)
-
-  // Room Database
-  implementation(libs.room.runtime)
-  implementation(libs.room.ktx)
-  ksp(libs.room.compiler)
-
-  // OpenStreetMap
-  implementation(libs.osmdroid.android)
-
-  // Coil (Image Loading)
-  implementation(libs.coil.compose)
-
-  // Gemini & Security Crypto
-  implementation(libs.google.generativeai)
-  implementation(libs.androidx.security.crypto)
 
   // Koin DI
   implementation(platform(libs.koin.bom))
@@ -154,9 +123,24 @@ dependencies {
   implementation(libs.koin.androidx.compose)
   implementation(libs.koin.compose.viewmodel)
 
-  // WorkManager
+  // osm map tiles user agent requirements config helper (osmdroid is used in application init)
+  implementation(libs.osmdroid.android)
   implementation(libs.androidx.work.runtime.ktx)
+  implementation(libs.coil.compose)
+  implementation(libs.play.services.location)
+  implementation(libs.room.runtime)
+  implementation(libs.room.ktx)
 
-  // DataStore Preferences
-  implementation(libs.androidx.datastore.preferences)
+  // Local tests: jUnit, coroutines, Android runner
+  testImplementation(project(":core:testing"))
+  testImplementation(libs.junit)
+  testImplementation(libs.kotlinx.coroutines.test)
+
+  // Instrumented tests: jUnit rules and runners
+  androidTestImplementation(libs.androidx.test.core)
+  androidTestImplementation(libs.androidx.test.ext.junit)
+  androidTestImplementation(libs.androidx.test.runner)
+  androidTestImplementation(libs.androidx.test.espresso.core)
+  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+  debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
