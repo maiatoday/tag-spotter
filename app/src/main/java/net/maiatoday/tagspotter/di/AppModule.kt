@@ -19,7 +19,7 @@ import net.maiatoday.tagspotter.ui.viewmodel.MainViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.MapViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.SettingsViewModel
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val appModule = module {
