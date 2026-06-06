@@ -54,14 +54,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.ui.screens.GalleryScreen
 import net.maiatoday.tagspotter.ui.screens.MapScreen
 import net.maiatoday.tagspotter.ui.viewmodel.MainViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.MainEvent
-import net.maiatoday.tagspotter.TagSpotterApplication
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
@@ -73,8 +71,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.Settings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-
+import androidx.compose.ui.unit.TextUnit
 import org.koin.androidx.compose.koinViewModel
 
 enum class Tab {
@@ -225,7 +222,7 @@ fun MainContainer(
                             text = "TAGSPOTTER",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified
+                                letterSpacing = TextUnit.Unspecified
                             ),
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(vertical = 16.dp)
@@ -304,8 +301,8 @@ fun MainContainer(
             if (isLandscape) {
                 Row(modifier = Modifier.fillMaxSize()) {
                 NavigationRail(
-                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
-                    contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Spacer(modifier = Modifier.weight(1f))
                     NavigationRailItem(
@@ -336,9 +333,9 @@ fun MainContainer(
                         },
                         label = { Text("Gallery") },
                         colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
                             unselectedIconColor = Color.Gray,
-                            selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
                             unselectedTextColor = Color.Gray,
                             indicatorColor = Color.Transparent
                         )
@@ -371,9 +368,9 @@ fun MainContainer(
                         },
                         label = { Text("Maps") },
                         colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                            selectedIconColor = MaterialTheme.colorScheme.secondary,
                             unselectedIconColor = Color.Gray,
-                            selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                            selectedTextColor = MaterialTheme.colorScheme.secondary,
                             unselectedTextColor = Color.Gray,
                             indicatorColor = Color.Transparent
                         )
@@ -436,8 +433,8 @@ fun MainContainer(
                 modifier = Modifier.fillMaxSize(),
                 bottomBar = {
                     NavigationBar(
-                        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
-                        contentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary
                     ) {
                         NavigationBarItem(
                             selected = selectedTab == Tab.Gallery,
@@ -467,9 +464,9 @@ fun MainContainer(
                             },
                             label = { Text("Gallery") },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
                                 unselectedIconColor = Color.Gray,
-                                selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
                                 unselectedTextColor = Color.Gray,
                                 indicatorColor = Color.Transparent
                             )
@@ -502,9 +499,9 @@ fun MainContainer(
                             },
                             label = { Text("Maps") },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                                selectedIconColor = MaterialTheme.colorScheme.secondary,
                                 unselectedIconColor = Color.Gray,
-                                selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                                selectedTextColor = MaterialTheme.colorScheme.secondary,
                                 unselectedTextColor = Color.Gray,
                                 indicatorColor = Color.Transparent
                             )
