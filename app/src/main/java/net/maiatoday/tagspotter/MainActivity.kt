@@ -25,6 +25,12 @@ import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.utils.PackManager
 import kotlinx.coroutines.flow.first
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import net.maiatoday.tagspotter.workers.ImportPackWorker
+import java.io.File
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
   private var initialSpotId by mutableStateOf<Long?>(null)
@@ -91,33 +97,33 @@ class MainActivity : ComponentActivity() {
       return
     }
 
-    val app = applicationContext as TagSpotterApplication
+    Toast.makeText(this, "Starting pack import...", Toast.LENGTH_SHORT).show()
 
     lifecycleScope.launch(Dispatchers.IO) {
       try {
-        val currentPhotographer = app.settingsRepository.photographerName.first()
         val inputStream = contentResolver.openInputStream(uri)
         if (inputStream != null) {
-          val importedCount = PackManager.importPack(
-            context = applicationContext,
-            repository = app.repository,
-            inputStream = inputStream,
-            currentPhotographerName = currentPhotographer
-          )
-          withContext(Dispatchers.Main) {
-            Toast.makeText(
-              this@MainActivity,
-              "Imported $importedCount spots!",
-              Toast.LENGTH_LONG
-            ).show()
+          // Copy input stream to a temp file in cacheDir to preserve access in background
+          val tempFile = File(cacheDir, "import_pending_${UUID.randomUUID()}.ts_pack")
+          tempFile.outputStream().use { outputStream ->
+            inputStream.copyTo(outputStream)
           }
+
+          val importWorkRequest = OneTimeWorkRequestBuilder<ImportPackWorker>()
+            .setInputData(
+              workDataOf(
+                ImportPackWorker.KEY_TEMP_FILE_PATH to tempFile.absolutePath
+              )
+            )
+            .build()
+          WorkManager.getInstance(applicationContext).enqueue(importWorkRequest)
         }
       } catch (e: Exception) {
         e.printStackTrace()
         withContext(Dispatchers.Main) {
           Toast.makeText(
             this@MainActivity,
-            "Failed to import: ${e.localizedMessage}",
+            "Failed to start import: ${e.localizedMessage}",
             Toast.LENGTH_LONG
           ).show()
         }

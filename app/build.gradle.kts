@@ -153,4 +153,7 @@ dependencies {
   implementation(libs.koin.android)
   implementation(libs.koin.androidx.compose)
   implementation(libs.koin.compose.viewmodel)
+
+  // WorkManager
+  implementation(libs.androidx.work.runtime.ktx)
 }
