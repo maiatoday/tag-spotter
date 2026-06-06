@@ -56,8 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import net.maiatoday.tagspotter.TagSpotterApplication
+import org.koin.androidx.compose.koinViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.SettingsViewModel
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -73,12 +72,7 @@ import android.os.Build
 fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: SettingsViewModel = viewModel(
-        factory = SettingsViewModel.provideFactory(
-            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository,
-            (LocalContext.current.applicationContext as TagSpotterApplication).repository
-        )
-    )
+    viewModel: SettingsViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
 

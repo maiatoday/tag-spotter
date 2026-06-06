@@ -48,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 import coil.compose.AsyncImage
 import net.maiatoday.tagspotter.ui.components.OsmMapView
 import net.maiatoday.tagspotter.ui.components.OsmMarker
@@ -68,7 +68,7 @@ import org.osmdroid.util.BoundingBox
 fun MapScreen(
     onSpotClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: MapViewModel = viewModel(factory = MapViewModel.Factory)
+    viewModel: MapViewModel = koinViewModel()
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()

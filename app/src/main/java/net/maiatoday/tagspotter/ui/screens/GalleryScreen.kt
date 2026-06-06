@@ -75,7 +75,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 import coil.compose.AsyncImage
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -97,7 +97,7 @@ fun GalleryScreen(
     onSpotClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     onMenuClick: () -> Unit = {},
-    viewModel: GalleryViewModel = viewModel(factory = GalleryViewModel.Factory)
+    viewModel: GalleryViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()

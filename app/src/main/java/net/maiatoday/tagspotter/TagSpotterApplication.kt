@@ -9,6 +9,9 @@ import net.maiatoday.tagspotter.domain.PhotoProcessor
 import net.maiatoday.tagspotter.data.service.AndroidLocationProvider
 import net.maiatoday.tagspotter.data.service.AndroidPhotoProcessor
 import org.osmdroid.config.Configuration
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
+import net.maiatoday.tagspotter.di.appModule
 
 open class TagSpotterApplication : Application() {
 
@@ -23,6 +26,11 @@ open class TagSpotterApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        
+        startKoin {
+            androidContext(this@TagSpotterApplication)
+            modules(appModule)
+        }
         
         // OSMDroid requires a custom user-agent value to load map tiles
         Configuration.getInstance().userAgentValue = packageName

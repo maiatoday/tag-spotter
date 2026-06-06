@@ -75,6 +75,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+import org.koin.androidx.compose.koinViewModel
+
 enum class Tab {
     Gallery,
     Map
@@ -86,14 +88,7 @@ fun MainContainer(
     onPhotoCaptured: (String, String, Double, Double, Boolean, String, Long?) -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: MainViewModel = viewModel(
-        factory = MainViewModel.provideFactory(
-            (LocalContext.current.applicationContext as TagSpotterApplication).locationProvider,
-            (LocalContext.current.applicationContext as TagSpotterApplication).photoProcessor,
-            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository,
-            (LocalContext.current.applicationContext as TagSpotterApplication).repository
-        )
-    )
+    viewModel: MainViewModel = koinViewModel()
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(Tab.Gallery) }
 

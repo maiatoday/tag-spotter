@@ -109,11 +109,11 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import net.maiatoday.tagspotter.TagSpotterApplication
 import net.maiatoday.tagspotter.data.SpotDetails
 import net.maiatoday.tagspotter.data.SpotImage
 import net.maiatoday.tagspotter.data.SpotNote
@@ -152,23 +152,22 @@ fun DetailScreen(
     draftCaptureTime: Long? = null
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as TagSpotterApplication
     val scope = rememberCoroutineScope()
     val isCreationMode = spotId == -1L
 
-    val viewModel: DetailViewModel = viewModel(
-        factory = DetailViewModel.provideFactory(
-            spotId = spotId,
-            repository = app.repository,
-            settingsRepository = app.settingsRepository,
-            draftImagePath = draftImagePath,
-            draftThumbnailPath = draftThumbnailPath,
-            draftLatitude = draftLatitude,
-            draftLongitude = draftLongitude,
-            draftCategory = draftDefaultCategory,
-            draftCaptureTime = draftCaptureTime
-        ),
-        key = if (isCreationMode) draftImagePath ?: "new_spot" else spotId.toString()
+    val viewModel: DetailViewModel = koinViewModel(
+        key = if (isCreationMode) draftImagePath ?: "new_spot" else spotId.toString(),
+        parameters = {
+            parametersOf(
+                spotId,
+                draftImagePath,
+                draftThumbnailPath,
+                draftLatitude,
+                draftLongitude,
+                draftDefaultCategory,
+                draftCaptureTime
+            )
+        }
     )
 
     val spotDetails by viewModel.spotDetails.collectAsStateWithLifecycle()

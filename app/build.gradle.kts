@@ -146,4 +146,11 @@ dependencies {
   // Gemini & Security Crypto
   implementation(libs.google.generativeai)
   implementation(libs.androidx.security.crypto)
+
+  // Koin DI
+  implementation(platform(libs.koin.bom))
+  implementation(libs.koin.core)
+  implementation(libs.koin.android)
+  implementation(libs.koin.androidx.compose)
+  implementation(libs.koin.compose.viewmodel)
 }
