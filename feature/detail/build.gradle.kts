@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.koin.compose.viewmodel)
     
     // Testing
+    testImplementation(platform(libs.koin.bom))
+    testImplementation(libs.koin.test)
     testImplementation(testFixtures(project(":core:database")))
     testImplementation(testFixtures(project(":core:settings")))
     testImplementation(testFixtures(project(":core:photo")))

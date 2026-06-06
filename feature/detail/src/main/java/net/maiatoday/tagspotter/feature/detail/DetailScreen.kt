@@ -159,12 +159,14 @@ fun DetailScreen(
         parameters = {
             parametersOf(
                 spotId,
-                draftImagePath,
-                draftThumbnailPath,
-                draftLatitude,
-                draftLongitude,
-                draftDefaultCategory,
-                draftCaptureTime
+                SpotDraftParams(
+                    imagePath = draftImagePath,
+                    thumbnailPath = draftThumbnailPath,
+                    latitude = draftLatitude,
+                    longitude = draftLongitude,
+                    category = draftDefaultCategory,
+                    captureTime = draftCaptureTime
+                )
             )
         }
     )
