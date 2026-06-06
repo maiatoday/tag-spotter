@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.service.notification.StatusBarNotification
+import androidx.core.os.BundleCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -89,12 +90,12 @@ class GeofenceBroadcastReceiverTest {
         
         // Verify BigPictureStyle was applied
         assertEquals(
-            "android.app.Notification\$BigPictureStyle", 
+            $$"android.app.Notification$BigPictureStyle",
             notification.extras.getString(Notification.EXTRA_TEMPLATE)
         )
         
         // Verify that the picture extra is populated
-        val picture = androidx.core.os.BundleCompat.getParcelable(
+        val picture = BundleCompat.getParcelable(
             notification.extras,
             Notification.EXTRA_PICTURE,
             Bitmap::class.java
@@ -148,4 +149,4 @@ class GeofenceBroadcastReceiverTest {
         // Cancel the notification after test
         notificationManager.cancel(spot.id.toInt())
     }
-}
+    }

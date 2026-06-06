@@ -101,17 +101,15 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         val channelId = "starred_spots_channel"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Starred Spots Proximity Alerts",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Notifies you when you are walking near starred street art."
-                enableVibration(true)
-            }
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            channelId,
+            "Starred Spots Proximity Alerts",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Notifies you when you are walking near starred street art."
+            enableVibration(true)
         }
+        notificationManager.createNotificationChannel(channel)
 
         // Tap notification to open spot in app
         val launchIntent = Intent(context, MainActivity::class.java).apply {

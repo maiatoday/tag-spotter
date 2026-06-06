@@ -3,8 +3,8 @@ package net.maiatoday.tagspotter.data.service
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.domain.PhotoMetadata
@@ -32,12 +32,12 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
     }
 
     override suspend fun createThumbnailFromUri(uriString: String): String? {
-        val uri = Uri.parse(uriString)
+        val uri = uriString.toUri()
         return ImageOptimizer.createThumbnail(context, uri)
     }
 
     override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? {
-        val uri = Uri.parse(uriString)
+        val uri = uriString.toUri()
         val meta = ExifLocationExtractor.getPhotoMetadata(context, uri) ?: return null
         return PhotoMetadata(
             latitude = meta.latitude,
@@ -98,7 +98,7 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
                 }
                 BitmapFactory.decodeFile(imagePath, decodeOptions)
             } else {
-                val uri = Uri.parse(imagePath)
+                val uri = imagePath.toUri()
                 // Get dimensions
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true

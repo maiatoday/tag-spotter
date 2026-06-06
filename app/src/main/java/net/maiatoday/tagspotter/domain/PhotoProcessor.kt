@@ -8,15 +8,6 @@ data class PhotoMetadata(
     val timestamp: Long?
 )
 
-data class ProcessedPhoto(
-    val publicUriString: String,
-    val thumbnailPath: String,
-    val latitude: Double,
-    val longitude: Double,
-    val isFallback: Boolean,
-    val captureTime: Long?
-)
-
 data class TempFileDetails(
     val uriString: String,
     val fileAbsolutePath: String

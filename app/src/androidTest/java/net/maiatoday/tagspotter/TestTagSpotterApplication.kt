@@ -16,7 +16,7 @@ class TestTagSpotterApplication : TagSpotterApplication() {
         get() = inMemoryDatabase
 
     override val repository: LocalSpotRepository by lazy {
-        LocalSpotRepository(this, inMemoryDatabase.spotDao(), object : GeofenceService {
+        LocalSpotRepository(inMemoryDatabase.spotDao(), object : GeofenceService {
             override fun registerGeofence(id: Long, latitude: Double, longitude: Double, onResult: (Boolean) -> Unit) {
                 onResult(true)
             }

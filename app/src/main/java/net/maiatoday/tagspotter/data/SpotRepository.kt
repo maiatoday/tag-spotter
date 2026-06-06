@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import java.io.File
-import android.content.Context
 import net.maiatoday.tagspotter.domain.GeofenceService
 
 interface SpotRepository {
@@ -37,7 +36,6 @@ interface SpotRepository {
 }
 
 class LocalSpotRepository(
-    private val context: Context,
     private val spotDao: SpotDao,
     private val geofenceService: GeofenceService
 ) : SpotRepository {

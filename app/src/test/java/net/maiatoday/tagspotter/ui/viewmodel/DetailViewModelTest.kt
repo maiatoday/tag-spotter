@@ -58,7 +58,6 @@ class DetailViewModelTest {
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository("Initial Photographer")
     private val aiRecognitionService = FakeAiRecognitionService()
-    private val photoProcessor = FakePhotoProcessor()
 
     @Test
     fun loadSpotDetailsAndUpdatesWorkCorrectly() = runTest {
@@ -81,13 +80,13 @@ class DetailViewModelTest {
         val viewModel = DetailViewModel(spotId, repository, settingsRepository, aiRecognitionService)
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
-        val collectJobDetails = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
-        val collectJobPhotographer = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+       backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.defaultPhotographer.collect {}
         }
-        val collectJobRecentTags = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.recentCustomTags.collect {}
         }
 
@@ -405,7 +404,6 @@ class DetailViewModelTest {
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
-            viewModel.wikiSearchState.collect {}
         }
 
         assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
@@ -447,7 +445,6 @@ class DetailViewModelTest {
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
-            viewModel.wikiSearchState.collect {}
         }
 
         viewModel.searchWikipediaForSpot()

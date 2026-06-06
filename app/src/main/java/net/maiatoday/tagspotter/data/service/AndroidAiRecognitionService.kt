@@ -17,7 +17,7 @@ class AndroidAiRecognitionService(
     private val photoProcessor: PhotoProcessor
 ) : AiRecognitionService {
 
-    override suspend fun identifyArtist(imagePath: String, apiKey: String, category: String): AiSuggestion? {
+    override suspend fun identifyArtist(imagePath: String, apiKey: String, category: String): AiSuggestion {
         // 1. Load and downscale image using PhotoProcessor
         val bitmap = photoProcessor.decodeScaledBitmap(imagePath, 1024)
             ?: throw IllegalArgumentException("Failed to load image.")

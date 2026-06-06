@@ -31,6 +31,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import net.maiatoday.tagspotter.TagSpotterApplication
+import androidx.core.graphics.toColorInt
 
 val DarkMatterTileSource = XYTileSource(
     "CartoDbDarkMatter",
@@ -203,7 +204,7 @@ private fun createPinDrawable(context: Context, colorSource: Int, isStarred: Boo
     if (isStarred) {
         val borderPaint = Paint().apply {
             isAntiAlias = true
-            color = android.graphics.Color.parseColor("#FFD700") // Gold
+            color = "#FFD700".toColorInt() // Gold
             style = Paint.Style.STROKE
             strokeWidth = 2.5f * density
         }

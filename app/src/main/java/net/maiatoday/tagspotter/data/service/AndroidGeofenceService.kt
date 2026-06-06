@@ -5,7 +5,7 @@ import net.maiatoday.tagspotter.data.Spot
 import net.maiatoday.tagspotter.domain.GeofenceService
 import net.maiatoday.tagspotter.utils.GeofenceManager
 
-class AndroidGeofenceService(private val context: Context) : GeofenceService {
+class AndroidGeofenceService(context: Context) : GeofenceService {
     private val geofenceManager = GeofenceManager(context)
 
     override fun registerGeofence(id: Long, latitude: Double, longitude: Double, onResult: (Boolean) -> Unit) {

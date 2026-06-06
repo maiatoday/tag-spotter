@@ -29,7 +29,7 @@ class ImportExportTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         db = Room.inMemoryDatabaseBuilder(context, SpotDatabase::class.java).build()
-        repository = LocalSpotRepository(context, db.spotDao(), object : GeofenceService {
+        repository = LocalSpotRepository(db.spotDao(), object : GeofenceService {
             override fun registerGeofence(id: Long, latitude: Double, longitude: Double, onResult: (Boolean) -> Unit) {
                 onResult(true)
             }

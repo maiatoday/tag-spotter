@@ -227,22 +227,4 @@ class MainViewModel(
             }
         }
     }
-
-    companion object {
-        fun provideFactory(
-            locationProvider: LocationProvider,
-            photoProcessor: PhotoProcessor,
-            settingsRepository: SettingsRepository,
-            spotRepository: SpotRepository
-        ): ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                MainViewModel(
-                    locationProvider,
-                    photoProcessor,
-                    settingsRepository,
-                    spotRepository
-                )
-            }
-        }
-    }
 }

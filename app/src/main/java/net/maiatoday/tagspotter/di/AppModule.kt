@@ -28,7 +28,7 @@ val appModule = module {
     single { get<SpotDatabase>().spotDao() }
 
     // Repositories
-    single<SpotRepository> { LocalSpotRepository(androidContext(), get(), get()) }
+    single<SpotRepository> { LocalSpotRepository(get(), get()) }
     single<SettingsRepository> { SharedPreferencesSettingsRepository(androidContext()) }
 
     // Services
