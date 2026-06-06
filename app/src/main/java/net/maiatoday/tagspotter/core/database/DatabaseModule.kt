@@ -6,5 +6,5 @@ import org.koin.dsl.module
 val databaseModule = module {
     single { SpotDatabase.getDatabase(androidContext()) }
     single { get<SpotDatabase>().spotDao() }
-    single<SpotRepository> { LocalSpotRepository(get(), get()) }
+    single<SpotRepository> { LocalSpotRepository(get(), get(), get()) }
 }

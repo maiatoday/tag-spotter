@@ -51,6 +51,14 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
     }
 
     override fun deleteFile(filePath: String): Boolean {
+        if (filePath.isEmpty() ||
+            filePath.startsWith("content://") ||
+            filePath.startsWith("android.resource://") ||
+            filePath.startsWith("http://") ||
+            filePath.startsWith("https://")
+        ) {
+            return false
+        }
         return try {
             val file = File(filePath)
             if (file.exists()) {

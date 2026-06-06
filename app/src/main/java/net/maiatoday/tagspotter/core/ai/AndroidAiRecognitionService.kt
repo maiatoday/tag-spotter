@@ -2,6 +2,9 @@ package net.maiatoday.tagspotter.core.ai
 
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
+import com.google.ai.client.generativeai.type.generationConfig
+import com.google.ai.client.generativeai.type.Schema
+import com.google.ai.client.generativeai.type.FunctionType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
@@ -20,10 +23,43 @@ class AndroidAiRecognitionService(
         val bitmap = photoProcessor.decodeScaledBitmap(imagePath, 1024)
             ?: throw IllegalArgumentException("Failed to load image.")
 
-        // 2. Initialize Gemini
+        // 2. Initialize Gemini with responseSchema
         val model = GenerativeModel(
             modelName = "gemini-2.5-flash",
-            apiKey = apiKey
+            apiKey = apiKey,
+            generationConfig = generationConfig {
+                responseMimeType = "application/json"
+                responseSchema = Schema(
+                    name = "AiSuggestion",
+                    description = "Artist suggestion details",
+                    type = FunctionType.OBJECT,
+                    properties = mapOf(
+                        "artist" to Schema(
+                            name = "artist",
+                            description = "Name of the artist or creator if known, or null if unknown",
+                            nullable = true,
+                            type = FunctionType.STRING
+                        ),
+                        "title" to Schema(
+                            name = "title",
+                            description = "Suggested title for the spot/art, or null if unknown",
+                            nullable = true,
+                            type = FunctionType.STRING
+                        ),
+                        "tags" to Schema(
+                            name = "tags",
+                            description = "List of tag suggestions",
+                            type = FunctionType.ARRAY,
+                            items = Schema(
+                                name = "tag",
+                                description = "tag name",
+                                type = FunctionType.STRING
+                            )
+                        )
+                    ),
+                    required = listOf("artist", "title", "tags")
+                )
+            }
         )
 
         val artistRoleDescription = when (category) {
@@ -45,7 +81,6 @@ class AndroidAiRecognitionService(
               "tags": ["tag1", "tag2"]
             }
             If you do not know the artist/creator/architect, set the "artist" field to null. If you cannot suggest a title, set the "title" field to null.
-            Do not add markdown formatting or backticks around the JSON. Return only the raw JSON.
         """.trimIndent()
 
         val response = model.generateContent(
@@ -60,25 +95,31 @@ class AndroidAiRecognitionService(
             throw IllegalStateException("Empty response from AI model.")
         }
 
-        // Clean the JSON string (in case markdown backticks were returned)
-        val cleanJson = if (responseText.contains("```")) {
-            responseText
-                .substringAfter("```json")
-                .substringAfter("```")
-                .substringBefore("```")
-                .trim()
-        } else {
-            responseText.trim()
-        }
-
-        return Json.decodeFromString<AiSuggestion>(cleanJson)
+        return Json.decodeFromString<AiSuggestion>(responseText.trim())
     }
 
     override suspend fun searchWikipediaForSpot(title: String, apiKey: String): String? {
-        // Initialize Gemini
+        // Initialize Gemini with responseSchema
         val model = GenerativeModel(
             modelName = "gemini-2.5-flash",
-            apiKey = apiKey
+            apiKey = apiKey,
+            generationConfig = generationConfig {
+                responseMimeType = "application/json"
+                responseSchema = Schema(
+                    name = "WikiSuggestion",
+                    description = "Wikipedia page URL suggestion",
+                    type = FunctionType.OBJECT,
+                    properties = mapOf(
+                        "url" to Schema(
+                            name = "url",
+                            description = "Most relevant Wikipedia page URL, or null if none exists",
+                            nullable = true,
+                            type = FunctionType.STRING
+                        )
+                    ),
+                    required = listOf("url")
+                )
+            }
         )
 
         val prompt = """
@@ -94,7 +135,6 @@ class AndroidAiRecognitionService(
               "url": "https://en.wikipedia.org/wiki/..." 
             }
             If no page is found, set "url" to null.
-            Do not include any markdown styling, backticks, or extra text. Return only the raw JSON.
         """.trimIndent()
 
         val response = model.generateContent(prompt)
@@ -103,18 +143,7 @@ class AndroidAiRecognitionService(
             throw IllegalStateException("Empty response from AI model.")
         }
 
-        // Clean the JSON string (in case markdown backticks were returned)
-        val cleanJson = if (responseText.contains("```")) {
-            responseText
-                .substringAfter("```json")
-                .substringAfter("```")
-                .substringBefore("```")
-                .trim()
-        } else {
-            responseText.trim()
-        }
-
-        val suggestion = Json.decodeFromString<WikiSuggestion>(cleanJson)
+        val suggestion = Json.decodeFromString<WikiSuggestion>(responseText.trim())
         return suggestion.url
     }
 }

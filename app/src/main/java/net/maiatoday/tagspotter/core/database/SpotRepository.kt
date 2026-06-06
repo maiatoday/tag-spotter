@@ -7,7 +7,7 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
-import java.io.File
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.location.GeofenceService
 
 interface SpotRepository {
@@ -41,7 +41,8 @@ interface SpotRepository {
 
 class LocalSpotRepository(
     private val spotDao: SpotDao,
-    private val geofenceService: GeofenceService
+    private val geofenceService: GeofenceService,
+    private val photoProcessor: PhotoProcessor
 ) : SpotRepository {
 
 
@@ -134,31 +135,8 @@ class LocalSpotRepository(
         }
         // Delete all local thumbnail and image files (original public gallery photos are NOT deleted)
         spotDetails.images.forEach { image ->
-            try {
-                if (image.thumbnailPath.isNotEmpty()) {
-                    val file = File(image.thumbnailPath)
-                    if (file.exists()) {
-                        file.delete()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-            try {
-                if (image.imagePath.isNotEmpty()) {
-                    val file = File(image.imagePath)
-                    // Only delete local private files, not content:// URIs or resource paths
-                    if (file.exists() &&
-                        !image.imagePath.startsWith("content://") &&
-                        !image.imagePath.startsWith("android.resource://") &&
-                        !image.imagePath.startsWith("http")
-                    ) {
-                        file.delete()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            photoProcessor.deleteFile(image.thumbnailPath)
+            photoProcessor.deleteFile(image.imagePath)
         }
         // Room cascading delete will clean the images and notes in the database
         spotDao.deleteSpotById(spotDetails.spot.id)
@@ -306,30 +284,8 @@ class LocalSpotRepository(
     }
 
     override suspend fun deleteImage(image: SpotImage) {
-        try {
-            if (image.thumbnailPath.isNotEmpty()) {
-                val file = File(image.thumbnailPath)
-                if (file.exists()) {
-                    file.delete()
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        try {
-            if (image.imagePath.isNotEmpty()) {
-                val file = File(image.imagePath)
-                if (file.exists() &&
-                    !image.imagePath.startsWith("content://") &&
-                    !image.imagePath.startsWith("android.resource://") &&
-                    !image.imagePath.startsWith("http")
-                ) {
-                    file.delete()
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        photoProcessor.deleteFile(image.thumbnailPath)
+        photoProcessor.deleteFile(image.imagePath)
 
         spotDao.deleteImageById(image.id)
 

@@ -3,6 +3,7 @@ package net.maiatoday.tagspotter
 import androidx.room.Room
 import net.maiatoday.tagspotter.core.database.LocalSpotRepository
 import net.maiatoday.tagspotter.core.location.GeofenceService
+import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
 import net.maiatoday.tagspotter.core.database.SpotDatabase
 
 class TestTagSpotterApplication : TagSpotterApplication() {
@@ -21,7 +22,7 @@ class TestTagSpotterApplication : TagSpotterApplication() {
                 onResult(true)
             }
             override fun unregisterGeofence(id: Long) {}
-        })
+        }, AndroidPhotoProcessor(this))
     }
 
     override fun onCreate() {

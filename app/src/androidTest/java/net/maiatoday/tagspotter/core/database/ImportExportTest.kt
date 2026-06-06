@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
 import net.maiatoday.tagspotter.core.location.GeofenceService
 import net.maiatoday.tagspotter.core.model.Spot
 import org.junit.After
@@ -37,7 +38,7 @@ class ImportExportTest {
             }
 
             override fun unregisterGeofence(id: Long) {}
-        })
+        }, AndroidPhotoProcessor(context))
     }
 
     @After

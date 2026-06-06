@@ -12,12 +12,14 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.osmdroid.config.Configuration
 
+import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
+
 open class TagSpotterApplication : Application() {
 
     // Database and repository singletons for dependency injection
     open val database by lazy { SpotDatabase.getDatabase(this) }
     open val geofenceService: GeofenceService by lazy { AndroidGeofenceService(this) }
-    open val repository by lazy { LocalSpotRepository(database.spotDao(), geofenceService) }
+    open val repository by lazy { LocalSpotRepository(database.spotDao(), geofenceService, AndroidPhotoProcessor(this)) }
     open val settingsRepository: SettingsRepository by lazy { DataStoreSettingsRepository(this) }
 
     override fun onCreate() {
