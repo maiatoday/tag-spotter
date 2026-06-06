@@ -89,66 +89,69 @@ class GeofenceTransitionWorker(
         }
     }
 
-    private fun showNotification(context: Context, details: SpotDetails, distance: Int, bitmap: Bitmap?) {
-        val channelId = "starred_spots_channel"
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    companion object {
+        @androidx.annotation.VisibleForTesting
+        internal fun showNotification(context: Context, details: SpotDetails, distance: Int, bitmap: Bitmap?) {
+            val channelId = "starred_spots_channel"
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val channel = NotificationChannel(
-            channelId,
-            "Starred Spots Proximity Alerts",
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "Notifies you when you are walking near starred street art."
-            enableVibration(true)
-        }
-        notificationManager.createNotificationChannel(channel)
+            val channel = NotificationChannel(
+                channelId,
+                "Starred Spots Proximity Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifies you when you are walking near starred street art."
+                enableVibration(true)
+            }
+            notificationManager.createNotificationChannel(channel)
 
-        // Tap notification to open spot in app
-        val launchIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("EXTRA_SPOT_ID", details.spot.id)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            details.spot.id.toInt(),
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val artistText = if (details.spot.artists.isNotEmpty()) {
-            "by ${details.spot.artists.joinToString(", ")}"
-        } else {
-            "Unknown artist"
-        }
-
-        // Wear OS extender
-        val wearableExtender = NotificationCompat.WearableExtender()
-            .setHintContentIntentLaunchesActivity(true)
-
-        val contentText = "${details.spot.category.replace("_", " ").uppercase()} ($distance meters away) $artistText"
-
-        val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_map) // Default system map icon, or clean outline pin icon
-            .setContentTitle("Nearby Starred Spot!")
-            .setContentText(contentText)
-            .setSubText(details.spot.description.ifEmpty { "Starred Spot Nearby" })
-            .setLargeIcon(bitmap)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .extend(wearableExtender)
-
-        if (bitmap != null) {
-            builder.setStyle(
-                NotificationCompat.BigPictureStyle()
-                    .bigPicture(bitmap)
-                    .setBigContentTitle("Nearby Starred Spot!")
-                    .setSummaryText(contentText)
+            // Tap notification to open spot in app
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                putExtra("EXTRA_SPOT_ID", details.spot.id)
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                details.spot.id.toInt(),
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-        }
 
-        val notification = builder.build()
-        notificationManager.notify(details.spot.id.toInt(), notification)
+            val artistText = if (details.spot.artists.isNotEmpty()) {
+                "by ${details.spot.artists.joinToString(", ")}"
+            } else {
+                "Unknown artist"
+            }
+
+            // Wear OS extender
+            val wearableExtender = NotificationCompat.WearableExtender()
+                .setHintContentIntentLaunchesActivity(true)
+
+            val contentText = "${details.spot.category.replace("_", " ").uppercase()} ($distance meters away) $artistText"
+
+            val builder = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_map) // Default system map icon, or clean outline pin icon
+                .setContentTitle("Nearby Starred Spot!")
+                .setContentText(contentText)
+                .setSubText(details.spot.description.ifEmpty { "Starred Spot Nearby" })
+                .setLargeIcon(bitmap)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .extend(wearableExtender)
+
+            if (bitmap != null) {
+                builder.setStyle(
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(bitmap)
+                        .setBigContentTitle("Nearby Starred Spot!")
+                        .setSummaryText(contentText)
+                )
+            }
+
+            val notification = builder.build()
+            notificationManager.notify(details.spot.id.toInt(), notification)
+        }
     }
 }

@@ -11,6 +11,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import net.maiatoday.tagspotter.data.Spot
 import net.maiatoday.tagspotter.data.SpotDetails
+import net.maiatoday.tagspotter.workers.GeofenceTransitionWorker
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -22,13 +23,11 @@ import org.junit.runner.RunWith
 class GeofenceBroadcastReceiverTest {
 
     private lateinit var context: Context
-    private lateinit var receiver: GeofenceBroadcastReceiver
     private lateinit var notificationManager: NotificationManager
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        receiver = GeofenceBroadcastReceiver()
         notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
         // Grant notification permission for test on Android 13+ for both packages
@@ -70,8 +69,8 @@ class GeofenceBroadcastReceiverTest {
         // Create a test bitmap (e.g. 100x100 pixels)
         val testBitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
 
-        // Call the internal method
-        receiver.showNotification(context, spotDetails, 250, testBitmap)
+        // Call the static/internal method on companion
+        GeofenceTransitionWorker.showNotification(context, spotDetails, 250, testBitmap)
 
         // Verify notification was posted and has correct attributes (wait up to 1 second)
         var myNotification: StatusBarNotification? = null
@@ -90,7 +89,7 @@ class GeofenceBroadcastReceiverTest {
         
         // Verify BigPictureStyle was applied
         assertEquals(
-            $$"android.app.Notification$BigPictureStyle",
+            "android.app.Notification\$BigPictureStyle",
             notification.extras.getString(Notification.EXTRA_TEMPLATE)
         )
         
@@ -127,8 +126,8 @@ class GeofenceBroadcastReceiverTest {
             notes = emptyList()
         )
 
-        // Call the internal method with null bitmap
-        receiver.showNotification(context, spotDetails, 150, null)
+        // Call the static/internal method with null bitmap
+        GeofenceTransitionWorker.showNotification(context, spotDetails, 150, null)
 
         // Verify notification was posted and has correct attributes (wait up to 1 second)
         var myNotification: StatusBarNotification? = null
@@ -149,4 +148,4 @@ class GeofenceBroadcastReceiverTest {
         // Cancel the notification after test
         notificationManager.cancel(spot.id.toInt())
     }
-    }
+}
