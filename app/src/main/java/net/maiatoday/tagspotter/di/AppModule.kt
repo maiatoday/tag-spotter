@@ -9,6 +9,8 @@ import net.maiatoday.tagspotter.domain.LocationProvider
 import net.maiatoday.tagspotter.domain.PhotoProcessor
 import net.maiatoday.tagspotter.data.service.AndroidLocationProvider
 import net.maiatoday.tagspotter.data.service.AndroidPhotoProcessor
+import net.maiatoday.tagspotter.domain.GeofenceService
+import net.maiatoday.tagspotter.data.service.AndroidGeofenceService
 import net.maiatoday.tagspotter.ui.viewmodel.DetailViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.GalleryViewModel
 import net.maiatoday.tagspotter.ui.viewmodel.MainViewModel
@@ -24,12 +26,13 @@ val appModule = module {
     single { get<SpotDatabase>().spotDao() }
 
     // Repositories
-    single<SpotRepository> { LocalSpotRepository(androidContext(), get()) }
+    single<SpotRepository> { LocalSpotRepository(androidContext(), get(), get()) }
     single<SettingsRepository> { SharedPreferencesSettingsRepository(androidContext()) }
 
     // Services
     single<LocationProvider> { AndroidLocationProvider(androidContext()) }
     single<PhotoProcessor> { AndroidPhotoProcessor(androidContext()) }
+    single<GeofenceService> { AndroidGeofenceService(androidContext()) }
 
     // ViewModels
     viewModel { MainViewModel(get(), get(), get(), get()) }

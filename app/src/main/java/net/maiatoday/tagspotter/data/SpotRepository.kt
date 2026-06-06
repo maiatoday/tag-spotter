@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import java.io.File
 import android.content.Context
-import net.maiatoday.tagspotter.utils.GeofenceManager
+import net.maiatoday.tagspotter.domain.GeofenceService
 
 interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>
@@ -38,10 +38,11 @@ interface SpotRepository {
 
 class LocalSpotRepository(
     private val context: Context,
-    private val spotDao: SpotDao
+    private val spotDao: SpotDao,
+    private val geofenceService: GeofenceService
 ) : SpotRepository {
 
-    private val geofenceManager by lazy { GeofenceManager(context) }
+
 
     override fun getAllSpots(): Flow<List<SpotDetails>> {
         return spotDao.getAllSpotsDetails()
@@ -127,7 +128,7 @@ class LocalSpotRepository(
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
         // If starred, unregister geofence
         if (spotDetails.spot.isStarred) {
-            geofenceManager.unregisterGeofence(spotDetails.spot.id)
+            geofenceService.unregisterGeofence(spotDetails.spot.id)
         }
         // Delete all local thumbnail and image files (original public gallery photos are NOT deleted)
         spotDetails.images.forEach { image ->
@@ -279,10 +280,14 @@ class LocalSpotRepository(
         if (isStarred) {
             val details = spotDao.getSpotDetails(spotId).first()
             if (details != null) {
-                geofenceManager.registerGeofence(details.spot) { _ -> }
+                geofenceService.registerGeofence(
+                    id = details.spot.id,
+                    latitude = details.spot.latitude,
+                    longitude = details.spot.longitude
+                )
             }
         } else {
-            geofenceManager.unregisterGeofence(spotId)
+            geofenceService.unregisterGeofence(spotId)
         }
     }
 

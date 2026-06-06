@@ -8,6 +8,8 @@ import net.maiatoday.tagspotter.domain.LocationProvider
 import net.maiatoday.tagspotter.domain.PhotoProcessor
 import net.maiatoday.tagspotter.data.service.AndroidLocationProvider
 import net.maiatoday.tagspotter.data.service.AndroidPhotoProcessor
+import net.maiatoday.tagspotter.domain.GeofenceService
+import net.maiatoday.tagspotter.data.service.AndroidGeofenceService
 import org.osmdroid.config.Configuration
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -17,7 +19,8 @@ open class TagSpotterApplication : Application() {
 
     // Database and repository singletons for dependency injection
     open val database by lazy { SpotDatabase.getDatabase(this) }
-    open val repository by lazy { LocalSpotRepository(this, database.spotDao()) }
+    open val geofenceService: GeofenceService by lazy { AndroidGeofenceService(this) }
+    open val repository by lazy { LocalSpotRepository(this, database.spotDao(), geofenceService) }
     open val settingsRepository by lazy { SharedPreferencesSettingsRepository(this) }
     
     // Services
