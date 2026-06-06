@@ -55,12 +55,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.ui.screens.GalleryScreen
 import net.maiatoday.tagspotter.ui.screens.MapScreen
-import net.maiatoday.tagspotter.ui.viewmodel.SettingsViewModel
+import net.maiatoday.tagspotter.ui.viewmodel.MainViewModel
+import net.maiatoday.tagspotter.ui.viewmodel.MainEvent
 import net.maiatoday.tagspotter.TagSpotterApplication
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.DrawerValue
@@ -74,12 +74,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.Settings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import net.maiatoday.tagspotter.utils.ExifLocationExtractor
-import net.maiatoday.tagspotter.utils.ImageOptimizer
-import net.maiatoday.tagspotter.utils.LocationHelper
-import net.maiatoday.tagspotter.utils.MediaStorageHelper
-import java.io.File
-import java.util.UUID
 
 enum class Tab {
     Gallery,
@@ -91,7 +85,15 @@ fun MainContainer(
     onSpotClick: (Long) -> Unit,
     onPhotoCaptured: (String, String, Double, Double, Boolean, String, Long?) -> Unit,
     onNavigateToSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: MainViewModel = viewModel(
+        factory = MainViewModel.provideFactory(
+            (LocalContext.current.applicationContext as TagSpotterApplication).locationProvider,
+            (LocalContext.current.applicationContext as TagSpotterApplication).photoProcessor,
+            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository,
+            (LocalContext.current.applicationContext as TagSpotterApplication).repository
+        )
+    )
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(Tab.Gallery) }
 
@@ -101,12 +103,7 @@ fun MainContainer(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val settingsViewModel: SettingsViewModel = viewModel(
-        factory = SettingsViewModel.provideFactory(
-            (LocalContext.current.applicationContext as TagSpotterApplication).settingsRepository,
-            (LocalContext.current.applicationContext as TagSpotterApplication).repository
-        )
-    )
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val versionName = remember {
         try {
@@ -118,70 +115,49 @@ fun MainContainer(
     }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    var isLoading by rememberSaveable { mutableStateOf(false) }
 
-    var hasLocationPermission by rememberSaveable {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        )
+    LaunchedEffect(Unit) {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        viewModel.updateLocationPermission(granted)
+    }
+
+    LaunchedEffect(viewModel.events) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is MainEvent.PhotoProcessed -> {
+                    onPhotoCaptured(
+                        event.imagePath,
+                        event.thumbnailPath,
+                        event.latitude,
+                        event.longitude,
+                        event.isFallback,
+                        event.category,
+                        event.captureTime
+                    )
+                }
+                is MainEvent.ShowError -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     // Permission Launcher for GPS Location
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        hasLocationPermission = (permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: hasLocationPermission) ||
+        val granted = (permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false) ||
                 (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false)
+        viewModel.updateLocationPermission(granted)
     }
-
-    var tempPhotoUri by rememberSaveable { mutableStateOf<String?>(null) }
-    var tempPhotoFilePath by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Take Picture Launcher (Native Camera Intent)
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            val uriStr = tempPhotoUri
-            val pathStr = tempPhotoFilePath
-            if (uriStr != null && pathStr != null) {
-                val file = File(pathStr)
-                isLoading = true
-                scope.launch(Dispatchers.Default) {
-                    var lat = 0.0
-                    var lng = 0.0
-                    var isFallback = true
-
-                    if (hasLocationPermission) {
-                        val currentLoc = LocationHelper.getCurrentLocation(context)
-                        if (currentLoc != null) {
-                            lat = currentLoc.latitude
-                            lng = currentLoc.longitude
-                            isFallback = currentLoc.isFallback
-                        }
-                    }
-
-                    // Save original to public MediaStore gallery
-                    val publicUri = MediaStorageHelper.saveImageToPublicGallery(context, file)
-                    // Create thumbnail
-                    val thumbnailPath = ImageOptimizer.createThumbnail(context, file)
-                    
-                    // Clean temp cache file
-                    try { file.delete() } catch (_: Exception) {}
-
-                    if (publicUri != null && thumbnailPath != null) {
-                        withContext(Dispatchers.Main) {
-                            isLoading = false
-                            onPhotoCaptured(publicUri.toString(), thumbnailPath, lat, lng, isFallback, "All", null)
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            isLoading = false
-                            Toast.makeText(context, "Error saving captured photo.", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
+            viewModel.handleCameraCaptureSuccess()
         }
     }
 
@@ -190,51 +166,7 @@ fun MainContainer(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            isLoading = true
-            scope.launch(Dispatchers.Default) {
-                val exifMeta = ExifLocationExtractor.getPhotoMetadata(context, uri)
-                var lat = 0.0
-                var lng = 0.0
-                var isFallback = true
-                var captureTime: Long? = null
-
-                if (exifMeta != null) {
-                    if (exifMeta.latitude != null && exifMeta.longitude != null) {
-                        lat = exifMeta.latitude
-                        lng = exifMeta.longitude
-                        isFallback = false
-                    } else if (hasLocationPermission) {
-                        val currentLoc = LocationHelper.getCurrentLocation(context)
-                        if (currentLoc != null) {
-                            lat = currentLoc.latitude
-                            lng = currentLoc.longitude
-                            isFallback = currentLoc.isFallback
-                        }
-                    }
-                    captureTime = exifMeta.timestamp
-                } else if (hasLocationPermission) {
-                    val currentLoc = LocationHelper.getCurrentLocation(context)
-                    if (currentLoc != null) {
-                        lat = currentLoc.latitude
-                        lng = currentLoc.longitude
-                        isFallback = currentLoc.isFallback
-                    }
-                }
-
-                // Create thumbnail
-                val thumbnailPath = ImageOptimizer.createThumbnail(context, uri)
-                if (thumbnailPath != null) {
-                    withContext(Dispatchers.Main) {
-                        isLoading = false
-                        onPhotoCaptured(uri.toString(), thumbnailPath, lat, lng, isFallback, "All", captureTime)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        isLoading = false
-                        Toast.makeText(context, "Error processing gallery image.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
+            viewModel.handlePhotoPicked(uri.toString())
         }
     }
 
@@ -242,13 +174,11 @@ fun MainContainer(
     val mediaLocationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ ->
-        scope.launch {
-            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-        }
+        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
     val triggerCamera = {
-        if (!hasLocationPermission) {
+        if (!uiState.hasLocationPermission) {
             locationPermissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -256,16 +186,14 @@ fun MainContainer(
                 )
             )
         }
-        val file = File(context.cacheDir, "cam_${UUID.randomUUID()}.jpg")
-        val authority = "${context.packageName}.fileprovider"
-        try {
-            val uri = FileProvider.getUriForFile(context, authority, file)
-            tempPhotoUri = uri.toString()
-            tempPhotoFilePath = file.absolutePath
-            takePictureLauncher.launch(uri)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(context, "Failed to launch device camera.", Toast.LENGTH_SHORT).show()
+        val uriStr = viewModel.prepareCameraCapture()
+        if (uriStr != null) {
+            try {
+                takePictureLauncher.launch(Uri.parse(uriStr))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Failed to launch device camera.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -279,7 +207,7 @@ fun MainContainer(
         }
     }
 
-    val showTestData by settingsViewModel.showTestData.collectAsStateWithLifecycle()
+    val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -354,7 +282,7 @@ fun MainContainer(
                             Switch(
                                 checked = showTestData,
                                 onCheckedChange = { isChecked ->
-                                    settingsViewModel.updateShowTestData(isChecked)
+                                    viewModel.updateShowTestData(isChecked)
                                 },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = MaterialTheme.colorScheme.primary,
@@ -641,7 +569,7 @@ fun MainContainer(
             }
         }
 
-        if (isLoading) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
