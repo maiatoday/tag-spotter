@@ -593,23 +593,27 @@ fun DetailScreen(
         }
     }
 
-    // Launcher to add another image to this spot
-    val pickMedia = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
+    // Launcher to add multiple images to this spot
+    val pickMultipleMedia = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            uris.forEach { uri ->
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
             scope.launch(Dispatchers.Default) {
-                val thumbnailPath = ImageOptimizer.createThumbnail(context, uri)
-                if (thumbnailPath != null) {
-                    viewModel.addImage(uri.toString(), thumbnailPath, System.currentTimeMillis())
+                uris.forEachIndexed { index, uri ->
+                    val thumbnailPath = ImageOptimizer.createThumbnail(context, uri)
+                    if (thumbnailPath != null) {
+                        viewModel.addImage(uri.toString(), thumbnailPath, System.currentTimeMillis() + index)
+                    }
                 }
             }
         }
@@ -761,7 +765,7 @@ fun DetailScreen(
                         DetailPhotoTimeline(
                             sortedImages = sortedImages,
                             onAddPhotoClick = {
-                                pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                pickMultipleMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                             },
                             onImageClick = { zoomImage = it },
                             onHeartClick = { viewModel.setMainImage(it.id) },
@@ -923,7 +927,7 @@ fun DetailScreen(
                             DetailPhotoTimeline(
                                 sortedImages = sortedImages,
                                 onAddPhotoClick = {
-                                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    pickMultipleMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                                 },
                                 onImageClick = { zoomImage = it },
                                 onHeartClick = { viewModel.setMainImage(it.id) },

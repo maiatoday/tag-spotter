@@ -86,7 +86,6 @@ class MainViewModel(
 
     fun handleCameraCaptureSuccess() {
         val tempPath = _uiState.value.tempPhotoFilePath ?: return
-        val hasPermission = _uiState.value.hasLocationPermission
 
         _uiState.update { it.copy(isLoading = true) }
 
@@ -96,13 +95,11 @@ class MainViewModel(
                 var lng = 0.0
                 var isFallback = true
 
-                if (hasPermission) {
-                    val loc = locationProvider.getCurrentLocation()
-                    if (loc != null) {
-                        lat = loc.latitude
-                        lng = loc.longitude
-                        isFallback = loc.isFallback
-                    }
+                val loc = locationProvider.getCurrentLocation()
+                if (loc != null) {
+                    lat = loc.latitude
+                    lng = loc.longitude
+                    isFallback = loc.isFallback
                 }
 
                 // Process in IO Dispatcher
@@ -145,8 +142,6 @@ class MainViewModel(
     }
 
     fun handlePhotoPicked(uriString: String) {
-        val hasPermission = _uiState.value.hasLocationPermission
-
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
@@ -173,7 +168,7 @@ class MainViewModel(
                         lat = metaLat
                         lng = metaLng
                         isFallback = false
-                    } else if (hasPermission) {
+                    } else {
                         val loc = locationProvider.getCurrentLocation()
                         if (loc != null) {
                             lat = loc.latitude
@@ -182,7 +177,7 @@ class MainViewModel(
                         }
                     }
                     captureTime = metadata.timestamp
-                } else if (hasPermission) {
+                } else {
                     val loc = locationProvider.getCurrentLocation()
                     if (loc != null) {
                         lat = loc.latitude

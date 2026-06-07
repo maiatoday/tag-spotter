@@ -32,7 +32,16 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
 
     override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? {
         val uri = uriString.toUri()
-        val meta = ExifLocationExtractor.getPhotoMetadata(context, uri) ?: return null
+        val photoUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            try {
+                android.provider.MediaStore.setRequireOriginal(uri)
+            } catch (_: Exception) {
+                uri
+            }
+        } else {
+            uri
+        }
+        val meta = ExifLocationExtractor.getPhotoMetadata(context, photoUri) ?: return null
         return PhotoMetadata(
             latitude = meta.latitude,
             longitude = meta.longitude,
