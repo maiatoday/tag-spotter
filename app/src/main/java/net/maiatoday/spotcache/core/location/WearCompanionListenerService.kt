@@ -16,11 +16,7 @@ class WearCompanionListenerService : WearableListenerService() {
                 val intent = Intent(this, WearLocationForegroundService::class.java).apply {
                     putExtra("EXTRA_WATCH_NODE_ID", messageEvent.sourceNodeId)
                 }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    startForegroundService(intent)
-                } else {
-                    startService(intent)
-                }
+                startForegroundService(intent)
             }
             "/open_on_phone" -> {
                 try {

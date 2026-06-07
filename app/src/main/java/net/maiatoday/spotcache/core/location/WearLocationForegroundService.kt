@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +37,8 @@ class WearLocationForegroundService : Service(), KoinComponent {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val watchNodeId = intent?.getStringExtra("EXTRA_WATCH_NODE_ID") ?: ""
-        
+        Log.d("WearLocationService", "Watch Node ID: $watchNodeId") // Add this line
+
         startForeground(
             NOTIFICATION_ID,
             buildNotification(),
@@ -99,15 +101,13 @@ class WearLocationForegroundService : Service(), KoinComponent {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Wear Watch Location Query",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Wear Watch Location Query",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
     }
 
     private fun buildNotification(): Notification {

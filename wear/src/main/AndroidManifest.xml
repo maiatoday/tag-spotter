@@ -11,10 +11,14 @@
         android:label="SpotCache"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
-        
+
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
         <activity
             android:name=".WearMainActivity"
             android:exported="true"
+            android:taskAffinity=""
             android:theme="@android:style/Theme.DeviceDefault">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
