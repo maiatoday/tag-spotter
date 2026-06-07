@@ -35,12 +35,7 @@ class SettingsViewModel(
             initialValue = false
         )
 
-    val notificationsEnabled: StateFlow<Boolean> = settingsRepository.notificationsEnabled
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
-        )
+
 
     val darkMapEnabled: StateFlow<Boolean> = settingsRepository.darkMapEnabled
         .stateIn(
@@ -72,11 +67,7 @@ class SettingsViewModel(
         }
     }
 
-    fun updateNotificationsEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.updateNotificationsEnabled(enabled)
-        }
-    }
+
 
     val artistRecognitionEnabled: StateFlow<Boolean> = settingsRepository.artistRecognitionEnabled
         .stateIn(

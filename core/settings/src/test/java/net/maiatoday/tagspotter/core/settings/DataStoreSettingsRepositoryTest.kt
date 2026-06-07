@@ -36,7 +36,7 @@ class DataStoreSettingsRepositoryTest {
         assertEquals("", repository.photographerName.first())
         assertEquals("Milan", repository.homeCity.first())
         assertFalse(repository.showTestData.first())
-        assertFalse(repository.notificationsEnabled.first())
+
         assertFalse(repository.darkMapEnabled.first())
         assertTrue(repository.artistRecognitionEnabled.first())
     }
@@ -54,8 +54,7 @@ class DataStoreSettingsRepositoryTest {
         repository.updateShowTestData(true)
         assertTrue(repository.showTestData.first())
 
-        repository.updateNotificationsEnabled(true)
-        assertTrue(repository.notificationsEnabled.first())
+
 
         repository.updateDarkMapEnabled(true)
         assertTrue(repository.darkMapEnabled.first())

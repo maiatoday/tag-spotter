@@ -15,8 +15,7 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
     private val _showTestData = MutableStateFlow(false)
     override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
 
-    private val _notificationsEnabled = MutableStateFlow(false)
-    override val notificationsEnabled: Flow<Boolean> = _notificationsEnabled.asStateFlow()
+
 
     private val _darkMapEnabled = MutableStateFlow(false)
     override val darkMapEnabled: Flow<Boolean> = _darkMapEnabled.asStateFlow()
@@ -39,9 +38,7 @@ class FakeSettingsRepository(initialName: String = "", initialHomeCity: String =
         _showTestData.value = show
     }
 
-    override suspend fun updateNotificationsEnabled(enabled: Boolean) {
-        _notificationsEnabled.value = enabled
-    }
+
 
     override suspend fun updateDarkMapEnabled(enabled: Boolean) {
         _darkMapEnabled.value = enabled

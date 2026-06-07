@@ -27,8 +27,7 @@ interface SettingsRepository {
     suspend fun updateHomeCity(city: String)
     val showTestData: Flow<Boolean>
     suspend fun updateShowTestData(show: Boolean)
-    val notificationsEnabled: Flow<Boolean>
-    suspend fun updateNotificationsEnabled(enabled: Boolean)
+
     val darkMapEnabled: Flow<Boolean>
     suspend fun updateDarkMapEnabled(enabled: Boolean)
     val artistRecognitionEnabled: Flow<Boolean>
@@ -72,7 +71,7 @@ class DataStoreSettingsRepository(
         val PHOTOGRAPHER_NAME = stringPreferencesKey("photographer_name")
         val HOME_CITY = stringPreferencesKey("home_city")
         val SHOW_TEST_DATA = booleanPreferencesKey("show_test_data")
-        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+
         val DARK_MAP_ENABLED = booleanPreferencesKey("dark_map_enabled")
         val ARTIST_RECOGNITION_ENABLED = booleanPreferencesKey("artist_recognition_enabled")
     }
@@ -113,17 +112,7 @@ class DataStoreSettingsRepository(
             preferences[SHOW_TEST_DATA] ?: false
         }
 
-    override val notificationsEnabled: Flow<Boolean> = dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[NOTIFICATIONS_ENABLED] ?: false
-        }
+
 
     override val darkMapEnabled: Flow<Boolean> = dataStore.data
         .catch { exception ->
@@ -167,11 +156,7 @@ class DataStoreSettingsRepository(
         }
     }
 
-    override suspend fun updateNotificationsEnabled(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[NOTIFICATIONS_ENABLED] = enabled
-        }
-    }
+
 
     override suspend fun updateDarkMapEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
