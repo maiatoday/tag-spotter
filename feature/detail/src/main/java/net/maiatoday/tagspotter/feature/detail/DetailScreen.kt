@@ -852,7 +852,8 @@ fun DetailScreen(
                             },
                             isArtistRecognitionEnabled = isArtistRecognitionEnabled,
                             onWikiSearchClick = { viewModel.searchWikipediaForSpot() },
-                            onDeleteNote = { noteToDelete = it }
+                            onDeleteNote = { noteToDelete = it },
+                            onUpdateNote = { id, text -> viewModel.updateNote(id, text) }
                         )
                     }
                 }
@@ -943,7 +944,8 @@ fun DetailScreen(
                                 },
                                 isArtistRecognitionEnabled = isArtistRecognitionEnabled,
                                 onWikiSearchClick = { viewModel.searchWikipediaForSpot() },
-                                onDeleteNote = { noteToDelete = it }
+                                onDeleteNote = { noteToDelete = it },
+                                onUpdateNote = { id, text -> viewModel.updateNote(id, text) }
                             )
                         }
                     }

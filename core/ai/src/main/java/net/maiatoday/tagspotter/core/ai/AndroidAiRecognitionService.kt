@@ -127,12 +127,12 @@ class AndroidAiRecognitionService(
             Subject: "$title"
             
             Find the Wikipedia page for this subject.
-            If a relevant Wikipedia page exists, return the URL.
+            If a relevant Wikipedia page exists, return the URL formatted as a markdown link: [Anchor Text](URL), where Anchor Text is a concise, relevant title for the page (e.g. "Banksy - Wikipedia").
             If no relevant page exists on Wikipedia, return null.
             
             Return the response in strict JSON format using exactly this schema:
             {
-              "url": "https://en.wikipedia.org/wiki/..." 
+              "url": "[Anchor Text](https://en.wikipedia.org/wiki/...)"
             }
             If no page is found, set "url" to null.
         """.trimIndent()

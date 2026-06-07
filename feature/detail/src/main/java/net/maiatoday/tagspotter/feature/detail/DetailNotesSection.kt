@@ -1,5 +1,11 @@
 package net.maiatoday.tagspotter.feature.detail
 
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +25,9 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -27,11 +36,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -57,8 +71,26 @@ fun DetailNotesSection(
     isArtistRecognitionEnabled: Boolean,
     onWikiSearchClick: () -> Unit,
     onDeleteNote: (SpotNote) -> Unit,
+    onUpdateNote: (Long, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var editingNoteId by remember { mutableStateOf<Long?>(null) }
+    var editingText by remember { mutableStateOf("") }
+    val speechRecognizerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+        onResult = { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                val results = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                val spokenText = results?.firstOrNull() ?: ""
+                if (spokenText.isNotEmpty()) {
+                    onNoteInputChange(if (noteInput.isEmpty()) spokenText else "$noteInput $spokenText")
+                }
+            }
+        }
+    )
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -127,25 +159,79 @@ fun DetailNotesSection(
                                 color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.Bold
                             )
-                            IconButton(
-                                onClick = { onDeleteNote(note) },
-                                modifier = Modifier.size(24.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete note",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                                IconButton(
+                                    onClick = {
+                                        editingNoteId = note.id
+                                        editingText = note.noteText
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit note",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { onDeleteNote(note) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete note",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        val annotatedText = rememberLinkifiedText(note.noteText)
-                        Text(
-                            text = annotatedText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        if (editingNoteId == note.id) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    value = editingText,
+                                    onValueChange = { editingText = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = Color.Gray
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(onClick = { editingNoteId = null }) {
+                                        Text("Cancel")
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = {
+                                            val text = editingText.trim()
+                                            if (text.isNotEmpty()) {
+                                                onUpdateNote(note.id, text)
+                                                editingNoteId = null
+                                            }
+                                        }
+                                    ) {
+                                        Text("Save")
+                                    }
+                                }
+                            }
+                        } else {
+                            val annotatedText = rememberLinkifiedText(note.noteText)
+                            Text(
+                                text = annotatedText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }
@@ -165,6 +251,28 @@ fun DetailNotesSection(
                 label = { Text("Write a note...") },
                 placeholder = { Text("e.g. Tag faded, style details...") },
                 modifier = Modifier.weight(1f),
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now...")
+                            }
+                            try {
+                                speechRecognizerLauncher.launch(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Speech recognition is not supported on this device.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Voice input",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Send,
                     capitalization = KeyboardCapitalization.Sentences
@@ -201,28 +309,49 @@ fun DetailNotesSection(
 fun rememberLinkifiedText(text: String): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     return remember(text, linkColor) {
-        val urlRegex = """(https?://\S+)""".toRegex()
+        val pattern = """\[([^\]]+)\]\((https?://[^\s)]+)\)|(https?://\S+)""".toRegex()
         buildAnnotatedString {
             var lastIdx = 0
-            urlRegex.findAll(text).forEach { matchResult ->
+            pattern.findAll(text).forEach { matchResult ->
                 val start = matchResult.range.first
                 val end = matchResult.range.last + 1
                 if (start > lastIdx) {
                     append(text.substring(lastIdx, start))
                 }
-                val url = matchResult.value
-                withLink(
-                    LinkAnnotation.Url(
-                        url = url,
-                        styles = TextLinkStyles(
-                            style = SpanStyle(
-                                color = linkColor,
-                                textDecoration = TextDecoration.Underline
+                
+                val markdownText = matchResult.groups[1]?.value
+                val markdownUrl = matchResult.groups[2]?.value
+                val rawUrl = matchResult.groups[3]?.value
+                
+                if (markdownText != null && markdownUrl != null) {
+                    withLink(
+                        LinkAnnotation.Url(
+                            url = markdownUrl,
+                            styles = TextLinkStyles(
+                                style = SpanStyle(
+                                    color = linkColor,
+                                    textDecoration = TextDecoration.Underline,
+                                    fontWeight = FontWeight.Medium
+                                )
                             )
                         )
-                    )
-                ) {
-                    append(url)
+                    ) {
+                        append(markdownText)
+                    }
+                } else if (rawUrl != null) {
+                    withLink(
+                        LinkAnnotation.Url(
+                            url = rawUrl,
+                            styles = TextLinkStyles(
+                                style = SpanStyle(
+                                    color = linkColor,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            )
+                        )
+                    ) {
+                        append(rawUrl)
+                    }
                 }
                 lastIdx = end
             }

@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -613,7 +614,7 @@ fun GalleryScreen(
 
                 IconButton(onClick = { showFilterBottomSheet = true }) {
                     Icon(
-                        imageVector = Icons.Default.Info,
+                        imageVector = Icons.Default.MyLocation,
                         contentDescription = "Location Filter",
                         tint = if (activeFilterCenter != null) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground
                     )

@@ -302,4 +302,13 @@ class FakeSpotRepository : SpotRepository {
         spotsMap[spotEntry.spot.id] = spotEntry.copy(notes = updatedNotes)
         updateFlow()
     }
+
+    override suspend fun updateNote(noteId: Long, noteText: String) {
+        val spotEntry = spotsMap.values.find { details -> details.notes.any { it.id == noteId } } ?: return
+        val updatedNotes = spotEntry.notes.map { note ->
+            if (note.id == noteId) note.copy(noteText = noteText) else note
+        }
+        spotsMap[spotEntry.spot.id] = spotEntry.copy(notes = updatedNotes)
+        updateFlow()
+    }
 }

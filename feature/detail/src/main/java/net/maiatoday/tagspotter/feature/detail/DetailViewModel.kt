@@ -347,6 +347,14 @@ class DetailViewModel(
         }
     }
 
+    fun updateNote(noteId: Long, noteText: String) {
+        if (spotId != -1L) {
+            viewModelScope.launch {
+                repository.updateNote(noteId, noteText)
+            }
+        }
+    }
+
     fun addImage(imagePath: String, thumbnailPath: String, timestamp: Long) {
         if (spotId != -1L) {
             viewModelScope.launch {
