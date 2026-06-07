@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "net.maiatoday.tagspotter.core.settings"
+    namespace = "net.maiatoday.spotcache.core.settings"
     compileSdk = 37
 
     defaultConfig {

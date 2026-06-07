@@ -7,15 +7,15 @@ plugins {
 }
 
 android {
-    namespace = "net.maiatoday.tagspotter"
+    namespace = "net.maiatoday.spotcache"
     compileSdk = 37
     defaultConfig {
-        applicationId = "net.maiatoday.tagspotter"
+        applicationId = "net.maiatoday.spotcache"
         minSdk = 29
         targetSdk = 36
         versionCode = 8
         versionName = "0.0.8"
-        testInstrumentationRunner = "net.maiatoday.tagspotter.TagSpotterTestRunner"
+        testInstrumentationRunner = "net.maiatoday.spotcache.SpotCacheTestRunner"
 
         // Load local.properties for developer-level Gemini API Key
         val localProperties = Properties()
@@ -133,6 +133,7 @@ dependencies {
   implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.coil.compose)
   implementation(libs.play.services.location)
+  implementation(libs.play.services.wearable)
   implementation(libs.room.runtime)
   implementation(libs.room.ktx)
 

@@ -17,7 +17,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "Tag Spotter"
+rootProject.name = "SpotCache"
 include(":app")
 include(":core:model")
 include(":core:photo")
@@ -30,3 +30,4 @@ include(":feature:gallery")
 include(":feature:map")
 include(":feature:detail")
 include(":feature:settings")
+include(":wear")
