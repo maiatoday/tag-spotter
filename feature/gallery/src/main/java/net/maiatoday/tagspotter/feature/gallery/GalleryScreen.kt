@@ -121,7 +121,6 @@ fun GalleryScreen(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var isShareMenuExpanded by remember { mutableStateOf(false) }
 
-    var showPermissionDisclosure by remember { mutableStateOf(false) }
     var showLimitExceededDialog by remember { mutableStateOf(false) }
     var isSearchExpanded by remember { mutableStateOf(false) }
     var exportMinRatingThreshold by remember { mutableIntStateOf(0) }
@@ -137,50 +136,7 @@ fun GalleryScreen(
         }
     }
 
-    val hasFineLocation = ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_FINE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
 
-    val hasBackgroundLocation =
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-    val hasNotificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
-    } else {
-        true
-    }
-
-    val backgroundLocationLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
-                selectedSpotIds.clear()
-                isMultiSelectMode = false
-                Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            Toast.makeText(context, "Background location permission is required for proximity alerts.", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    val foregroundLocationLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        if (fineGranted) {
-            showPermissionDisclosure = true
-        } else {
-            Toast.makeText(context, "Location permission is required for starred spots geofencing.", Toast.LENGTH_LONG).show()
-        }
-    }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("*/*")
@@ -270,23 +226,10 @@ fun GalleryScreen(
                             val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
                             val anyUnstarred = selectedSpots.any { !it.spot.isStarred }
                             if (anyUnstarred) {
-                                if (!hasFineLocation) {
-                                    val permissions = mutableListOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
-                                    )
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
-                                        permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                    foregroundLocationLauncher.launch(permissions.toTypedArray())
-                                } else if (!hasBackgroundLocation) {
-                                    showPermissionDisclosure = true
-                                } else {
-                                    viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
-                                        selectedSpotIds.clear()
-                                        isMultiSelectMode = false
-                                        Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
-                                    }
+                                viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
+                                    selectedSpotIds.clear()
+                                    isMultiSelectMode = false
+                                    Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
                                 }
                             } else {
                                 viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = false) {
@@ -760,30 +703,7 @@ fun GalleryScreen(
             }
         )
     }
-    if (showPermissionDisclosure) {
-        AlertDialog(
-            onDismissRequest = { showPermissionDisclosure = false },
-            title = { Text("Background Location Access") },
-            text = {
-                Text("Tag Spotter needs background location access ('Allow all the time') to monitor starred spots and notify you when walking near them, even when the app is closed.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showPermissionDisclosure = false
-                        backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    }
-                ) {
-                    Text("Continue")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPermissionDisclosure = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+
 
     if (showLimitExceededDialog) {
         AlertDialog(

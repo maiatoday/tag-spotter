@@ -480,7 +480,6 @@ fun DetailScreen(
     var zoomImage by remember { mutableStateOf<SpotImage?>(null) }
     var isMapPickerDialogVisible by remember { mutableStateOf(false) }
 
-    var showPermissionDisclosure by remember { mutableStateOf(false) }
     var showLimitExceededDialog by remember { mutableStateOf(false) }
     var imageToDelete by remember { mutableStateOf<SpotImage?>(null) }
 
@@ -553,45 +552,7 @@ fun DetailScreen(
         }
     }
 
-    val hasFineLocation = ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_FINE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
 
-    val hasBackgroundLocation = ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_BACKGROUND_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
-
-    val hasNotificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
-    } else {
-        true
-    }
-
-    val backgroundLocationLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.toggleStarred()
-        } else {
-            Toast.makeText(context, "Background location permission is required for proximity alerts.", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    val foregroundLocationLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        if (fineGranted) {
-            showPermissionDisclosure = true
-        } else {
-            Toast.makeText(context, "Location permission is required for starred spots geofencing.", Toast.LENGTH_LONG).show()
-        }
-    }
 
     // Launcher to add multiple images to this spot
     val pickMultipleMedia = rememberLauncherForActivityResult(
@@ -659,24 +620,7 @@ fun DetailScreen(
                             val isStarred = details.spot.isStarred
                             IconButton(
                                 onClick = {
-                                    if (isStarred) {
-                                        viewModel.toggleStarred()
-                                    } else {
-                                        if (!hasFineLocation) {
-                                            val permissions = mutableListOf(
-                                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                                Manifest.permission.ACCESS_COARSE_LOCATION
-                                            )
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
-                                                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-                                            }
-                                            foregroundLocationLauncher.launch(permissions.toTypedArray())
-                                        } else if (!hasBackgroundLocation) {
-                                            showPermissionDisclosure = true
-                                        } else {
-                                            viewModel.toggleStarred()
-                                        }
-                                    }
+                                    viewModel.toggleStarred()
                                 }
                             ) {
                                 Icon(
@@ -1134,30 +1078,7 @@ fun DetailScreen(
         }
     }
 
-    if (showPermissionDisclosure) {
-        AlertDialog(
-            onDismissRequest = { showPermissionDisclosure = false },
-            title = { Text("Background Location Access") },
-            text = {
-                Text("Tag Spotter needs background location access ('Allow all the time') to monitor starred spots and notify you when walking near them, even when the app is closed.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showPermissionDisclosure = false
-                        backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    }
-                ) {
-                    Text("Continue")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPermissionDisclosure = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+
 
     if (showLimitExceededDialog) {
         AlertDialog(

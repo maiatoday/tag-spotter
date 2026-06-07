@@ -2,7 +2,6 @@ package net.maiatoday.tagspotter
 
 import androidx.room.Room
 import net.maiatoday.tagspotter.core.database.LocalSpotRepository
-import net.maiatoday.tagspotter.core.location.GeofenceService
 import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
 import net.maiatoday.tagspotter.core.database.SpotDatabase
 
@@ -17,12 +16,7 @@ class TestTagSpotterApplication : TagSpotterApplication() {
         get() = inMemoryDatabase
 
     override val repository: LocalSpotRepository by lazy {
-        LocalSpotRepository(inMemoryDatabase.spotDao(), object : GeofenceService {
-            override fun registerGeofence(id: Long, latitude: Double, longitude: Double, onResult: (Boolean) -> Unit) {
-                onResult(true)
-            }
-            override fun unregisterGeofence(id: Long) {}
-        }, AndroidPhotoProcessor(this))
+        LocalSpotRepository(inMemoryDatabase.spotDao(), AndroidPhotoProcessor(this))
     }
 
     override fun onCreate() {

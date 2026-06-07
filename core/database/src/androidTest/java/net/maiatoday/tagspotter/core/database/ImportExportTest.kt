@@ -7,7 +7,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
-import net.maiatoday.tagspotter.core.location.GeofenceService
 import net.maiatoday.tagspotter.core.model.Spot
 import org.junit.After
 import org.junit.Assert
@@ -27,18 +26,7 @@ class ImportExportTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         db = Room.inMemoryDatabaseBuilder(context, SpotDatabase::class.java).build()
-        repository = LocalSpotRepository(db.spotDao(), object : GeofenceService {
-            override fun registerGeofence(
-                id: Long,
-                latitude: Double,
-                longitude: Double,
-                onResult: (Boolean) -> Unit
-            ) {
-                onResult(true)
-            }
-
-            override fun unregisterGeofence(id: Long) {}
-        }, AndroidPhotoProcessor(context))
+        repository = LocalSpotRepository(db.spotDao(), AndroidPhotoProcessor(context))
     }
 
     @After

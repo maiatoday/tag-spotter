@@ -8,7 +8,6 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
-import net.maiatoday.tagspotter.core.location.GeofenceService
 
 interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>
@@ -42,7 +41,6 @@ interface SpotRepository {
 
 class LocalSpotRepository(
     private val spotDao: SpotDao,
-    private val geofenceService: GeofenceService,
     private val photoProcessor: PhotoProcessor
 ) : SpotRepository {
 
@@ -134,10 +132,6 @@ class LocalSpotRepository(
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
-        // If starred, unregister geofence
-        if (spotDetails.spot.isStarred) {
-            geofenceService.unregisterGeofence(spotDetails.spot.id)
-        }
         // Delete all local thumbnail and image files (original public gallery photos are NOT deleted)
         spotDetails.images.forEach { image ->
             photoProcessor.deleteFile(image.thumbnailPath)
@@ -262,18 +256,6 @@ class LocalSpotRepository(
 
     override suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean) {
         spotDao.updateSpotStarred(spotId, isStarred)
-        if (isStarred) {
-            val details = spotDao.getSpotDetails(spotId).first()
-            if (details != null) {
-                geofenceService.registerGeofence(
-                    id = details.spot.id,
-                    latitude = details.spot.latitude,
-                    longitude = details.spot.longitude
-                )
-            }
-        } else {
-            geofenceService.unregisterGeofence(spotId)
-        }
     }
 
     override suspend fun getStarredSpots(): List<Spot> {
