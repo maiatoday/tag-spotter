@@ -19,6 +19,7 @@ import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.ai.AiRecognitionService
 import net.maiatoday.tagspotter.core.ai.AiSuggestion
+import net.maiatoday.tagspotter.core.location.WearSyncManager
 
 class DetailViewModel(
     private val spotId: Long,
@@ -26,6 +27,7 @@ class DetailViewModel(
     private val settingsRepository: SettingsRepository,
     private val aiRecognitionService: AiRecognitionService,
     private val secretsProvider: SecretsProvider,
+    private val wearSyncManager: WearSyncManager,
     draftImagePath: String? = null,
     draftThumbnailPath: String? = null,
     draftLatitude: Double? = null,
@@ -210,6 +212,14 @@ class DetailViewModel(
                         } else {
                             it
                         }
+                    }
+                }
+            }
+        } else {
+            viewModelScope.launch {
+                spotDetails.collect { details ->
+                    if (details != null) {
+                        wearSyncManager.shareSpotToWatch(details)
                     }
                 }
             }

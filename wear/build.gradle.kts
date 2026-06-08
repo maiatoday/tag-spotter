@@ -9,7 +9,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "net.maiatoday.tagspotter.wear"
+        applicationId = "net.maiatoday.tagspotter"
         minSdk = 30
         targetSdk = 36
         versionCode = 1

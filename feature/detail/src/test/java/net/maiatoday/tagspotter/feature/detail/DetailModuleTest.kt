@@ -14,7 +14,8 @@ class DetailModuleTest {
                 net.maiatoday.tagspotter.core.database.SpotRepository::class,
                 net.maiatoday.tagspotter.core.settings.SettingsRepository::class,
                 net.maiatoday.tagspotter.core.ai.AiRecognitionService::class,
-                net.maiatoday.tagspotter.core.settings.SecretsProvider::class
+                net.maiatoday.tagspotter.core.settings.SecretsProvider::class,
+                net.maiatoday.tagspotter.core.location.WearSyncManager::class
             )
         )
     }

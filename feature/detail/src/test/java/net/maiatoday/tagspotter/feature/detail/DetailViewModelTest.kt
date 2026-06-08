@@ -13,6 +13,7 @@ import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.ai.AiRecognitionService
 import net.maiatoday.tagspotter.core.ai.AiSuggestion
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
+import net.maiatoday.tagspotter.core.location.WearSyncManager
 import net.maiatoday.tagspotter.core.photo.PhotoMetadata
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.photo.TempFileDetails
@@ -38,6 +39,7 @@ class DetailViewModelTest {
     private val settingsRepository = FakeSettingsRepository("Initial Photographer")
     private val aiRecognitionService = FakeAiRecognitionService()
     private val secretsProvider = FakeSecretsProvider()
+    private val wearSyncManager = FakeWearSyncManager()
 
     @Test
     fun loadSpotDetailsAndUpdatesWorkCorrectly() = runTest {
@@ -62,7 +64,8 @@ class DetailViewModelTest {
             repository,
             settingsRepository,
             aiRecognitionService,
-            secretsProvider
+            secretsProvider,
+            wearSyncManager
         )
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
@@ -167,7 +170,8 @@ class DetailViewModelTest {
             repository,
             settingsRepository,
             aiRecognitionService,
-            secretsProvider
+            secretsProvider,
+            wearSyncManager
         )
 
         // Collect StateFlow in backgroundScope
@@ -211,7 +215,8 @@ class DetailViewModelTest {
             repository,
             settingsRepository,
             aiRecognitionService,
-            secretsProvider
+            secretsProvider,
+            wearSyncManager
         )
 
         // Collect spotDetails StateFlow in backgroundScope
@@ -272,7 +277,8 @@ class DetailViewModelTest {
             repository,
             settingsRepository,
             aiRecognitionService,
-            secretsProvider
+            secretsProvider,
+            wearSyncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -296,7 +302,8 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            secretsProvider = secretsProvider
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
         )
         
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -322,7 +329,8 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            secretsProvider = secretsProvider
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -343,7 +351,8 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            secretsProvider = secretsProvider
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -362,7 +371,8 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            secretsProvider = secretsProvider
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -404,7 +414,8 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            secretsProvider = secretsProvider
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -445,7 +456,8 @@ class DetailViewModelTest {
             repository = repository,
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
-            secretsProvider = secretsProvider
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -464,7 +476,8 @@ class DetailViewModelTest {
             repository,
             settingsRepository,
             aiRecognitionService,
-            secretsProvider
+            secretsProvider,
+            wearSyncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -479,4 +492,9 @@ class DetailViewModelTest {
         viewModel.resetWikiSearchState()
         assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
     }
+}
+
+private class FakeWearSyncManager : WearSyncManager {
+    override fun shareSpotToWatch(spotDetails: SpotDetails) {}
+    override fun sendSpotPhoto(spotId: Long, imagePath: String) {}
 }

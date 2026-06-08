@@ -1,15 +1,23 @@
 package net.maiatoday.tagspotter.wear
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import net.maiatoday.tagspotter.core.model.SpotDetails
 
 class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListener {
@@ -35,6 +44,8 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
     private var spotsState = mutableStateListOf<SpotDetails>()
     private var isLoadingState = mutableStateOf(true)
     private var errorState = mutableStateOf<String?>(null)
+    private var selectedSpotPhotoState = mutableStateOf<Bitmap?>(null)
+    private var externalNavigateToSpot = mutableStateOf<SpotDetails?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +56,21 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
         setContent {
             WearAppTheme {
                 val navController = rememberSwipeDismissableNavController()
+
+                LaunchedEffect(externalNavigateToSpot.value) {
+                    val spotDetails = externalNavigateToSpot.value
+                    if (spotDetails != null) {
+                        selectedSpotPhotoState.value = null
+                        val jsonStr = Json.encodeToString(spotDetails)
+                        navController.currentBackStackEntry?.savedStateHandle?.set("spot_details", jsonStr)
+                        if (navController.currentBackStackEntry?.destination?.route == "detail") {
+                            navController.popBackStack()
+                        }
+                        navController.navigate("detail")
+                        externalNavigateToSpot.value = null
+                    }
+                }
+
                 SwipeDismissableNavHost(
                     navController = navController,
                     startDestination = "list"
@@ -56,19 +82,26 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                             error = errorState.value,
                             onRefresh = { requestNearbySpots() },
                             onSpotSelect = { spotDetails ->
-                                navController.currentBackStackEntry?.savedStateHandle?.set("spot_details", spotDetails)
+                                selectedSpotPhotoState.value = null
+                                requestSpotPhoto(spotDetails.spot.id)
+                                val jsonStr = Json.encodeToString(spotDetails)
+                                navController.currentBackStackEntry?.savedStateHandle?.set("spot_details", jsonStr)
                                 navController.navigate("detail")
                             }
                         )
                     }
                     composable("detail") {
-                        val spotDetails = navController.previousBackStackEntry
+                        val spotDetailsJson = navController.previousBackStackEntry
                             ?.savedStateHandle
-                            ?.get<SpotDetails>("spot_details")
+                            ?.get<String>("spot_details")
+                        val spotDetails = remember(spotDetailsJson) {
+                            spotDetailsJson?.let { Json.decodeFromString<SpotDetails>(it) }
+                        }
                         
                         if (spotDetails != null) {
                             SpotDetailScreen(
                                 spotDetails = spotDetails,
+                                photo = selectedSpotPhotoState.value,
                                 onOpenOnPhone = { sendOpenOnPhoneMessage(spotDetails.spot.id) }
                             )
                         } else {
@@ -88,18 +121,41 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
-        if (messageEvent.path == "/nearby_spots_response") {
-            try {
-                val json = String(messageEvent.data, Charsets.UTF_8)
-                val list = Json.decodeFromString<List<SpotDetails>>(json)
-                spotsState.clear()
-                spotsState.addAll(list)
-                isLoadingState.value = false
-                errorState.value = null
-            } catch (e: Exception) {
-                e.printStackTrace()
-                errorState.value = "Failed to parse spots."
-                isLoadingState.value = false
+        when (messageEvent.path) {
+            "/nearby_spots_response" -> {
+                try {
+                    val json = String(messageEvent.data, Charsets.UTF_8)
+                    val list = Json.decodeFromString<List<SpotDetails>>(json)
+                    spotsState.clear()
+                    spotsState.addAll(list)
+                    isLoadingState.value = false
+                    errorState.value = null
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    errorState.value = "Failed to parse spots."
+                    isLoadingState.value = false
+                }
+            }
+            "/show_spot" -> {
+                try {
+                    val json = String(messageEvent.data, Charsets.UTF_8)
+                    val spotDetails = Json.decodeFromString<SpotDetails>(json)
+                    activityScope.launch {
+                        externalNavigateToSpot.value = spotDetails
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            "/spot_photo" -> {
+                try {
+                    val bitmap = BitmapFactory.decodeByteArray(messageEvent.data, 0, messageEvent.data.size)
+                    activityScope.launch {
+                        selectedSpotPhotoState.value = bitmap
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
@@ -134,13 +190,39 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
         }
     }
 
-    private fun sendOpenOnPhoneMessage(spotId: Long) {
+    private fun requestSpotPhoto(spotId: Long) {
+        Log.d("WearMainActivity", "requestSpotPhoto called with spotId=$spotId")
         activityScope.launch(Dispatchers.IO) {
             try {
                 val nodeClient = Wearable.getNodeClient(this@WearMainActivity)
                 val nodes = Tasks.await(nodeClient.connectedNodes)
                 if (nodes.isEmpty()) {
+                    Log.d("WearMainActivity", "No nodes connected to request spot photo.")
+                    return@launch
+                }
+                
+                val payload = spotId.toString().toByteArray(Charsets.UTF_8)
+                for (node in nodes) {
+                    Wearable.getMessageClient(this@WearMainActivity)
+                        .sendMessage(node.id, "/request_spot_photo", payload)
+                    Log.d("WearMainActivity", "Requested photo from node: ${node.id}")
+                }
+            } catch (e: Exception) {
+                Log.e("WearMainActivity", "Error requesting spot photo", e)
+            }
+        }
+    }
+
+    private fun sendOpenOnPhoneMessage(spotId: Long) {
+        Log.d("WearMainActivity", "sendOpenOnPhoneMessage called with spotId=$spotId")
+        activityScope.launch(Dispatchers.IO) {
+            try {
+                val nodeClient = Wearable.getNodeClient(this@WearMainActivity)
+                val nodes = Tasks.await(nodeClient.connectedNodes)
+                Log.d("WearMainActivity", "Found connected nodes: ${nodes.size}")
+                if (nodes.isEmpty()) {
                     withContext(Dispatchers.Main) {
+                        Log.d("WearMainActivity", "No nodes connected, showing toast")
                         Toast.makeText(this@WearMainActivity, "No phone connected.", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
@@ -148,13 +230,16 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                 
                 val payload = spotId.toString().toByteArray(Charsets.UTF_8)
                 for (node in nodes) {
+                    Log.d("WearMainActivity", "Sending /open_on_phone to node: ${node.id} (${node.displayName})")
                     Wearable.getMessageClient(this@WearMainActivity)
                         .sendMessage(node.id, "/open_on_phone", payload)
+                    Log.d("WearMainActivity", "Sent successfully to node: ${node.id}")
                 }
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@WearMainActivity, "Opening on phone...", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                Log.e("WearMainActivity", "Error sending open on phone message", e)
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@WearMainActivity, "Connection failed.", Toast.LENGTH_SHORT).show()
@@ -222,7 +307,7 @@ fun SpotListScreen(
         } else if (spots.isEmpty()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    "No spots found\nwithin 10km",
+                    "No starred spots\nwithin 10km",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.body2,
                     color = Color.Gray
@@ -243,7 +328,7 @@ fun SpotListScreen(
             ) {
                 item {
                     Text(
-                        text = "NEARBY SPOTS",
+                        text = "STARRED SPOTS",
                         style = MaterialTheme.typography.caption1,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colors.primary,
@@ -273,6 +358,7 @@ fun SpotListScreen(
 @Composable
 fun SpotDetailScreen(
     spotDetails: SpotDetails,
+    photo: Bitmap?,
     onOpenOnPhone: () -> Unit
 ) {
     Box(
@@ -286,6 +372,18 @@ fun SpotDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (photo != null) {
+                item {
+                    Image(
+                        bitmap = photo.asImageBitmap(),
+                        contentDescription = "Spot Photo",
+                        modifier = Modifier
+                            .size(110.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
             item {
                 Text(
                     text = spotDetails.spot.category.uppercase(),

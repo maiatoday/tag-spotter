@@ -24,6 +24,9 @@ dependencies {
     implementation(project(":core:model"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.wearable)
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.work.runtime.ktx)
     
     // Koin

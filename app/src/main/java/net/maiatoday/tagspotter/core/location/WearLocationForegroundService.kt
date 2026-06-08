@@ -51,14 +51,18 @@ class WearLocationForegroundService : Service(), KoinComponent {
 
         serviceScope.launch {
             try {
+                Log.d("WearLocationService", "Starting location query...")
                 // 1. Get current location
                 val location = LocationHelper.getCurrentLocation(applicationContext)
+                Log.d("WearLocationService", "Location received: $location")
                 val responseBytes = if (location != null) {
                     // 2. Fetch all spots and filter/sort by proximity
                     val spotDetailsList = repository.getAllSpots().first()
+                    Log.d("WearLocationService", "Fetched all spots from repo: ${spotDetailsList.size}")
                     
-                    // Sort by distance and filter those within 10 km (10000m)
+                    // Sort by distance and filter those within 10 km (10000m) and are starred
                     val nearbySpots = spotDetailsList
+                        .filter { it.spot.isStarred }
                         .map { details ->
                             val dist = LocationUtils.calculateDistance(
                                 location.latitude, location.longitude,
@@ -71,21 +75,29 @@ class WearLocationForegroundService : Service(), KoinComponent {
                         .map { it.first }
                         .take(10) // Limit to top 10 closest spots
 
+                    Log.d("WearLocationService", "Filtered nearby spots count: ${nearbySpots.size}")
                     val json = Json.encodeToString(nearbySpots)
                     json.toByteArray(Charsets.UTF_8)
                 } else {
+                    Log.d("WearLocationService", "Location was null, preparing empty list")
                     // Send empty list
                     "[]".toByteArray(Charsets.UTF_8)
                 }
 
                 // 3. Send back to Wear OS
                 if (watchNodeId.isNotEmpty()) {
+                    Log.d("WearLocationService", "Sending message back to watchNodeId: $watchNodeId")
                     Wearable.getMessageClient(applicationContext)
                         .sendMessage(watchNodeId, "/nearby_spots_response", responseBytes)
+                    Log.d("WearLocationService", "Message sent back successfully")
+                } else {
+                    Log.d("WearLocationService", "Watch Node ID was empty, cannot send response")
                 }
             } catch (e: Exception) {
+                Log.e("WearLocationService", "Error querying nearby spots", e)
                 e.printStackTrace()
             } finally {
+                Log.d("WearLocationService", "Stopping service")
                 stopSelf()
             }
         }

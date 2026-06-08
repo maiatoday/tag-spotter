@@ -1,5 +1,6 @@
 package net.maiatoday.tagspotter.feature.detail
 
+import net.maiatoday.tagspotter.core.location.WearSyncManager
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -22,6 +23,7 @@ val detailModule = module {
             settingsRepository = get(),
             aiRecognitionService = get(),
             secretsProvider = get(),
+            wearSyncManager = get(),
             draftImagePath = draft?.imagePath,
             draftThumbnailPath = draft?.thumbnailPath,
             draftLatitude = draft?.latitude,

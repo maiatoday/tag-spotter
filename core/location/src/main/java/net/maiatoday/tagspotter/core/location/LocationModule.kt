@@ -5,4 +5,5 @@ import org.koin.dsl.module
 
 val locationModule = module {
     single<LocationProvider> { AndroidLocationProvider(androidContext()) }
+    single<WearSyncManager> { AndroidWearSyncManager(androidContext()) }
 }

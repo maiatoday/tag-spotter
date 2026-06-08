@@ -36,6 +36,7 @@ dependencies {
     implementation(project(":core:photo"))
     implementation(project(":core:ai"))
     implementation(project(":core:ui"))
+    implementation(project(":core:location"))
     
     implementation(libs.osmdroid.android)
     
