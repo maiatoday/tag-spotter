@@ -7,15 +7,15 @@ plugins {
 }
 
 android {
-    namespace = "net.maiatoday.spotcache"
+    namespace = "net.maiatoday.tagspotter"
     compileSdk = 37
     defaultConfig {
-        applicationId = "net.maiatoday.spotcache"
+        applicationId = "net.maiatoday.tagspotter"
         minSdk = 29
         targetSdk = 36
         versionCode = 8
         versionName = "0.0.8"
-        testInstrumentationRunner = "net.maiatoday.spotcache.SpotCacheTestRunner"
+        testInstrumentationRunner = "net.maiatoday.tagspotter.TagSpotterTestRunner"
 
         // Load local.properties for developer-level Gemini API Key
         val localProperties = Properties()

@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "net.maiatoday.spotcache.wear"
+    namespace = "net.maiatoday.tagspotter.wear"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "net.maiatoday.spotcache.wear"
+        applicationId = "net.maiatoday.tagspotter.wear"
         minSdk = 30
         targetSdk = 36
         versionCode = 1

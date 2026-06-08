@@ -1,0 +1,135 @@
+#!/bin/bash
+
+# Usage: ./rename_app <old_name> <new_name>
+# Example: ./rename_app TagSpotter TagSpotter
+
+if [ "$#" -ne 2 ]; then
+    echo "Error: Missing arguments."
+    echo "Usage: $0 <old_name> <new_name>"
+    exit 1
+fi
+
+OLD=$1
+NEW=$2
+
+# Check if names are in PascalCase (at least one uppercase letter)
+if [[ ! "$OLD" =~ [A-Z] ]] || [[ ! "$NEW" =~ [A-Z] ]]; then
+    echo "Error: Please provide both names in PascalCase (e.g., TagSpotter, TagSpotter)."
+    exit 1
+fi
+
+# Define variants for replacement
+# 1. Literal (as provided, e.g., TagSpotter)
+# 2. lowercase (tagspotter -> tagspotter)
+# 3. UPPERCASE (TAGSPOTTER -> TAGSPOTTER)
+# 4. TitleCase/PascalCase (Tagspotter -> Tagspotter)
+
+OLD_LC=$(echo "$OLD" | tr '[:upper:]' '[:lower:]')
+NEW_LC=$(echo "$NEW" | tr '[:upper:]' '[:lower:]')
+
+OLD_UC=$(echo "$OLD" | tr '[:lower:]' '[:upper:]')
+NEW_UC=$(echo "$NEW" | tr '[:lower:]' '[:upper:]')
+
+OLD_TC=$(echo "$OLD_LC" | perl -pe 's/(^|[^a-zA-Z])([a-z])/$1 . uc($2)/e')
+NEW_TC=$(echo "$NEW_LC" | perl -pe 's/(^|[^a-zA-Z])([a-z])/$1 . uc($2)/e')
+
+echo "🚀 Starting rename process: $OLD -> $NEW"
+echo "------------------------------------------"
+echo "Targeting variants:"
+echo "  1. $OLD  ->  $NEW"
+echo "  2. $OLD_LC  ->  $NEW_LC"
+echo "  3. $OLD_UC  ->  $NEW_UC"
+echo "  4. $OLD_TC  ->  $NEW_TC"
+echo "------------------------------------------"
+
+# Verify if we are in a git repo to use git mv
+IS_GIT=false
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    IS_GIT=true
+    echo "✅ Git repository detected. Using 'git mv' for directory renaming."
+else
+    echo "⚠️  Not a git repository. Using standard 'mv'."
+fi
+
+# --- PHASE 1: TEXTUAL REPLACEMENT ---
+echo "Phase 1/2: Updating file contents..."
+
+# Find all files, excluding build, .gradle, .git, and .idea directories
+find . -type f \
+    -not -path '*/.git/*' \
+    -not -path '*/build/*' \
+    -not -path '*/.gradle/*' \
+    -not -path '*/.idea/*' \
+    -not -path '*/gradle/*' | while read -r file; do
+
+# Perform replacements using perl for better regex support (handling boundaries)
+    perl -pi -e "s/$OLD/$NEW/g" "$file"
+    perl -pi -e "s/$OLD_LC/$NEW_LC/g" "$file"
+    perl -pi -e "s/$OLD_UC/$NEW_UC/g" "$file"
+    perl -pi -e "s/$OLD_TC/$NEW_TC/g" "$file"
+
+done
+
+echo "✅ File contents updated."
+
+# --- PHASE 2: RENAMING FILES AND DIRECTORIES ---
+echo "Phase 2/2: Renaming files and directories..."
+
+# Clean up .DS_Store files first
+find . -name ".DS_Store" -delete 2>/dev/null
+
+# Clean up empty directories first
+find . -depth -type d -empty -delete 2>/dev/null
+
+find . -depth \
+    -not -path '*/.git/*' \
+    -not -path '*/build/*' \
+    -not -path '*/.gradle/*' \
+    -not -path '*/.idea/*' \
+    -not -path '*/gradle/*' | while read -r item; do
+
+    # Get the base name of the file or directory
+    base_item=$(basename "$item")
+    dir_path=$(dirname "$item")
+
+    # Check if the base name contains any of our target variants
+    if [[ "$base_item" == *"$OLD"* ]] || [[ "$base_item" == *"$OLD_LC"* ]] || [[ "$base_item" == *"$OLD_UC"* ]] || [[ "$base_item" == *"$OLD_TC"* ]]; then
+        
+        # Compute the new base name by replacing all variants
+        new_base=$(echo "$base_item" | perl -pe "s/$OLD/$NEW/g; s/$OLD_LC/$NEW_LC/g; s/$OLD_UC/$NEW_UC/g; s/$OLD_TC/$NEW_TC/g")
+
+        if [ "$base_item" != "$new_base" ]; then
+            new_item="$dir_path/$new_base"
+            
+            # If the destination directory exists, clean it up if it is empty/ignored
+            if [ -d "$new_item" ]; then
+                find "$new_item" -name ".DS_Store" -delete 2>/dev/null
+                if [ -z "$(ls -A "$new_item" 2>/dev/null)" ]; then
+                    echo "  Removing empty/ignored destination directory: $new_item"
+                    rmdir "$new_item"
+                fi
+            fi
+
+            # Check if we should use git mv or standard mv
+            USE_GIT_MV=false
+            if [ "$IS_GIT" = true ]; then
+                if git ls-files --error-unmatch "$item" >/dev/null 2>&1; then
+                    USE_GIT_MV=true
+                elif [ -d "$item" ] && [ -n "$(git ls-files "$item" 2>/dev/null)" ]; then
+                    USE_GIT_MV=true
+                fi
+            fi
+
+            if [ "$USE_GIT_MV" = true ]; then
+                echo "  Git Moving: $item -> $new_item"
+                git mv "$item" "$new_item"
+            else
+                echo "  Moving: $item -> $new_item"
+                mv "$item" "$new_item"
+            fi
+        fi
+    fi
+done
+
+echo "------------------------------------------"
+echo "🎉 Rename complete! Please run './gradlew clean' and check for errors."
