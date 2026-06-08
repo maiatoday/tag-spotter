@@ -35,7 +35,7 @@ class WearCompanionListenerService : WearableListenerService(), KoinComponent {
             }
             "/open_on_phone" -> {
                 try {
-                    val payload = if (messageEvent.data != null) String(messageEvent.data, Charsets.UTF_8) else "null"
+                    val payload = String(messageEvent.data, Charsets.UTF_8)
                     Log.d("WearCompanionService", "open_on_phone payload=$payload")
                     val spotId = payload.toLongOrNull()
                     if (spotId != null) {
@@ -56,7 +56,7 @@ class WearCompanionListenerService : WearableListenerService(), KoinComponent {
             }
             "/request_spot_photo" -> {
                 try {
-                    val payload = if (messageEvent.data != null) String(messageEvent.data, Charsets.UTF_8) else ""
+                    val payload = String(messageEvent.data, Charsets.UTF_8)
                     val spotId = payload.toLongOrNull()
                     if (spotId != null) {
                         Log.d("WearCompanionService", "Received request for spot photo, spotId=$spotId")

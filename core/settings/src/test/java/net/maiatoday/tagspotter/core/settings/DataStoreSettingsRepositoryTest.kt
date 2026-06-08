@@ -101,7 +101,7 @@ class DataStoreSettingsRepositoryTest {
         }
 
         override fun getStringSet(key: String, defValues: Set<String>?): Set<String>? {
-            return map[key] as? Set<String> ?: defValues
+            return (map[key] as? Set<*>)?.filterIsInstance<String>()?.toSet() ?: defValues
         }
 
         override fun getInt(key: String, defValue: Int): Int {
