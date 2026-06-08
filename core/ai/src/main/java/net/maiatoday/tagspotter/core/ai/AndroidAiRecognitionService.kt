@@ -67,6 +67,7 @@ class AndroidAiRecognitionService(
             "architecture" -> "architect, designer, or builder"
             "nature" -> "landscape artist, gardener, designer, or photographer"
             "public_place" -> "artist, sculptor, architect, designer, or creator"
+            "food" -> "chef, cook, food artist, or creator"
             else -> "street art artist, graffiti writer, crew, or painter"
         }
 

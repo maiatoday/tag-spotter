@@ -302,6 +302,8 @@ class ImportExportTest {
             Assert.assertNotNull("Hero image with 0 stars should be imported", rating0Image)
             Assert.assertNotNull("5-star image should be imported", rating5Image)
             Assert.assertTrue("1-star image should NOT be imported", rating1Image == null)
+            Assert.assertEquals(true, rating0Image?.isMain)
+            Assert.assertEquals(false, rating5Image?.isMain)
 
             // Clean up files and database
             repository.deleteSpot(importedDetail)

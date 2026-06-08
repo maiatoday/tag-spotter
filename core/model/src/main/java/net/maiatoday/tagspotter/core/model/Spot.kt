@@ -10,14 +10,18 @@ data class Spot(
     val createdAt: Long,
     val description: String,
     val tags: List<String>,
-    val category: String, // e.g. "graffiti", "sculpture", "nature", "architecture"
+    val category: String, // e.g. "graffiti", "sculpture", "nature", "architecture", "food"
     val status: String, // "active" or "erased"
     val artists: List<String> = emptyList(),
     val photographer: String = "",
     val isImported: Boolean = false,
     val isStarred: Boolean = false,
     val artworkDate: String = ""
-)
+) {
+    companion object {
+        val CATEGORIES = listOf("graffiti", "sculpture", "nature", "architecture", "public_place", "food")
+    }
+}
 
 @Serializable
 data class SpotImage(

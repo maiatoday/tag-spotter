@@ -60,6 +60,7 @@ val DarkCategoryColors = CategoryColors(
     nature = Color(0xFFC3F400),       // Lime Green (matches DarkPrimaryContainer)
     architecture = Color(0xFFBF5AF2), // Neon Purple
     publicPlace = Color(0xFFFF9F0A),  // Neon Orange
+    food = Color(0xFFFFD300),         // Neon Yellow
     default = Color.DarkGray
 )
 
@@ -69,5 +70,6 @@ val LightCategoryColors = CategoryColors(
     nature = Color(0xFF558100),       // Lime Green/Olive (matches LightTertiaryContainer)
     architecture = Color(0xFF8E24AA), // Darker Purple
     publicPlace = Color(0xFFE65100),  // Darker Orange
+    food = Color(0xFFE5A900),         // Darker Yellow/Amber
     default = Color.Gray
 )

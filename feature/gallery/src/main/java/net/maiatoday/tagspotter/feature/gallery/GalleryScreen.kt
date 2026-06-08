@@ -85,6 +85,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.core.model.FilterCenter
@@ -157,7 +158,7 @@ fun GalleryScreen(
         }
     }
 
-    val categories = listOf("All", "graffiti", "sculpture", "nature", "architecture", "public_place")
+    val categories = listOf("All") + Spot.CATEGORIES
     val sources = listOf("All", "My Spots", "Imported")
 
     if (showDeleteConfirmDialog) {

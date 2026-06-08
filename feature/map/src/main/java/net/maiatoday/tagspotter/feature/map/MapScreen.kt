@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.FilterBottomSheet
 import net.maiatoday.tagspotter.core.ui.OsmMapView
@@ -173,7 +174,7 @@ fun MapScreen(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val categories = listOf("All", "graffiti", "sculpture", "nature", "architecture", "public_place")
+            val categories = listOf("All") + Spot.CATEGORIES
             items(categories) { category ->
                 val isSelected = selectedCategory == category
                 val categoryColor = if (category == "All") {

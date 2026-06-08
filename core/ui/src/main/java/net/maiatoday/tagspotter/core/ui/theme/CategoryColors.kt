@@ -14,6 +14,7 @@ data class CategoryColors(
     val nature: Color,
     val architecture: Color,
     val publicPlace: Color,
+    val food: Color,
     val default: Color
 ) {
     fun getColorForCategory(category: String): Color {
@@ -23,6 +24,7 @@ data class CategoryColors(
             "nature" -> nature
             "architecture" -> architecture
             "public_place" -> publicPlace
+            "food" -> food
             else -> default
         }
     }

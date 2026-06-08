@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 
@@ -156,7 +157,7 @@ fun DetailMetadataCard(
                         expanded = isCategoryDropdownExpanded,
                         onDismissRequest = { isCategoryDropdownExpanded = false }
                     ) {
-                        val categories = listOf("graffiti", "sculpture", "nature", "architecture", "public_place")
+                        val categories = Spot.CATEGORIES
                         categories.forEach { category ->
                             DropdownMenuItem(
                                 text = { Text(category.replace("_", " ").uppercase()) },

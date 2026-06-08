@@ -122,6 +122,7 @@ class PackManagerTest {
         assertEquals("Street art in Milan", importedDetails.spot.description)
         assertEquals(true, importedDetails.spot.isImported) // Marked as imported because current photographer is different
         assertEquals(1, importedDetails.images.size)
+        assertEquals(true, importedDetails.images.first().isMain)
         assertEquals(1, importedDetails.notes.size)
         assertEquals("Amazing colors", importedDetails.notes.first().noteText)
 

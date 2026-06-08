@@ -194,6 +194,7 @@ object PackManager {
                     var firstImageNewPath = ""
                     var firstImageNewThumbnailPath = ""
                     var firstImageRating = 0
+                    var firstImageIsMain = false
                     val extraImages = mutableListOf<SpotImage>()
 
                     importedDetail.images.forEach { image ->
@@ -262,6 +263,7 @@ object PackManager {
                             firstImageNewPath = newImagePath
                             firstImageNewThumbnailPath = newThumbnailPath
                             firstImageRating = image.rating
+                            firstImageIsMain = image.isMain
                             isFirstImage = false
                         } else {
                             extraImages.add(
@@ -270,7 +272,8 @@ object PackManager {
                                     imagePath = newImagePath,
                                     thumbnailPath = newThumbnailPath,
                                     timestamp = image.timestamp,
-                                    rating = image.rating
+                                    rating = image.rating,
+                                    isMain = image.isMain
                                 )
                             )
                         }
@@ -281,7 +284,8 @@ object PackManager {
                         spot = importedSpot.copy(id = 0L, isImported = markImported),
                         imagePath = firstImageNewPath,
                         thumbnailPath = firstImageNewThumbnailPath,
-                        rating = firstImageRating
+                        rating = firstImageRating,
+                        isMain = firstImageIsMain
                     )
 
                     // Insert extra images (if any)
@@ -291,7 +295,8 @@ object PackManager {
                             imagePath = extraImage.imagePath,
                             thumbnailPath = extraImage.thumbnailPath,
                             timestamp = extraImage.timestamp,
-                            rating = extraImage.rating
+                            rating = extraImage.rating,
+                            isMain = extraImage.isMain
                         )
                     }
 

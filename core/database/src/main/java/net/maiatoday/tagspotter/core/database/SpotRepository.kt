@@ -13,8 +13,8 @@ interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>
     fun getSpotsByCategory(category: String): Flow<List<SpotDetails>>
     fun getSpotById(id: Long): Flow<SpotDetails?>
-    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int = 0): Long
-    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int = 0): Long
+    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int = 0, isMain: Boolean = false): Long
+    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int = 0, isMain: Boolean = false): Long
     suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long
     suspend fun updateSpotStatus(spotId: Long, status: String)
     suspend fun updateSpotCategory(spotId: Long, category: String)
@@ -65,7 +65,7 @@ class LocalSpotRepository(
         return spotDao.getSpotDetails(id).map { it?.toDomain() }
     }
 
-    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int): Long {
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int, isMain: Boolean): Long {
         val spotId = spotDao.insertSpot(spot.toEntity())
         if (imagePath.isNotEmpty()) {
             spotDao.insertImage(
@@ -74,21 +74,23 @@ class LocalSpotRepository(
                     imagePath = imagePath,
                     thumbnailPath = thumbnailPath,
                     timestamp = spot.createdAt,
-                    rating = rating
+                    rating = rating,
+                    isMain = isMain
                 )
             )
         }
         return spotId
     }
 
-    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int): Long {
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int, isMain: Boolean): Long {
         return spotDao.insertImage(
             SpotImageEntity(
                 spotId = spotId,
                 imagePath = imagePath,
                 thumbnailPath = thumbnailPath,
                 timestamp = timestamp,
-                rating = rating
+                rating = rating,
+                isMain = isMain
             )
         )
     }

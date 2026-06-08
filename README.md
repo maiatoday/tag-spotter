@@ -4,13 +4,14 @@ An Android application designed for city walkers to capture, tag, and geolocate 
 
 ```
           +-------------------------------------------------+
-          |                   Tag Spotter                   |
+          |                   TagSpotter                    |
           +-------------------------------------------------+
           |                                                 |
           |  [ Bottom Navigation ]                          |
           |  ├── [ Gallery ]   --> Grid of captured spots   |
           |  ├── [ Map ]       --> OSM Map with neon pins   |
           |  └── [ Camera ]    --> Live Capture / Photo     |
+          |  └── [ File ]      --> Load from Gallery        |
           |                                                 |
           |  [ Capture / Import Screen ]                    |
           |  └── [ Detail & Tagging Screen ]                |
