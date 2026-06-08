@@ -13,8 +13,8 @@ android {
         applicationId = "net.maiatoday.tagspotter"
         minSdk = 29
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.0.8"
+        versionCode = 9
+        versionName = "0.0.9"
         testInstrumentationRunner = "net.maiatoday.tagspotter.TagSpotterTestRunner"
 
         // Load local.properties for developer-level Gemini API Key
