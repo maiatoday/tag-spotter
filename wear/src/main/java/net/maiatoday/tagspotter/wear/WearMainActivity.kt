@@ -363,11 +363,13 @@ fun SpotDetailScreen(
     photo: Bitmap?,
     onOpenOnPhone: () -> Unit
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val imageHeight = (configuration.screenHeightDp * 2 / 3).dp
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colors.background)
-            .padding(12.dp)
     ) {
         ScalingLazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -380,10 +382,14 @@ fun SpotDetailScreen(
                         bitmap = photo.asImageBitmap(),
                         contentDescription = "Spot Photo",
                         modifier = Modifier
-                            .size(110.dp)
-                            .clip(RoundedCornerShape(8.dp)),
+                            .fillMaxWidth()
+                            .height(imageHeight),
                         contentScale = ContentScale.Crop
                     )
+                }
+            } else {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
             item {
@@ -391,7 +397,8 @@ fun SpotDetailScreen(
                     text = spotDetails.spot.category.uppercase(),
                     style = MaterialTheme.typography.caption1,
                     color = MaterialTheme.colors.secondary,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
             item {
@@ -399,7 +406,7 @@ fun SpotDetailScreen(
                     text = spotDetails.spot.description,
                     style = MaterialTheme.typography.body2,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
             if (spotDetails.spot.tags.isNotEmpty()) {
@@ -408,7 +415,8 @@ fun SpotDetailScreen(
                         text = spotDetails.spot.tags.joinToString(" ") { "#$it" },
                         style = MaterialTheme.typography.caption2,
                         color = MaterialTheme.colors.primary,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 12.dp)
                     )
                 }
             }

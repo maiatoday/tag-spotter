@@ -65,7 +65,8 @@ class WearCompanionListenerService : WearableListenerService(), KoinComponent {
                             if (details != null) {
                                 val mainImage = details.images.firstOrNull { it.isMain } ?: details.images.firstOrNull()
                                 if (mainImage != null) {
-                                    wearSyncManager.sendSpotPhoto(spotId, mainImage.imagePath)
+                                    val pathToSend = mainImage.thumbnailPath.ifEmpty { mainImage.imagePath }
+                                    wearSyncManager.sendSpotPhoto(spotId, pathToSend)
                                 } else {
                                     Log.d("WearCompanionService", "No main image for spotId=$spotId")
                                 }

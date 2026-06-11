@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.File
 
@@ -49,7 +50,8 @@ class AndroidWearSyncManager(private val context: Context) : WearSyncManager {
                 // If the spot has a main image, send the photo too!
                 val mainImage = spotDetails.images.firstOrNull { it.isMain } ?: spotDetails.images.firstOrNull()
                 if (mainImage != null) {
-                    sendSpotPhoto(spotDetails.spot.id, mainImage.imagePath)
+                    val pathToSend = mainImage.thumbnailPath.ifEmpty { mainImage.imagePath }
+                    sendSpotPhoto(spotDetails.spot.id, pathToSend)
                 }
             } catch (e: Exception) {
                 Log.e("WearSyncManager", "Error sharing spot to watch", e)
@@ -61,11 +63,25 @@ class AndroidWearSyncManager(private val context: Context) : WearSyncManager {
         scope.launch {
             try {
                 Log.d("WearSyncManager", "Preparing photo for spot: $spotId from path: $imagePath")
-                val file = File(imagePath)
-                if (!file.exists()) {
-                    Log.w("WearSyncManager", "Image file does not exist: $imagePath")
+                val uri = if (imagePath.startsWith("content://") || 
+                             imagePath.startsWith("android.resource://") || 
+                             imagePath.startsWith("file://")) {
+                    Uri.parse(imagePath)
+                } else {
+                    Uri.fromFile(File(imagePath))
+                }
+
+                // Verify the URI is readable
+                val testStream = try {
+                    context.contentResolver.openInputStream(uri)
+                } catch (e: Exception) {
+                    null
+                }
+                if (testStream == null) {
+                    Log.w("WearSyncManager", "Image file/URI does not exist or cannot be opened: $imagePath")
                     return@launch
                 }
+                testStream.close()
 
                 val nodeClient = Wearable.getNodeClient(context)
                 val nodes = Tasks.await(nodeClient.connectedNodes)
@@ -78,11 +94,16 @@ class AndroidWearSyncManager(private val context: Context) : WearSyncManager {
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
-                BitmapFactory.decodeFile(imagePath, options)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, options)
+                }
                 
                 val srcWidth = options.outWidth
                 val srcHeight = options.outHeight
-                if (srcWidth <= 0 || srcHeight <= 0) return@launch
+                if (srcWidth <= 0 || srcHeight <= 0) {
+                    Log.w("WearSyncManager", "Invalid dimensions: w=$srcWidth, h=$srcHeight for path: $imagePath")
+                    return@launch
+                }
 
                 val targetDim = 300
                 var inSampleSize = 1
@@ -94,11 +115,15 @@ class AndroidWearSyncManager(private val context: Context) : WearSyncManager {
                 val decodeOptions = BitmapFactory.Options().apply {
                     this.inSampleSize = inSampleSize
                 }
-                val subSampled = BitmapFactory.decodeFile(imagePath, decodeOptions) ?: return@launch
+                val subSampled = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, decodeOptions)
+                } ?: return@launch
 
                 // 2. Rotate image based on Exif data if needed
                 val exifInterface = try {
-                    ExifInterface(imagePath)
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        ExifInterface(stream)
+                    }
                 } catch (e: Exception) {
                     null
                 }

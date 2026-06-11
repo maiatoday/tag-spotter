@@ -87,6 +87,10 @@
                     android:scheme="wear"
                     android:host="*"
                     android:pathPrefix="/open_on_phone" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/request_spot_photo" />
             </intent-filter>
         </service>
 
