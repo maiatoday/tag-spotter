@@ -1,7 +1,9 @@
 package net.maiatoday.tagspotter.wear
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -18,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -363,6 +366,7 @@ fun SpotDetailScreen(
     photo: Bitmap?,
     onOpenOnPhone: () -> Unit
 ) {
+    val context = LocalContext.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val imageHeight = (configuration.screenHeightDp * 2 / 3).dp
 
@@ -425,10 +429,37 @@ fun SpotDetailScreen(
             }
             item {
                 Button(
-                    onClick = onOpenOnPhone,
+                    onClick = {
+                        val lat = spotDetails.spot.latitude
+                        val lon = spotDetails.spot.longitude
+                        val desc = Uri.encode(spotDetails.spot.description)
+                        val uri = Uri.parse("geo:$lat,$lon?q=$lat,$lon($desc)")
+                        val mapIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                            setPackage("com.google.android.apps.maps")
+                        }
+                        try {
+                            context.startActivity(mapIntent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Maps app not found", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         backgroundColor = MaterialTheme.colors.primary,
                         contentColor = Color.Black
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Text("Navigate on Watch", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+            item {
+                Button(
+                    onClick = onOpenOnPhone,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = Color(0xFF222222),
+                        contentColor = Color.White
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
