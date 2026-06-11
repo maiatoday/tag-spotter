@@ -99,12 +99,18 @@ class GalleryViewModel(
                 starredFiltered
             } else {
                 val q = state.query.trim().lowercase()
+                val emojiKeywords = EmojiSearchMap.getKeywordsForEmoji(q)
                 starredFiltered.filter { detail ->
                     val spot = detail.spot
-                    val matchTags = spot.tags.any { it.lowercase().contains(q) }
-                    val matchArtists = spot.artists.any { it.lowercase().contains(q) }
-                    val matchPhotographer = spot.photographer.lowercase().contains(q)
-                    matchTags || matchArtists || matchPhotographer
+                    val matchTags = spot.tags.any { tag ->
+                        tag.lowercase().contains(q) || emojiKeywords.any { tag.lowercase().contains(it) }
+                    }
+                    val matchCategory = spot.category.lowercase().contains(q) || emojiKeywords.any { spot.category.lowercase().contains(it) }
+                    val matchArtists = spot.artists.any { artist ->
+                        artist.lowercase().contains(q) || emojiKeywords.any { artist.lowercase().contains(it) }
+                    }
+                    val matchPhotographer = spot.photographer.lowercase().contains(q) || emojiKeywords.any { spot.photographer.lowercase().contains(it) }
+                    matchTags || matchCategory || matchArtists || matchPhotographer
                 }
             }
             // Then apply location & radius filtering if active
