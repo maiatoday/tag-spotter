@@ -124,9 +124,22 @@ class DetailViewModel(
                     return@launch
                 }
                 
-                val category = spotDetails.value?.spot?.category ?: "graffiti"
+                val currentSpot = spotDetails.value?.spot
+                val category = currentSpot?.category ?: "graffiti"
+                val currentArtist = currentSpot?.artists?.joinToString(", ")
+                val currentTitle = currentSpot?.description
                 
-                val suggestion = aiRecognitionService.identifyArtist(imagePath, apiKey, category)
+                val imageObj = spotDetails.value?.images?.firstOrNull { it.imagePath == imagePath }
+                val thumbnailPath = imageObj?.thumbnailPath
+                
+                val suggestion = aiRecognitionService.identifyArtist(
+                    imagePath = imagePath,
+                    apiKey = apiKey,
+                    category = category,
+                    currentArtist = currentArtist,
+                    currentTitle = currentTitle,
+                    thumbnailPath = thumbnailPath
+                )
                 if (suggestion == null) {
                     _aiState.value = AiState.Error.Generic("Failed to load image.")
                     return@launch
@@ -173,7 +186,10 @@ class DetailViewModel(
                     return@launch
                 }
 
-                val url = aiRecognitionService.searchWikipediaForSpot(title, apiKey)
+                val category = spotDetails.value?.spot?.category ?: "graffiti"
+                val artists = spotDetails.value?.spot?.artists ?: emptyList()
+
+                val url = aiRecognitionService.searchWikipediaForSpot(title, category, artists, apiKey)
                 if (!url.isNullOrBlank()) {
                     _wikiSearchState.value = WikiSearchState.Success(url, title)
                 } else {

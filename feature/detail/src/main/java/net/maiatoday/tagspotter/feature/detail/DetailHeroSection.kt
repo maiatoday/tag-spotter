@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
+import net.maiatoday.tagspotter.core.model.getCategoryActiveStatusLabel
+import net.maiatoday.tagspotter.core.model.getCategoryInactiveStatusLabel
 import java.io.File
 
 @Composable
@@ -36,6 +38,7 @@ fun DetailHeroSection(
     imagePath: String,
     thumbnailPath: String,
     status: String,
+    category: String,
     isFallback: Boolean,
     onImageClick: () -> Unit
 ) {
@@ -102,7 +105,7 @@ fun DetailHeroSection(
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = if (status == "erased") "Painted Over" else "Active Spot",
+                    text = if (status == "erased") category.getCategoryInactiveStatusLabel() else category.getCategoryActiveStatusLabel(),
                     color = if (status == "erased") MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                 )

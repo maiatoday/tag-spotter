@@ -52,6 +52,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import net.maiatoday.tagspotter.core.model.Spot
+import net.maiatoday.tagspotter.core.model.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.FilterBottomSheet
 import net.maiatoday.tagspotter.core.ui.OsmMapView
@@ -517,7 +518,7 @@ fun MapScreen(
                                     }
                                     if (isErased) {
                                         Text(
-                                            text = "(Painted Over)",
+                                            text = "(${spot.spot.category.getCategoryInactiveStatusLabel()})",
                                             color = MaterialTheme.colorScheme.error,
                                             style = MaterialTheme.typography.labelSmall
                                         )

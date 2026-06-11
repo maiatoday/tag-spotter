@@ -365,6 +365,110 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun identifyArtistPassesExistingArtistAndTitle() = runTest {
+        val spotId = 123L
+        val spot = Spot(
+            id = spotId,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Original Description",
+            tags = listOf("tagA"),
+            category = "graffiti",
+            status = "active",
+            artists = listOf("Artist A"),
+            photographer = "Photographer A"
+        )
+        val spotDetails = SpotDetails(spot, emptyList(), emptyList())
+        repository.setSpots(listOf(spotDetails))
+
+        secretsProvider.apiKey = "valid_key"
+        val expectedSuggestion = AiSuggestion("Mocked Artist", "Mocked Title", listOf("stencil"))
+        aiRecognitionService.identifyArtistResult = expectedSuggestion
+
+        val viewModel = DetailViewModel(
+            spotId = spotId,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.aiState.collect {}
+        }
+
+        // Let it load the spotDetails
+        testScheduler.advanceUntilIdle()
+
+        viewModel.identifyArtist("some_path.png")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Artist A", aiRecognitionService.lastIdentifyCurrentArtist)
+        assertEquals("Original Description", aiRecognitionService.lastIdentifyCurrentTitle)
+        assertEquals("graffiti", aiRecognitionService.lastIdentifyCategory)
+    }
+
+    @Test
+    fun identifyArtistPassesThumbnailPath() = runTest {
+        val spotId = 123L
+        val spot = Spot(
+            id = spotId,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Original Description",
+            tags = listOf("tagA"),
+            category = "graffiti",
+            status = "active",
+            artists = emptyList(),
+            photographer = "Photographer A"
+        )
+        val image = SpotImage(
+            id = 1L,
+            spotId = spotId,
+            imagePath = "some_path.png",
+            timestamp = 1000L,
+            thumbnailPath = "some_thumb_path.png"
+        )
+        val spotDetails = SpotDetails(spot, listOf(image), emptyList())
+        repository.setSpots(listOf(spotDetails))
+
+        secretsProvider.apiKey = "valid_key"
+        val expectedSuggestion = AiSuggestion("Mocked Artist", "Mocked Title", listOf("stencil"))
+        aiRecognitionService.identifyArtistResult = expectedSuggestion
+
+        val viewModel = DetailViewModel(
+            spotId = spotId,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.aiState.collect {}
+        }
+
+        // Let it load the spotDetails
+        testScheduler.advanceUntilIdle()
+
+        viewModel.identifyArtist("some_path.png")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("some_path.png", aiRecognitionService.lastIdentifyImagePath)
+        assertEquals("some_thumb_path.png", aiRecognitionService.lastIdentifyThumbnailPath)
+    }
+
+    @Test
     fun searchWikipediaForSpotFailsWhenDescriptionIsEmpty() = runTest {
         val viewModel = DetailViewModel(
             spotId = -1L,

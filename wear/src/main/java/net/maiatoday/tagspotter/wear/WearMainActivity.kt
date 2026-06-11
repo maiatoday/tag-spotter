@@ -26,6 +26,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.*
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
@@ -55,8 +59,10 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        loadCachedSpots()
         Wearable.getMessageClient(this).addListener(this)
         requestNearbySpots()
+        handleIntent(intent)
 
         setContent {
             WearAppTheme {
@@ -135,6 +141,13 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                     spotsState.addAll(list)
                     isLoadingState.value = false
                     errorState.value = null
+
+                    // Cache the spots JSON in SharedPreferences
+                    val sharedPref = getSharedPreferences("tagspotter_wear_prefs", MODE_PRIVATE)
+                    with(sharedPref.edit()) {
+                        putString("cached_spots_json", json)
+                        apply()
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     errorState.value = "Failed to parse spots."
@@ -161,6 +174,39 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun loadCachedSpots() {
+        try {
+            val sharedPref = getSharedPreferences("tagspotter_wear_prefs", MODE_PRIVATE)
+            val json = sharedPref.getString("cached_spots_json", null)
+            if (json != null) {
+                val list = Json.decodeFromString<List<SpotDetails>>(json)
+                spotsState.clear()
+                spotsState.addAll(list)
+                isLoadingState.value = false
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        val json = intent.getStringExtra("EXTRA_SPOT_DETAILS_JSON")
+        if (json != null) {
+            try {
+                val spotDetails = Json.decodeFromString<SpotDetails>(json)
+                externalNavigateToSpot.value = spotDetails
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -268,6 +314,7 @@ fun WearAppTheme(content: @Composable () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SpotListScreen(
     spots: List<SpotDetails>,
@@ -276,14 +323,20 @@ fun SpotListScreen(
     onRefresh: () -> Unit,
     onSpotSelect: (SpotDetails) -> Unit
 ) {
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isLoading,
+        onRefresh = onRefresh
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colors.background)
-            .padding(8.dp),
+            .padding(8.dp)
+            .pullRefresh(pullRefreshState),
         contentAlignment = Alignment.Center
     ) {
-        if (isLoading) {
+        if (isLoading && spots.isEmpty()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(modifier = Modifier.size(36.dp))
                 Spacer(modifier = Modifier.height(8.dp))
@@ -357,6 +410,12 @@ fun SpotListScreen(
                 }
             }
         }
+
+        PullRefreshIndicator(
+            refreshing = isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 
@@ -432,8 +491,7 @@ fun SpotDetailScreen(
                     onClick = {
                         val lat = spotDetails.spot.latitude
                         val lon = spotDetails.spot.longitude
-                        val desc = Uri.encode(spotDetails.spot.description)
-                        val uri = Uri.parse("geo:$lat,$lon?q=$lat,$lon($desc)")
+                        val uri = Uri.parse("geo:$lat,$lon")
                         val mapIntent = Intent(Intent.ACTION_VIEW, uri).apply {
                             setPackage("com.google.android.apps.maps")
                         }

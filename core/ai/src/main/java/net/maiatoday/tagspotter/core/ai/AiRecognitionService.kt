@@ -10,6 +10,13 @@ data class AiSuggestion(
 )
 
 interface AiRecognitionService {
-    suspend fun identifyArtist(imagePath: String, apiKey: String, category: String): AiSuggestion?
-    suspend fun searchWikipediaForSpot(title: String, apiKey: String): String?
+    suspend fun identifyArtist(
+        imagePath: String,
+        apiKey: String,
+        category: String,
+        currentArtist: String? = null,
+        currentTitle: String? = null,
+        thumbnailPath: String? = null
+    ): AiSuggestion?
+    suspend fun searchWikipediaForSpot(title: String, category: String, artists: List<String>, apiKey: String): String?
 }

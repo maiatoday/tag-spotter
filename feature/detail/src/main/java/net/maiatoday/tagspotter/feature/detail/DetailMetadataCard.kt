@@ -63,6 +63,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.model.getCategoryCreatorLabel
+import net.maiatoday.tagspotter.core.model.getCategoryCreatorPlaceholder
+import net.maiatoday.tagspotter.core.model.getCategoryCreatorTextFieldLabel
+import net.maiatoday.tagspotter.core.model.getCategoryCreatorUnknownLabel
+import net.maiatoday.tagspotter.core.model.getCategoryDateLabel
+import net.maiatoday.tagspotter.core.model.getCategoryDatePlaceholder
+import net.maiatoday.tagspotter.core.model.getCategoryDateTextFieldLabel
+import net.maiatoday.tagspotter.core.model.getCategoryStatusActionMarkInactiveText
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -186,7 +194,7 @@ fun DetailMetadataCard(
                         }
                     ) {
                         Text(
-                            text = if (isErased) "Mark Active" else "Mark as Painted Over",
+                            text = if (isErased) "Mark Active" else details.spot.category.getCategoryStatusActionMarkInactiveText(),
                             color = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
@@ -312,7 +320,7 @@ fun DetailMetadataCard(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "ARTIST / CREW",
+                                text = details.spot.category.getCategoryCreatorLabel(),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.Bold
@@ -398,8 +406,8 @@ fun DetailMetadataCard(
                         OutlinedTextField(
                             value = artistEditInput,
                             onValueChange = { artistEditInput = it },
-                            label = { Text("Artist Name") },
-                            placeholder = { Text("e.g. Banksy") },
+                            label = { Text(details.spot.category.getCategoryCreatorTextFieldLabel()) },
+                            placeholder = { Text(details.spot.category.getCategoryCreatorPlaceholder()) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(
@@ -503,7 +511,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "ARTIST / CREW",
+                            text = details.spot.category.getCategoryCreatorLabel(),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
@@ -522,7 +530,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (details.spot.artists.isEmpty()) "Unknown Artist" else details.spot.artists.joinToString(", "),
+                        text = if (details.spot.artists.isEmpty()) details.spot.category.getCategoryCreatorUnknownLabel() else details.spot.artists.joinToString(", "),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -640,7 +648,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "ARTWORK DATE",
+                            text = details.spot.category.getCategoryDateLabel(),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
@@ -684,8 +692,8 @@ fun DetailMetadataCard(
                             artworkDateEditInput = it 
                             if (isCreationMode) onUpdateArtworkDate(it)
                         },
-                        label = { Text("Artwork Date") },
-                        placeholder = { Text("e.g. circa 2023, Dec 2024, Unknown") },
+                        label = { Text(details.spot.category.getCategoryDateTextFieldLabel()) },
+                        placeholder = { Text(details.spot.category.getCategoryDatePlaceholder()) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -703,7 +711,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "ARTWORK DATE",
+                            text = details.spot.category.getCategoryDateLabel(),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold

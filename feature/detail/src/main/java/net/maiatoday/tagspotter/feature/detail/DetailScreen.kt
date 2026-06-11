@@ -125,6 +125,7 @@ import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
+import net.maiatoday.tagspotter.core.model.getCategoryCreatorLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.core.ui.OsmMapView
 import net.maiatoday.tagspotter.core.ui.OsmMarker
@@ -224,8 +225,23 @@ fun DetailScreen(
         val suggestion = (aiState as AiState.Success).suggestion
         val suggestionArtist = suggestion.artist
         val suggestionTitle = suggestion.title
-        var importArtist by remember { mutableStateOf(suggestionArtist != null) }
-        var importTitle by remember { mutableStateOf(suggestionTitle != null) }
+
+        val currentArtist = spotDetails?.spot?.artists?.joinToString(", ") ?: ""
+        val currentTitle = spotDetails?.spot?.description ?: ""
+        val isArtistEmpty = currentArtist.isBlank()
+        val isTitleEmpty = currentTitle.isBlank()
+        
+        val artistMatches = !isArtistEmpty && suggestionArtist?.trim()?.equals(currentArtist.trim(), ignoreCase = true) == true
+        val titleMatches = !isTitleEmpty && suggestionTitle?.trim()?.equals(currentTitle.trim(), ignoreCase = true) == true
+        
+        val shouldProposeArtist = suggestionArtist != null && (isArtistEmpty || !artistMatches)
+        val shouldProposeTitle = suggestionTitle != null && (isTitleEmpty || !titleMatches)
+
+        var importArtist by remember(shouldProposeArtist) { mutableStateOf(shouldProposeArtist) }
+        var importTitle by remember(shouldProposeTitle) { mutableStateOf(shouldProposeTitle) }
+        val selectedSuggestedTags = remember(suggestion.tags) {
+            mutableStateListOf<String>().apply { addAll(suggestion.tags) }
+        }
         var importTags by remember { mutableStateOf(suggestion.tags.isNotEmpty()) }
 
         AlertDialog(
@@ -250,7 +266,7 @@ fun DetailScreen(
                         color = Color.Gray
                     )
 
-                    if (suggestionArtist != null) {
+                    if (shouldProposeArtist) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -263,13 +279,13 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text("Artist / Crew", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(spotDetails?.spot?.category?.getCategoryCreatorLabel() ?: "Artist / Crew", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                                 Text(suggestionArtist, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
                     }
 
-                    if (suggestionTitle != null) {
+                    if (shouldProposeTitle) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -289,37 +305,85 @@ fun DetailScreen(
                     }
 
                     if (suggestion.tags.isNotEmpty()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { importTags = !importTags }
-                        ) {
-                            Checkbox(
-                                checked = importTags,
-                                onCheckedChange = { importTags = it }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text("Suggested Tags", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    suggestion.tags.forEach { tag ->
-                                        Box(
-                                            modifier = Modifier
-                                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                                                .border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = "#$tag",
-                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                                color = MaterialTheme.colorScheme.onBackground
-                                            )
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val newImportValue = !importTags
+                                        importTags = newImportValue
+                                        if (newImportValue) {
+                                            selectedSuggestedTags.clear()
+                                            selectedSuggestedTags.addAll(suggestion.tags)
+                                        } else {
+                                            selectedSuggestedTags.clear()
                                         }
                                     }
+                            ) {
+                                Checkbox(
+                                    checked = importTags,
+                                    onCheckedChange = { checked ->
+                                        importTags = checked
+                                        if (checked) {
+                                            selectedSuggestedTags.clear()
+                                            selectedSuggestedTags.addAll(suggestion.tags)
+                                        } else {
+                                            selectedSuggestedTags.clear()
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Suggested Tags", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 48.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                suggestion.tags.forEach { tag ->
+                                    val isSelected = selectedSuggestedTags.contains(tag)
+                                    InputChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            if (isSelected) {
+                                                selectedSuggestedTags.remove(tag)
+                                                if (selectedSuggestedTags.isEmpty()) {
+                                                    importTags = false
+                                                }
+                                            } else {
+                                                selectedSuggestedTags.add(tag)
+                                                importTags = true
+                                            }
+                                        },
+                                        label = { Text("#$tag") },
+                                        colors = InputChipDefaults.inputChipColors(
+                                            selectedLabelColor = MaterialTheme.colorScheme.background,
+                                            selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                            labelColor = Color.Gray,
+                                            containerColor = Color.Transparent
+                                        ),
+                                        border = InputChipDefaults.inputChipBorder(
+                                            enabled = true,
+                                            selected = isSelected,
+                                            borderColor = if (isSelected) Color.Transparent else Color.Gray,
+                                            selectedBorderColor = Color.Transparent
+                                        ),
+                                        trailingIcon = {
+                                            if (isSelected) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Deselect",
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -329,15 +393,15 @@ fun DetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (importArtist && suggestionArtist != null) {
+                        if (shouldProposeArtist && importArtist) {
                             viewModel.updateArtists(listOf(suggestionArtist))
                         }
-                        if (importTitle && suggestionTitle != null) {
+                        if (shouldProposeTitle && importTitle) {
                             viewModel.updateDescription(suggestionTitle)
                         }
-                        if (importTags && suggestion.tags.isNotEmpty()) {
+                        if (importTags && selectedSuggestedTags.isNotEmpty()) {
                             val currentTags = spotDetails?.spot?.tags ?: emptyList()
-                            val merged = (currentTags + suggestion.tags).distinct()
+                            val merged = (currentTags + selectedSuggestedTags).distinct()
                             viewModel.updateTags(merged)
                         }
                         viewModel.resetAiState()
@@ -700,6 +764,7 @@ fun DetailScreen(
                             imagePath = mainImage.imagePath,
                             thumbnailPath = mainImage.thumbnailPath,
                             status = details.spot.status,
+                            category = details.spot.category,
                             isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported,
                             onImageClick = { zoomImage = mainImage }
                         )
@@ -826,6 +891,7 @@ fun DetailScreen(
                             imagePath = mainImage.imagePath,
                             thumbnailPath = mainImage.thumbnailPath,
                             status = details.spot.status,
+                            category = details.spot.category,
                             isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported,
                             onImageClick = { zoomImage = mainImage }
                         )
