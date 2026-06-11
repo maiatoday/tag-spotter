@@ -16,11 +16,14 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
+import net.maiatoday.tagspotter.core.settings.FilterManager
+import net.maiatoday.tagspotter.feature.gallery.EmojiSearchMap
 import org.osmdroid.util.GeoPoint
 import kotlin.math.roundToInt
 
 class MapViewModel(
     private val repository: SpotRepository,
+    private val filterManager: FilterManager,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
 
@@ -38,36 +41,72 @@ class MapViewModel(
             initialValue = false
         )
 
-    private val _selectedCategory = MutableStateFlow("All")
-    val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
-
     private val _selectedSpot = MutableStateFlow<SpotDetails?>(null)
     val selectedSpot: StateFlow<SpotDetails?> = _selectedSpot.asStateFlow()
 
-    private val _activeFilterCenter = MutableStateFlow<FilterCenter?>(null)
-    val activeFilterCenter: StateFlow<FilterCenter?> = _activeFilterCenter.asStateFlow()
-
-    private val _activeRadiusMeters = MutableStateFlow(5000.0) // default 5km
-    val activeRadiusMeters: StateFlow<Double> = _activeRadiusMeters.asStateFlow()
+    val selectedCategory: StateFlow<String> = filterManager.selectedCategory
+    val activeFilterCenter: StateFlow<FilterCenter?> = filterManager.activeFilterCenter
+    val activeRadiusMeters: StateFlow<Double> = filterManager.activeRadiusMeters
+    val selectedSource: StateFlow<String> = filterManager.selectedSource
+    val showStarredOnly: StateFlow<Boolean> = filterManager.showStarredOnly
+    val searchQuery: StateFlow<String> = filterManager.searchQuery
 
     private data class MapFilterState(
         val category: String,
+        val source: String,
+        val query: String,
         val filterCenter: FilterCenter?,
-        val radiusMeters: Double
+        val radiusMeters: Double,
+        val showStarredOnly: Boolean
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val spots: StateFlow<List<SpotDetails>> = combine(
-        _selectedCategory,
-        _activeFilterCenter,
-        _activeRadiusMeters
-    ) { category, filterCenter, radiusMeters ->
-        MapFilterState(category, filterCenter, radiusMeters)
+        combine(
+            filterManager.selectedCategory,
+            filterManager.selectedSource,
+            filterManager.searchQuery,
+            filterManager.activeFilterCenter,
+            filterManager.activeRadiusMeters
+        ) { category, source, query, filterCenter, radiusMeters ->
+            MapFilterState(category, source, query, filterCenter, radiusMeters, false)
+        },
+        filterManager.showStarredOnly
+    ) { state, showStarredOnly ->
+        state.copy(showStarredOnly = showStarredOnly)
     }.flatMapLatest { state ->
         repository.getSpotsByCategory(state.category).map { list ->
+            val sourceFiltered = when (state.source) {
+                "My Spots" -> list.filter { !it.spot.isImported }
+                "Imported" -> list.filter { it.spot.isImported }
+                else -> list
+            }
+            val starredFiltered = if (state.showStarredOnly) {
+                sourceFiltered.filter { it.spot.isStarred }
+            } else {
+                sourceFiltered
+            }
+            val queryFiltered = if (state.query.isBlank()) {
+                starredFiltered
+            } else {
+                val q = state.query.trim().lowercase()
+                val emojiKeywords = EmojiSearchMap.getKeywordsForEmoji(q)
+                starredFiltered.filter { detail ->
+                    val spot = detail.spot
+                    val matchTags = spot.tags.any { tag ->
+                        tag.lowercase().contains(q) || emojiKeywords.any { tag.lowercase().contains(it) }
+                    }
+                    val matchCategory = spot.category.lowercase().contains(q) || emojiKeywords.any { spot.category.lowercase().contains(it) }
+                    val matchArtists = spot.artists.any { artist ->
+                        artist.lowercase().contains(q) || emojiKeywords.any { artist.lowercase().contains(it) }
+                    }
+                    val matchPhotographer = spot.photographer.lowercase().contains(q) || emojiKeywords.any { spot.photographer.lowercase().contains(it) }
+                    matchTags || matchCategory || matchArtists || matchPhotographer
+                }
+            }
             val center = state.filterCenter
             if (center != null) {
-                list.filter { detail ->
+                queryFiltered.filter { detail ->
                     val distance = LocationUtils.calculateDistance(
                         center.latitude,
                         center.longitude,
@@ -77,7 +116,7 @@ class MapViewModel(
                     distance <= state.radiusMeters
                 }
             } else {
-                list
+                queryFiltered
             }
         }
     }.stateIn(
@@ -87,20 +126,35 @@ class MapViewModel(
     )
 
     fun selectCategory(category: String) {
-        _selectedCategory.value = category
+        filterManager.selectCategory(category)
     }
 
     fun selectSpot(spot: SpotDetails?) {
         _selectedSpot.value = spot
     }
 
+    fun selectSource(source: String) {
+        filterManager.selectSource(source)
+    }
+
+    fun setSearchQuery(query: String) {
+        filterManager.setSearchQuery(query)
+    }
+
+    fun setShowStarredOnly(show: Boolean) {
+        filterManager.setShowStarredOnly(show)
+    }
+
+    fun toggleShowStarredOnly() {
+        filterManager.toggleShowStarredOnly()
+    }
+
     fun setLocationFilter(center: FilterCenter?, radiusMeters: Double) {
-        _activeFilterCenter.value = center
-        _activeRadiusMeters.value = radiusMeters
+        filterManager.setLocationFilter(center, radiusMeters)
     }
 
     fun clearLocationFilter() {
-        _activeFilterCenter.value = null
+        filterManager.clearLocationFilter()
     }
 
     private fun resolveCityCoordinate(homeCityName: String): GeoPoint {

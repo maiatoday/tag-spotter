@@ -9,6 +9,7 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
+import net.maiatoday.tagspotter.core.settings.FilterManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -49,17 +50,17 @@ class MapViewModelTest {
         )
         val spotDetails1 = SpotDetails(spot1, emptyList(), emptyList())
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
-
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = MapViewModel(repository, settingsRepository)
+        val filterManager = FilterManager()
+        val viewModel = MapViewModel(repository, filterManager, settingsRepository)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
         }
+        testScheduler.runCurrent()
 
-        // Verify loaded spots pins (default category is "All")
         assertEquals(2, viewModel.spots.value.size)
 
         // Verify initial selection is null
@@ -83,7 +84,8 @@ class MapViewModelTest {
     fun initialMapCenterResolvesCorrectly() = runTest {
         // 1. Empty spots, default home city "Milan"
         val settingsRepo = FakeSettingsRepository(initialHomeCity = "Milan")
-        val viewModel = MapViewModel(repository, settingsRepo)
+        val filterManager = FilterManager()
+        val viewModel = MapViewModel(repository, filterManager, settingsRepo)
 
         // Collect initialMapCenter to trigger StateFlow updates
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {

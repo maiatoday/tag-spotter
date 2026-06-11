@@ -19,9 +19,11 @@ import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
+import net.maiatoday.tagspotter.core.settings.FilterManager
 
 class GalleryViewModel(
     private val repository: SpotRepository,
+    private val filterManager: FilterManager,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
 
@@ -39,23 +41,12 @@ class GalleryViewModel(
     private val _uiEvent = MutableSharedFlow<UiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
-    private val _selectedCategory = MutableStateFlow("All")
-    val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
-
-    private val _selectedSource = MutableStateFlow("All")
-    val selectedSource: StateFlow<String> = _selectedSource.asStateFlow()
-
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-    private val _showStarredOnly = MutableStateFlow(false)
-    val showStarredOnly: StateFlow<Boolean> = _showStarredOnly.asStateFlow()
-
-    private val _activeFilterCenter = MutableStateFlow<FilterCenter?>(null)
-    val activeFilterCenter: StateFlow<FilterCenter?> = _activeFilterCenter.asStateFlow()
-
-    private val _activeRadiusMeters = MutableStateFlow(5000.0) // default 5km
-    val activeRadiusMeters: StateFlow<Double> = _activeRadiusMeters.asStateFlow()
+    val selectedCategory: StateFlow<String> = filterManager.selectedCategory
+    val selectedSource: StateFlow<String> = filterManager.selectedSource
+    val searchQuery: StateFlow<String> = filterManager.searchQuery
+    val showStarredOnly: StateFlow<Boolean> = filterManager.showStarredOnly
+    val activeFilterCenter: StateFlow<FilterCenter?> = filterManager.activeFilterCenter
+    val activeRadiusMeters: StateFlow<Double> = filterManager.activeRadiusMeters
 
     private data class FilterState(
         val category: String,
@@ -69,15 +60,15 @@ class GalleryViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val spots: StateFlow<List<SpotDetails>> = combine(
         combine(
-            _selectedCategory,
-            _selectedSource,
-            _searchQuery,
-            _activeFilterCenter,
-            _activeRadiusMeters
+            filterManager.selectedCategory,
+            filterManager.selectedSource,
+            filterManager.searchQuery,
+            filterManager.activeFilterCenter,
+            filterManager.activeRadiusMeters
         ) { category, source, query, filterCenter, radiusMeters ->
             FilterState(category, source, query, filterCenter, radiusMeters, false)
         },
-        _showStarredOnly
+        filterManager.showStarredOnly
     ) { state, showStarredOnly ->
         state.copy(showStarredOnly = showStarredOnly)
     }.flatMapLatest { state ->
@@ -136,28 +127,31 @@ class GalleryViewModel(
     )
 
     fun toggleShowStarredOnly() {
-        _showStarredOnly.value = !_showStarredOnly.value
+        filterManager.toggleShowStarredOnly()
+    }
+
+    fun setShowStarredOnly(show: Boolean) {
+        filterManager.setShowStarredOnly(show)
     }
 
     fun setLocationFilter(center: FilterCenter?, radiusMeters: Double) {
-        _activeFilterCenter.value = center
-        _activeRadiusMeters.value = radiusMeters
+        filterManager.setLocationFilter(center, radiusMeters)
     }
 
     fun clearLocationFilter() {
-        _activeFilterCenter.value = null
+        filterManager.clearLocationFilter()
     }
 
     fun selectCategory(category: String) {
-        _selectedCategory.value = category
+        filterManager.selectCategory(category)
     }
 
     fun selectSource(source: String) {
-        _selectedSource.value = source
+        filterManager.selectSource(source)
     }
 
     fun setSearchQuery(query: String) {
-        _searchQuery.value = query
+        filterManager.setSearchQuery(query)
     }
 
     fun deleteSpots(ids: List<Long>, onCompleted: () -> Unit) {

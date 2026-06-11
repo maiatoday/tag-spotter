@@ -39,10 +39,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -392,10 +392,21 @@ fun GalleryScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = {
+                        showFilterBottomSheet = true
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Filters",
+                            tint = if (selectedSource != "All" || activeFilterCenter != null || showStarredOnly) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = {
                         isSearchExpanded = false
-                        viewModel.setSearchQuery("")
-                        viewModel.selectCategory("All")
-                        viewModel.selectSource("All")
                     }) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -406,124 +417,59 @@ fun GalleryScreen(
                 }
 
                 // Categories Filter Header
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(categories) { category ->
-                        val isSelected = selectedCategory == category
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.selectCategory(category) },
-                            label = { Text(category.replace("_", " ").replaceFirstChar { it.titlecase() }) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = if (category == "All") {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.categoryColors.getColorForCategory(category)
-                                },
-                                selectedLabelColor = MaterialTheme.colorScheme.background,
-                                labelColor = Color.Gray
-                            )
-                        )
-                    }
-                }
-
-                // Sources Filter Header
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 4.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(sources) { source ->
-                        val isSelected = selectedSource == source
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.selectSource(source) },
-                            label = { Text(source) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
-                                labelColor = Color.Gray
-                            )
-                        )
-                    }
-                }
-
-                // Location and Starred Filter Header
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (activeFilterCenter != null) {
-                        FilterChip(
-                            selected = true,
-                            onClick = { showFilterBottomSheet = true },
-                            label = {
-                                Text(
-                                    text = "${activeFilterCenter?.displayName} (${LocationUtils.getRadiusLabel(activeRadiusMeters)})"
+                    LazyRow(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(categories) { category ->
+                            val isSelected = selectedCategory == category
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.selectCategory(category) },
+                                label = { Text(category.replace("_", " ").replaceFirstChar { it.titlecase() }) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = if (category == "All") {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.categoryColors.getColorForCategory(category)
+                                    },
+                                    selectedLabelColor = MaterialTheme.colorScheme.background,
+                                    labelColor = Color.Gray
                                 )
-                            },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Clear location filter",
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .clickable { viewModel.clearLocationFilter() }
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                        )
-                    } else {
-                        FilterChip(
-                            selected = false,
-                            onClick = { showFilterBottomSheet = true },
-                            label = { Text("+ Add Location") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                labelColor = Color.Gray
-                            )
-                        )
+                        }
                     }
 
-                    FilterChip(
-                        selected = showStarredOnly,
-                        onClick = { viewModel.toggleShowStarredOnly() },
-                        label = { Text("Starred Only") },
-                        leadingIcon = {
-                            if (showStarredOnly) {
-                                Icon(
-                                    imageVector = Icons.Filled.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = Color(0xFFFFD700)
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Outlined.StarBorder,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = Color.Gray
-                                )
-                            }
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            labelColor = Color.Gray
+                    val hasActiveAdvancedFilters = searchQuery.isNotEmpty() ||
+                            selectedCategory != "All" ||
+                            selectedSource != "All" ||
+                            activeFilterCenter != null ||
+                            showStarredOnly
+
+                    if (hasActiveAdvancedFilters) {
+                        Text(
+                            text = "Clear All",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable {
+                                    viewModel.setSearchQuery("")
+                                    viewModel.selectCategory("All")
+                                    viewModel.selectSource("All")
+                                    viewModel.clearLocationFilter()
+                                    viewModel.setShowStarredOnly(false)
+                                }
+                                .padding(end = 16.dp, start = 8.dp)
                         )
-                    )
+                    }
                 }
             }
         } else {
@@ -556,14 +502,6 @@ fun GalleryScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                IconButton(onClick = { showFilterBottomSheet = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MyLocation,
-                        contentDescription = "Location Filter",
-                        tint = if (activeFilterCenter != null) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
                 IconButton(onClick = { isSearchExpanded = true }) {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -574,67 +512,179 @@ fun GalleryScreen(
             }
         }
 
-        // Active location and starred chips in normal mode
-        if (!isSearchExpanded && (activeFilterCenter != null || showStarredOnly)) {
-            Row(
+        // Active chips in normal mode (scrollable row)
+        val hasActiveFilters = searchQuery.isNotEmpty() ||
+                selectedCategory != "All" ||
+                selectedSource != "All" ||
+                activeFilterCenter != null ||
+                showStarredOnly
+
+        if (!isSearchExpanded && hasActiveFilters) {
+            val activeFilterCount = (if (searchQuery.isNotEmpty()) 1 else 0) +
+                    (if (selectedCategory != "All") 1 else 0) +
+                    (if (selectedSource != "All") 1 else 0) +
+                    (if (activeFilterCenter != null) 1 else 0) +
+                    (if (showStarredOnly) 1 else 0)
+
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (activeFilterCenter != null) {
-                    FilterChip(
-                        selected = true,
-                        onClick = { showFilterBottomSheet = true },
-                        label = {
-                            Text(
-                                text = "${activeFilterCenter?.displayName} within ${LocationUtils.getRadiusLabel(activeRadiusMeters)}"
+                // Search Query Chip
+                if (searchQuery.isNotEmpty()) {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { isSearchExpanded = true },
+                            label = { Text("Search: \"$searchQuery\"") },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear search query",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.setSearchQuery("") }
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                        },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear location filter",
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clickable { viewModel.clearLocationFilter() }
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                    )
+                    }
                 }
 
-                if (showStarredOnly) {
-                    FilterChip(
-                        selected = true,
-                        onClick = { viewModel.toggleShowStarredOnly() },
-                        label = { Text("Starred Only") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = Color(0xFFFFD700)
+                // Category Chip
+                if (selectedCategory != "All") {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { isSearchExpanded = true },
+                            label = { Text(selectedCategory.replace("_", " ").replaceFirstChar { it.titlecase() }) },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear category filter",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.selectCategory("All") }
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.categoryColors.getColorForCategory(selectedCategory).copy(alpha = 0.2f),
+                                selectedLabelColor = MaterialTheme.categoryColors.getColorForCategory(selectedCategory)
                             )
-                        },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear starred filter",
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clickable { viewModel.toggleShowStarredOnly() }
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                    )
+                    }
+                }
+
+                // Source Chip
+                if (selectedSource != "All") {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { showFilterBottomSheet = true },
+                            label = { Text(selectedSource) },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear source filter",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.selectSource("All") }
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        )
+                    }
+                }
+
+                // Location Chip
+                if (activeFilterCenter != null) {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { showFilterBottomSheet = true },
+                            label = {
+                                Text(
+                                    text = "${activeFilterCenter?.displayName} (${LocationUtils.getRadiusLabel(activeRadiusMeters)})"
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear location filter",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.clearLocationFilter() }
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
+
+                // Starred Only Chip
+                if (showStarredOnly) {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { viewModel.toggleShowStarredOnly() },
+                            label = { Text("Starred Only") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Color(0xFFFFD700)
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear starred filter",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.setShowStarredOnly(false) }
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
+
+                // Clear All Button
+                if (activeFilterCount > 1) {
+                    item {
+                        Text(
+                            text = "Clear All",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable {
+                                    viewModel.setSearchQuery("")
+                                    viewModel.selectCategory("All")
+                                    viewModel.selectSource("All")
+                                    viewModel.clearLocationFilter()
+                                    viewModel.setShowStarredOnly(false)
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -701,7 +751,11 @@ fun GalleryScreen(
             homeCityName = homeCityName,
             onApplyFilter = { center, radius ->
                 viewModel.setLocationFilter(center, radius)
-            }
+            },
+            selectedSource = selectedSource,
+            onApplySourceFilter = { viewModel.selectSource(it) },
+            showStarredOnly = showStarredOnly,
+            onApplyStarredFilter = { viewModel.setShowStarredOnly(it) }
         )
     }
 

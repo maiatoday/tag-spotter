@@ -5,4 +5,5 @@ import org.koin.dsl.module
 
 val coreSettingsModule = module {
     single<SettingsRepository> { DataStoreSettingsRepository(androidContext()) }
+    single { FilterManager() }
 }

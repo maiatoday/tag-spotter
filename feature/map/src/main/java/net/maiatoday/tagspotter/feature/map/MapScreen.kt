@@ -78,6 +78,9 @@ fun MapScreen(
     val activeFilterCenter by viewModel.activeFilterCenter.collectAsStateWithLifecycle()
     val activeRadiusMeters by viewModel.activeRadiusMeters.collectAsStateWithLifecycle()
     val homeCityName by viewModel.homeCity.collectAsStateWithLifecycle()
+    val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
+    val showStarredOnly by viewModel.showStarredOnly.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val darkMapEnabled by viewModel.darkMapEnabled.collectAsStateWithLifecycle()
     val isSystemDark = isSystemInDarkTheme()
     val useDarkMap = isSystemDark && darkMapEnabled
@@ -207,47 +210,234 @@ fun MapScreen(
             }
         }
 
-        // Floating Location Filter Button / Active Chip Row
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 88.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .border(
-                    width = 1.dp,
-                    color = Color.Gray.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (activeFilterCenter != null) {
+        // Floating Location/Source/Starred Filter Active Chip Row or [+ Add Filters] button
+        val hasMapActiveFilters = selectedSource != "All" || activeFilterCenter != null || showStarredOnly || searchQuery.isNotEmpty() || selectedCategory != "All"
+        val mapActiveFiltersCount = (if (selectedSource != "All") 1 else 0) +
+                (if (activeFilterCenter != null) 1 else 0) +
+                (if (showStarredOnly) 1 else 0) +
+                (if (searchQuery.isNotEmpty()) 1 else 0) +
+                (if (selectedCategory != "All") 1 else 0)
+
+        if (hasMapActiveFilters) {
+            LazyRow(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 88.dp, start = 16.dp, end = 16.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = Color.Gray.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Category Chip
+                if (selectedCategory != "All") {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(MaterialTheme.categoryColors.getColorForCategory(selectedCategory).copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                                .border(1.dp, MaterialTheme.categoryColors.getColorForCategory(selectedCategory).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                                .clickable { showFilterBottomSheet = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = selectedCategory.replace("_", " ").replaceFirstChar { it.titlecase() },
+                                color = MaterialTheme.categoryColors.getColorForCategory(selectedCategory),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear category filter",
+                                tint = Color.Gray,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { viewModel.selectCategory("All") }
+                            )
+                        }
+                    }
+                }
+
+                // Search Query Chip
+                if (searchQuery.isNotEmpty()) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .clickable { showFilterBottomSheet = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "Search: \"$searchQuery\"",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear search query",
+                                tint = Color.Gray,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { viewModel.setSearchQuery("") }
+                            )
+                        }
+                    }
+                }
+
+                // Source Chip
+                if (selectedSource != "All") {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(16.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .clickable { showFilterBottomSheet = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = selectedSource,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear source filter",
+                                tint = Color.Gray,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { viewModel.selectSource("All") }
+                            )
+                        }
+                    }
+                }
+
+                // Location Chip
+                if (activeFilterCenter != null) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .clickable { showFilterBottomSheet = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "${activeFilterCenter?.displayName} (${LocationUtils.getRadiusLabel(activeRadiusMeters)})",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear location filter",
+                                tint = Color.Gray,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { viewModel.clearLocationFilter() }
+                            )
+                        }
+                    }
+                }
+
+                // Starred Only Chip
+                if (showStarredOnly) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .clickable { viewModel.toggleShowStarredOnly() }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = Color(0xFFFFD700)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Starred Only",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear starred filter",
+                                tint = Color.Gray,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { viewModel.setShowStarredOnly(false) }
+                            )
+                        }
+                    }
+                }
+
+                // Clear All Button
+                if (mapActiveFiltersCount > 1) {
+                    item {
+                        Text(
+                            text = "Clear All",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable {
+                                    viewModel.setSearchQuery("")
+                                    viewModel.selectCategory("All")
+                                    viewModel.selectSource("All")
+                                    viewModel.clearLocationFilter()
+                                    viewModel.setShowStarredOnly(false)
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        } else {
+            // Fallback Button
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 88.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = Color.Gray.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .clickable { showFilterBottomSheet = true }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = "${activeFilterCenter?.displayName} (${LocationUtils.getRadiusLabel(activeRadiusMeters)})",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { showFilterBottomSheet = true }
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Clear location filter",
-                    tint = Color.Gray,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clickable { viewModel.clearLocationFilter() }
-                )
-            } else {
-                Text(
-                    text = "+ Add Location Filter",
+                    text = "+ Add Filters",
                     color = Color.LightGray,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { showFilterBottomSheet = true }
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -402,7 +592,11 @@ fun MapScreen(
             homeCityName = homeCityName,
             onApplyFilter = { center, radius ->
                 viewModel.setLocationFilter(center, radius)
-            }
+            },
+            selectedSource = selectedSource,
+            onApplySourceFilter = { viewModel.selectSource(it) },
+            showStarredOnly = showStarredOnly,
+            onApplyStarredFilter = { viewModel.setShowStarredOnly(it) }
         )
     }
 }

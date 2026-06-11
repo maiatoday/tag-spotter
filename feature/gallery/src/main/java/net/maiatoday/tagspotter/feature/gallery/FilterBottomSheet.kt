@@ -29,6 +29,8 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -57,7 +60,11 @@ fun FilterBottomSheet(
     currentRadiusMeters: Double,
     homeCityName: String,
     onApplyFilter: (FilterCenter?, Double) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedSource: String? = null,
+    onApplySourceFilter: ((String) -> Unit)? = null,
+    showStarredOnly: Boolean? = null,
+    onApplyStarredFilter: ((Boolean) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -83,7 +90,7 @@ fun FilterBottomSheet(
                 is FilterCenter.GPS -> "GPS"
                 is FilterCenter.HomeCity -> "Home"
                 is FilterCenter.FocusCity -> "Focus"
-                else -> "GPS" // default if null
+                else -> "None"
             }
         )
     }
@@ -100,6 +107,42 @@ fun FilterBottomSheet(
 
     val activeRadius = LocationUtils.getLogarithmicRadiusMeters(sliderValue)
 
+    var localSource by remember(selectedSource) {
+        mutableStateOf(selectedSource ?: "All")
+    }
+
+    var localStarredOnly by remember(showStarredOnly) {
+        mutableStateOf(showStarredOnly ?: false)
+    }
+
+    val updateFilter = { type: String, focusCity: String, radius: Double ->
+        if (type == "GPS") {
+            scope.launch {
+                val currentLoc = LocationHelper.getCurrentLocation(context)
+                val finalCenter = if (currentLoc != null) {
+                    FilterCenter.GPS(currentLoc.latitude, currentLoc.longitude)
+                } else {
+                    val gp = LocationUtils.CITIES[homeCityName] ?: LocationUtils.CITIES["Milan"]!!
+                    FilterCenter.GPS(gp.first, gp.second)
+                }
+                onApplyFilter(finalCenter, radius)
+            }
+        } else {
+            val finalCenter = when (type) {
+                "Home" -> {
+                    val gp = LocationUtils.CITIES[homeCityName] ?: LocationUtils.CITIES["Milan"]!!
+                    FilterCenter.HomeCity(homeCityName, gp.first, gp.second)
+                }
+                "Focus" -> {
+                    val gp = LocationUtils.CITIES[focusCity] ?: LocationUtils.CITIES["Milan"]!!
+                    FilterCenter.FocusCity(focusCity, gp.first, gp.second)
+                }
+                else -> null
+            }
+            onApplyFilter(finalCenter, radius)
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -113,13 +156,86 @@ fun FilterBottomSheet(
                 .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            val isAdvancedFilter = selectedSource != null && showStarredOnly != null
             Text(
-                text = "FILTER SEARCH RADIUS",
+                text = if (isAdvancedFilter) "FILTER SEARCH" else "FILTER SEARCH RADIUS",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary,
                 letterSpacing = TextUnit.Unspecified
             )
+
+            if (isAdvancedFilter) {
+                // Source selection horizontal chip row
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "SOURCE",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val sourcesList = listOf("All", "My Spots", "Imported")
+                        sourcesList.forEach { src ->
+                            val isSelected = localSource == src
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        localSource = src
+                                        onApplySourceFilter?.invoke(src)
+                                    }
+                            ) {
+                                Text(
+                                    text = src,
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSecondary else Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Starred Only Switch section
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "STARRED SPOTS",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = "Show starred spots only",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                    Switch(
+                        checked = localStarredOnly,
+                        onCheckedChange = { checked ->
+                            localStarredOnly = checked
+                            onApplyStarredFilter?.invoke(checked)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.secondary,
+                            checkedTrackColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    )
+                }
+            }
 
             // Center Option Selector
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -129,6 +245,40 @@ fun FilterBottomSheet(
                     fontWeight = FontWeight.Bold,
                     color = Color.Gray
                 )
+
+                // 0. None (No Location Filter) Option
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (selectedType == "None") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedType = "None"
+                            updateFilter("None", selectedFocusCityName, activeRadius)
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedType == "None",
+                            onClick = {
+                                selectedType = "None"
+                                updateFilter("None", selectedFocusCityName, activeRadius)
+                            },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "None (No Location Filter)",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
                 // 1. Current GPS Location Option
                 Surface(
@@ -146,6 +296,7 @@ fun FilterBottomSheet(
                                 )
                             } else {
                                 selectedType = "GPS"
+                                updateFilter("GPS", selectedFocusCityName, activeRadius)
                             }
                         }
                 ) {
@@ -165,6 +316,7 @@ fun FilterBottomSheet(
                                     )
                                 } else {
                                     selectedType = "GPS"
+                                    updateFilter("GPS", selectedFocusCityName, activeRadius)
                                 }
                             },
                             colors = RadioButtonDefaults.colors(
@@ -195,7 +347,10 @@ fun FilterBottomSheet(
                     color = if (selectedType == "Home") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { selectedType = "Home" }
+                        .clickable {
+                            selectedType = "Home"
+                            updateFilter("Home", selectedFocusCityName, activeRadius)
+                        }
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -203,7 +358,10 @@ fun FilterBottomSheet(
                     ) {
                         RadioButton(
                             selected = selectedType == "Home",
-                            onClick = { selectedType = "Home" },
+                            onClick = {
+                                selectedType = "Home"
+                                updateFilter("Home", selectedFocusCityName, activeRadius)
+                            },
                             colors = RadioButtonDefaults.colors(
                                 selectedColor = MaterialTheme.colorScheme.primary
                             )
@@ -228,11 +386,17 @@ fun FilterBottomSheet(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { selectedType = "Focus" }
+                            modifier = Modifier.clickable {
+                                selectedType = "Focus"
+                                updateFilter("Focus", selectedFocusCityName, activeRadius)
+                            }
                         ) {
                             RadioButton(
                                 selected = selectedType == "Focus",
-                                onClick = { selectedType = "Focus" },
+                                onClick = {
+                                    selectedType = "Focus"
+                                    updateFilter("Focus", selectedFocusCityName, activeRadius)
+                                },
                                 colors = RadioButtonDefaults.colors(
                                     selectedColor = MaterialTheme.colorScheme.primary
                                 )
@@ -266,6 +430,7 @@ fun FilterBottomSheet(
                                             onClick = {
                                                 selectedFocusCityName = cityName
                                                 expandedDropdown = false
+                                                updateFilter("Focus", cityName, activeRadius)
                                             }
                                         )
                                     }
@@ -299,7 +464,11 @@ fun FilterBottomSheet(
 
                 Slider(
                     value = sliderValue,
-                    onValueChange = { sliderValue = it },
+                    onValueChange = {
+                        sliderValue = it
+                        val r = LocationUtils.getLogarithmicRadiusMeters(it)
+                        updateFilter(selectedType, selectedFocusCityName, r)
+                    },
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.secondary,
                         activeTrackColor = MaterialTheme.colorScheme.secondary,
@@ -315,66 +484,6 @@ fun FilterBottomSheet(
                     Text("500m", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     Text("5km", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     Text("50km", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
-            }
-
-            // Actions Buttons
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        onApplyFilter(null, activeRadius)
-                        onDismissRequest()
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Clear Filter")
-                }
-
-                Button(
-                    onClick = {
-                        if (selectedType == "GPS") {
-                            scope.launch {
-                                val currentLoc = LocationHelper.getCurrentLocation(context)
-                                val finalCenter = if (currentLoc != null) {
-                                    FilterCenter.GPS(currentLoc.latitude, currentLoc.longitude)
-                                } else {
-                                    val gp = LocationUtils.CITIES[homeCityName] ?: LocationUtils.CITIES["Milan"]!!
-                                    FilterCenter.GPS(gp.first, gp.second)
-                                }
-                                onApplyFilter(finalCenter, activeRadius)
-                                onDismissRequest()
-                            }
-                        } else {
-                            val finalCenter = when (selectedType) {
-                                "Home" -> {
-                                    val gp = LocationUtils.CITIES[homeCityName] ?: LocationUtils.CITIES["Milan"]!!
-                                    FilterCenter.HomeCity(homeCityName, gp.first, gp.second)
-                                }
-                                "Focus" -> {
-                                    val gp = LocationUtils.CITIES[selectedFocusCityName] ?: LocationUtils.CITIES["Milan"]!!
-                                    FilterCenter.FocusCity(selectedFocusCityName, gp.first, gp.second)
-                                }
-                                else -> null
-                            }
-                            onApplyFilter(finalCenter, activeRadius)
-                            onDismissRequest()
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text("Apply Filter")
                 }
             }
         }

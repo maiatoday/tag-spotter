@@ -10,6 +10,7 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
+import net.maiatoday.tagspotter.core.settings.FilterManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -24,6 +25,7 @@ class GalleryViewModelTest {
 
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository()
+    private val filterManager = FilterManager()
 
     @Test
     fun spotsFilteredByCategoryCorrectly() = runTest {
@@ -53,7 +55,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, settingsRepository)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -103,7 +105,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, settingsRepository)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
@@ -165,7 +167,7 @@ class GalleryViewModelTest {
             )
         )
 
-        val viewModel = GalleryViewModel(repository, settingsRepository)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
@@ -216,7 +218,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, settingsRepository)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
         // Collect spots StateFlow in backgroundScope
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -314,7 +316,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, settingsRepository)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
@@ -352,7 +354,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, settingsRepository)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
