@@ -1,7 +1,6 @@
 package net.maiatoday.tagspotter.core.settings
 
 import android.content.Context
-import androidx.core.content.edit
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -9,8 +8,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,35 +35,19 @@ interface SettingsRepository {
 
 class DataStoreSettingsRepository(
     private val context: Context,
+    private val secureStorage: SecureStorage,
     private val dataStore: DataStore<Preferences> = context.dataStore
 ) : SettingsRepository {
     
-    //@Suppress("DEPRECATION")
-    private val securePreferences = try {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context,
-            "secure_tag_spotter_settings",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    } catch (e: Throwable) {
-        e.printStackTrace()
-        context.getSharedPreferences("secure_tag_spotter_settings_fallback", Context.MODE_PRIVATE)
-    }
-
     private val _geminiApiKey = MutableStateFlow(getSavedGeminiApiKey())
     override val geminiApiKey: Flow<String> = _geminiApiKey.asStateFlow()
 
     private fun getSavedGeminiApiKey(): String {
-        return securePreferences.getString("gemini_api_key", "") ?: ""
+        return secureStorage.getString("gemini_api_key", "")
     }
 
     override suspend fun updateGeminiApiKey(key: String) {
-        securePreferences.edit { putString("gemini_api_key", key) }
+        secureStorage.putString("gemini_api_key", key)
         _geminiApiKey.value = key
     }
 

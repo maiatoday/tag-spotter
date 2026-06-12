@@ -21,12 +21,13 @@ class DataStoreSettingsRepositoryTest {
     lateinit var tempFolder: File
 
     private val fakeContext = FakeContext()
+    private val fakeSecureStorage = FakeSecureStorage()
 
     private fun createRepository(): DataStoreSettingsRepository {
         val testDataStore = PreferenceDataStoreFactory.create(
             produceFile = { File(tempFolder, "test_settings.preferences_pb") }
         )
-        return DataStoreSettingsRepository(fakeContext, testDataStore)
+        return DataStoreSettingsRepository(fakeContext, fakeSecureStorage, testDataStore)
     }
 
     @Test
@@ -66,11 +67,7 @@ class DataStoreSettingsRepositoryTest {
     @Test
     fun geminiApiKeyUsesSecurePreferences() = runTest {
         // Set up secure api key in preferences prior to repo instantiation
-        val sharedPrefs = fakeContext.getSharedPreferences(
-            "secure_tag_spotter_settings_fallback",
-            Context.MODE_PRIVATE
-        )
-        sharedPrefs.edit().putString("gemini_api_key", "secure_key_123").commit()
+        fakeSecureStorage.putString("gemini_api_key", "secure_key_123")
 
         val repository = createRepository()
 
@@ -80,7 +77,7 @@ class DataStoreSettingsRepositoryTest {
         // Verify updating it changes the flow and writes to secure preferences
         repository.updateGeminiApiKey("new_secure_key")
         assertEquals("new_secure_key", repository.geminiApiKey.first())
-        assertEquals("new_secure_key", sharedPrefs.getString("gemini_api_key", ""))
+        assertEquals("new_secure_key", fakeSecureStorage.getString("gemini_api_key", ""))
     }
 
     class FakeContext : ContextWrapper(null) {
@@ -179,6 +176,14 @@ class DataStoreSettingsRepositoryTest {
             override fun apply() {
                 parent.map.putAll(tempMap)
             }
+        }
+    }
+
+    class FakeSecureStorage : SecureStorage {
+        val map = mutableMapOf<String, String>()
+        override fun getString(key: String, defaultValue: String): String = map[key] ?: defaultValue
+        override fun putString(key: String, value: String) {
+            map[key] = value
         }
     }
 }

@@ -2,6 +2,7 @@ package net.maiatoday.tagspotter
 
 import android.app.Application
 import net.maiatoday.tagspotter.core.database.LocalSpotRepository
+import net.maiatoday.tagspotter.core.settings.AndroidSecureStorage
 import net.maiatoday.tagspotter.core.settings.DataStoreSettingsRepository
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.database.SpotDatabase
@@ -17,7 +18,9 @@ open class TagSpotterApplication : Application() {
     // Database and repository singletons for dependency injection
     open val database by lazy { SpotDatabase.getDatabase(this) }
     open val repository by lazy { LocalSpotRepository(database.spotDao(), AndroidPhotoProcessor(this)) }
-    open val settingsRepository: SettingsRepository by lazy { DataStoreSettingsRepository(this) }
+    open val settingsRepository: SettingsRepository by lazy { 
+        DataStoreSettingsRepository(this, AndroidSecureStorage(this)) 
+    }
 
     override fun onCreate() {
         super.onCreate()
