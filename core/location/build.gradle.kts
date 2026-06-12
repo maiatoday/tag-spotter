@@ -1,45 +1,45 @@
+@file:OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
-android {
-    namespace = "net.maiatoday.tagspotter.core.location"
-    compileSdk = 37
-
-    defaultConfig {
+kotlin {
+    android {
+        namespace = "net.maiatoday.tagspotter.core.location"
+        compileSdk = 37
         minSdk = 29
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+    
+    jvm()
+    iosSimulatorArm64()
+    iosArm64()
+    wasmJs {
+        browser()
     }
     
-    testFixtures {
-        enable = true
+    sourceSets {
+        commonMain.dependencies {
+            implementation(project(":core:model"))
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.koin.core)
+        }
+        
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+        }
+        
+        androidMain.dependencies {
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.play.services.location)
+            implementation(libs.play.services.wearable)
+            implementation(libs.androidx.exifinterface)
+            implementation(libs.androidx.work.runtime.ktx)
+            implementation(libs.koin.android)
+        }
     }
-}
-
-dependencies {
-    implementation(project(":core:model"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.play.services.location)
-    implementation(libs.play.services.wearable)
-    implementation(libs.androidx.exifinterface)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.androidx.work.runtime.ktx)
-    
-    // Koin
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    implementation(libs.koin.android)
-    
-    // Test Fixtures
-    testFixturesImplementation(project(":core:model"))
-    
-    // Testing
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.test.core)
-    androidTestImplementation(libs.androidx.test.ext.junit)
-    androidTestImplementation(libs.androidx.test.runner)
 }

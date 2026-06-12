@@ -1,15 +1,33 @@
+@OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.serialization")
+    kotlin("multiplatform")
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
-dependencies {
-    implementation(libs.kotlinx.serialization.json)
-    testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.platform.launcher)
-}
+kotlin {
+    android {
+        namespace = "net.maiatoday.tagspotter.core.model"
+        compileSdk = 37
+        minSdk = 29
+    }
+    jvm()
+    iosSimulatorArm64()
+    iosArm64()
+    wasmJs {
+        browser()
+    }
 
-tasks.test {
-    useJUnitPlatform()
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation(libs.kotlinx.serialization.json)
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+    }
 }

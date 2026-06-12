@@ -1,51 +1,104 @@
 plugins {
-    alias(libs.plugins.android.library)
+    kotlin("multiplatform")
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
-android {
-    namespace = "net.maiatoday.tagspotter.core.settings"
-    compileSdk = 37
-
-    defaultConfig {
+kotlin {
+    androidLibrary {
+        namespace = "net.maiatoday.tagspotter.core.settings"
+        compileSdk = 37
         minSdk = 29
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        
+        withHostTestBuilder { }
     }
     
-    testFixtures {
-        enable = true
+    jvm()
+    iosSimulatorArm64()
+    iosArm64()
+    wasmJs {
+        browser()
     }
-
-    testOptions {
-        unitTests {
-            all {
-                it.useJUnitPlatform()
+    
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation(project(":core:model"))
+                implementation(libs.multiplatform.settings)
+                implementation(libs.kotlinx.coroutines.core)
+                
+                // Koin
+                implementation(libs.koin.core)
             }
         }
+        
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.multiplatform.settings.test)
+            }
+        }
+        
+        val nonWebMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.androidx.datastore.preferences)
+            }
+        }
+        
+        androidMain {
+            dependsOn(nonWebMain)
+            dependencies {
+                implementation(libs.androidx.core.ktx)
+                implementation(libs.androidx.security.crypto)
+                
+                // Koin
+                implementation(libs.koin.android)
+            }
+        }
+        
+        jvmMain {
+            dependsOn(nonWebMain)
+        }
+        
+        iosMain {
+            dependsOn(nonWebMain)
+        }
+        
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain.get())
+        }
+        
+        val iosArm64Main by getting {
+            dependsOn(iosMain.get())
+        }
+        
+        val nonWebTest by creating {
+            dependsOn(commonTest.get())
+        }
+        
+        val androidHostTest by getting {
+            dependsOn(nonWebTest)
+            dependencies {
+                implementation(libs.androidx.test.core)
+            }
+        }
+        
+        val jvmTest by getting {
+            dependsOn(nonWebTest)
+        }
+        
+        val iosTest by creating {
+            dependsOn(nonWebTest)
+        }
+        
+        val iosSimulatorArm64Test by getting {
+            dependsOn(iosTest)
+        }
+        
+        val iosArm64Test by getting {
+            dependsOn(iosTest)
+        }
     }
-}
-
-dependencies {
-    implementation(project(":core:model"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.security.crypto)
-    
-    // Koin
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    implementation(libs.koin.android)
-    
-    // Testing & Test Fixtures
-    testFixturesApi(libs.kotlinx.coroutines.test)
-    testFixturesImplementation(project(":core:model"))
-    
-    testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.platform.launcher)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.androidx.test.core) // For mock context in repo test
 }
