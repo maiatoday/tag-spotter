@@ -3,6 +3,7 @@ package net.maiatoday.tagspotter.core.settings
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import androidx.core.content.edit
 
 @Suppress("DEPRECATION")
 class AndroidSecureStorage(private val context: Context) : SecureStorage {
@@ -27,6 +28,6 @@ class AndroidSecureStorage(private val context: Context) : SecureStorage {
     }
 
     override fun putString(key: String, value: String) {
-        securePreferences.edit().putString(key, value).apply()
+        securePreferences.edit { putString(key, value) }
     }
 }

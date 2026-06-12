@@ -25,14 +25,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
-import androidx.compose.ui.res.stringResource
 import net.maiatoday.tagspotter.core.ui.getCategoryActiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
-import net.maiatoday.tagspotter.feature.detail.R
 import java.io.File
 
 @Composable

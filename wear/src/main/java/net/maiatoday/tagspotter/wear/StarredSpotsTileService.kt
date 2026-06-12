@@ -25,7 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
-import net.maiatoday.tagspotter.wear.R
 
 class StarredSpotsTileService : TileService() {
 

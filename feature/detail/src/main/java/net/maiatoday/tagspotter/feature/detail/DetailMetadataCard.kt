@@ -55,11 +55,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.compose.ui.res.stringResource
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
@@ -71,7 +71,6 @@ import net.maiatoday.tagspotter.core.ui.getCategoryDatePlaceholder
 import net.maiatoday.tagspotter.core.ui.getCategoryDateTextFieldLabel
 import net.maiatoday.tagspotter.core.ui.getCategoryStatusActionMarkInactiveText
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
-import net.maiatoday.tagspotter.feature.detail.R
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -603,7 +602,7 @@ fun DetailMetadataCard(
                             if (isCreationMode) onUpdatePhotographer(it)
                         },
                         label = { Text(stringResource(R.string.photographer_label)) },
-                        placeholder = { Text(if (defaultPhotographer.isEmpty()) stringResource(R.string.photographer_placeholder_name) else defaultPhotographer) },
+                        placeholder = { Text(defaultPhotographer.ifEmpty { stringResource(R.string.photographer_placeholder_name) }) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(

@@ -1,6 +1,5 @@
 package net.maiatoday.tagspotter.core.settings
 
-import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
