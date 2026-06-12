@@ -430,7 +430,7 @@ fun DetailScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.resetWikiSearchState() },
                 confirmButton = {},
-                title = { Text("Searching Wikipedia...") },
+                title = { Text("Searching for Links...") },
                 text = {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -454,7 +454,7 @@ fun DetailScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Wikipedia Link")
+                        Text("Add Link")
                     }
                 },
                 text = {
