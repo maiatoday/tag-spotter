@@ -71,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -81,12 +82,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
-import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
-import androidx.compose.ui.res.stringResource
-import net.maiatoday.tagspotter.feature.detail.R
 import net.maiatoday.tagspotter.core.photo.ImageOptimizer
 import net.maiatoday.tagspotter.core.ui.OsmMapView
 import net.maiatoday.tagspotter.core.ui.OsmMarker
+import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import java.io.File
