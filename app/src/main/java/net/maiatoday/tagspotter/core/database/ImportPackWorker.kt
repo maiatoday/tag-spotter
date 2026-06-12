@@ -1,6 +1,5 @@
 package net.maiatoday.tagspotter.core.database
 
-import android.R
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -111,9 +110,9 @@ class ImportPackWorker(
         )
 
         val iconRes = if (isSuccess) {
-            R.drawable.ic_menu_save
+            android.R.drawable.ic_menu_save
         } else {
-            R.drawable.ic_dialog_alert
+            android.R.drawable.ic_dialog_alert
         }
 
         val builder = NotificationCompat.Builder(context, channelId)

@@ -1,10 +1,10 @@
 package net.maiatoday.tagspotter.wear
 
-import android.content.Context
 import android.util.Log
+import androidx.core.content.edit
+import androidx.wear.tiles.TileService
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
-import androidx.wear.tiles.TileService
 
 class WearDataListenerService : WearableListenerService() {
 
@@ -18,10 +18,11 @@ class WearDataListenerService : WearableListenerService() {
                 Log.d("WearDataListenerService", "Received nearby spots response: $json")
                 
                 // Cache the spots JSON in SharedPreferences
-                val sharedPref = applicationContext.getSharedPreferences("tagspotter_wear_prefs", Context.MODE_PRIVATE)
-                with(sharedPref.edit()) {
+                val sharedPref = applicationContext.getSharedPreferences("tagspotter_wear_prefs",
+                    MODE_PRIVATE
+                )
+                sharedPref.edit {
                     putString("cached_spots_json", json)
-                    apply()
                 }
                 
                 // Trigger a Tile refresh

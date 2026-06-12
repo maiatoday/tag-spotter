@@ -1,26 +1,19 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import android.graphics.Bitmap
-import net.maiatoday.tagspotter.MainDispatcherExtension
-import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
-import net.maiatoday.tagspotter.core.database.FakeSpotRepository
-import net.maiatoday.tagspotter.core.photo.FakePhotoProcessor
-import net.maiatoday.tagspotter.core.ai.FakeAiRecognitionService
-import net.maiatoday.tagspotter.core.settings.FakeSecretsProvider
-import net.maiatoday.tagspotter.core.model.Spot
-import net.maiatoday.tagspotter.core.model.SpotDetails
-import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.ai.AiRecognitionService
-import net.maiatoday.tagspotter.core.ai.AiSuggestion
-import net.maiatoday.tagspotter.core.settings.SecretsProvider
-import net.maiatoday.tagspotter.core.location.WearSyncManager
-import net.maiatoday.tagspotter.core.photo.PhotoMetadata
-import net.maiatoday.tagspotter.core.photo.PhotoProcessor
-import net.maiatoday.tagspotter.core.photo.TempFileDetails
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import net.maiatoday.tagspotter.MainDispatcherExtension
+import net.maiatoday.tagspotter.core.ai.AiSuggestion
+import net.maiatoday.tagspotter.core.ai.FakeAiRecognitionService
+import net.maiatoday.tagspotter.core.database.FakeSpotRepository
+import net.maiatoday.tagspotter.core.location.WearSyncManager
+import net.maiatoday.tagspotter.core.model.Spot
+import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.model.SpotImage
+import net.maiatoday.tagspotter.core.settings.FakeSecretsProvider
+import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -72,7 +65,7 @@ class DetailViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
-       backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.defaultPhotographer.collect {}
         }
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -160,8 +153,22 @@ class DetailViewModelTest {
             category = "graffiti",
             status = "active"
         )
-        val image1 = SpotImage(id = 1L, spotId = spotId, imagePath = "/path/1.png", thumbnailPath = "/path/1_thumb.png", timestamp = 1000L, isMain = true)
-        val image2 = SpotImage(id = 2L, spotId = spotId, imagePath = "/path/2.png", thumbnailPath = "/path/2_thumb.png", timestamp = 1100L, isMain = false)
+        val image1 = SpotImage(
+            id = 1L,
+            spotId = spotId,
+            imagePath = "/path/1.png",
+            thumbnailPath = "/path/1_thumb.png",
+            timestamp = 1000L,
+            isMain = true
+        )
+        val image2 = SpotImage(
+            id = 2L,
+            spotId = spotId,
+            imagePath = "/path/2.png",
+            thumbnailPath = "/path/2_thumb.png",
+            timestamp = 1100L,
+            isMain = false
+        )
         val spotDetails = SpotDetails(spot, listOf(image1, image2), emptyList())
         repository.setSpots(listOf(spotDetails))
 
@@ -256,7 +263,7 @@ class DetailViewModelTest {
         repository.setSpots(starredSpots + spotDetails)
 
         var limitExceededEmitted = false
-        val collectEventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiEvent.collect { event ->
                 if (event is DetailViewModel.UiEvent.StarLimitExceeded) {
                     limitExceededEmitted = true
@@ -305,16 +312,16 @@ class DetailViewModelTest {
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager
         )
-        
+
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.aiState.collect {}
         }
-        
+
         assertEquals(AiState.Idle, viewModel.aiState.value)
-        
+
         // Trigger identification with a dummy path
         viewModel.identifyArtist("some_path.png")
-        
+
         // Verification: should set error to MissingKey since API Key is empty
         assertEquals(AiState.Error.MissingKey, viewModel.aiState.value)
     }
@@ -491,7 +498,10 @@ class DetailViewModelTest {
         // Should return Error state indicating description is empty
         val state = viewModel.wikiSearchState.value
         assertTrue(state is WikiSearchState.Error)
-        assertEquals("No title logged. Please set a title/description first.", (state as WikiSearchState.Error).message)
+        assertEquals(
+            "No title logged. Please set a title/description first.",
+            (state as WikiSearchState.Error).message
+        )
     }
 
     @Test
@@ -534,7 +544,10 @@ class DetailViewModelTest {
         // Verification: should set error to missing key since API key is empty
         val state = viewModel.wikiSearchState.value
         assertTrue(state is WikiSearchState.Error)
-        assertEquals("Missing Gemini API Key. Please configure it in Settings.", (state as WikiSearchState.Error).message)
+        assertEquals(
+            "Missing Gemini API Key. Please configure it in Settings.",
+            (state as WikiSearchState.Error).message
+        )
     }
 
     @Test
@@ -570,7 +583,12 @@ class DetailViewModelTest {
 
         viewModel.searchWikipediaForSpot()
 
-        assertEquals(WikiSearchState.Success("https://en.wikipedia.org/wiki/Some_Spot_Title", "Some Spot Title"), viewModel.wikiSearchState.value)
+        assertEquals(
+            WikiSearchState.Success(
+                "https://en.wikipedia.org/wiki/Some_Spot_Title",
+                "Some Spot Title"
+            ), viewModel.wikiSearchState.value
+        )
     }
 
     @Test

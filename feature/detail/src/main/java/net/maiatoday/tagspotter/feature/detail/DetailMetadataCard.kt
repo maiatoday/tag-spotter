@@ -1,8 +1,6 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +30,6 @@ import androidx.compose.material.icons.filled.EditLocationAlt
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -61,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.getCategoryCreatorLabel
@@ -253,8 +251,8 @@ fun DetailMetadataCard(
 
                     OutlinedTextField(
                         value = descriptionEditInput,
-                        onValueChange = { 
-                            descriptionEditInput = it 
+                        onValueChange = {
+                            descriptionEditInput = it
                             if (isCreationMode) onUpdateDescription(it)
                         },
                         label = { Text("Title") },
@@ -295,7 +293,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (details.spot.description.isEmpty()) "No title logged." else details.spot.description,
+                        text = details.spot.description.ifEmpty { "No title logged." },
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
                             fontWeight = FontWeight.Bold
@@ -365,11 +363,15 @@ fun DetailMetadataCard(
                                 IconButton(
                                     onClick = {
                                         val cleaned = artistEditInput.trim()
-                                        val finalArtists = if (cleaned.isNotEmpty() && !localArtistsList.contains(cleaned)) {
-                                            localArtistsList.toList() + cleaned
-                                        } else {
-                                            localArtistsList.toList()
-                                        }
+                                        val finalArtists =
+                                            if (cleaned.isNotEmpty() && !localArtistsList.contains(
+                                                    cleaned
+                                                )
+                                            ) {
+                                                localArtistsList.toList() + cleaned
+                                            } else {
+                                                localArtistsList.toList()
+                                            }
                                         onUpdateArtists(finalArtists)
                                         artistEditInput = ""
                                         isEditingArtists = false
@@ -483,7 +485,9 @@ fun DetailMetadataCard(
                                     ) {
                                         Text(
                                             text = artist,
-                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                fontWeight = FontWeight.Bold
+                                            ),
                                             color = MaterialTheme.colorScheme.onBackground
                                         )
                                         Icon(
@@ -494,7 +498,9 @@ fun DetailMetadataCard(
                                                 .size(14.dp)
                                                 .clickable {
                                                     localArtistsList.remove(artist)
-                                                    if (isCreationMode) onUpdateArtists(localArtistsList.toList())
+                                                    if (isCreationMode) onUpdateArtists(
+                                                        localArtistsList.toList()
+                                                    )
                                                 }
                                         )
                                     }
@@ -530,7 +536,9 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (details.spot.artists.isEmpty()) details.spot.category.getCategoryCreatorUnknownLabel() else details.spot.artists.joinToString(", "),
+                        text = if (details.spot.artists.isEmpty()) details.spot.category.getCategoryCreatorUnknownLabel() else details.spot.artists.joinToString(
+                            ", "
+                        ),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -588,8 +596,8 @@ fun DetailMetadataCard(
 
                     OutlinedTextField(
                         value = photographerEditInput,
-                        onValueChange = { 
-                            photographerEditInput = it 
+                        onValueChange = {
+                            photographerEditInput = it
                             if (isCreationMode) onUpdatePhotographer(it)
                         },
                         label = { Text("Photographer") },
@@ -688,8 +696,8 @@ fun DetailMetadataCard(
 
                     OutlinedTextField(
                         value = artworkDateEditInput,
-                        onValueChange = { 
-                            artworkDateEditInput = it 
+                        onValueChange = {
+                            artworkDateEditInput = it
                             if (isCreationMode) onUpdateArtworkDate(it)
                         },
                         label = { Text(details.spot.category.getCategoryDateTextFieldLabel()) },
@@ -747,7 +755,8 @@ fun DetailMetadataCard(
                 if (!isCreationMode) {
                     Button(
                         onClick = {
-                            val uri = Uri.parse("google.navigation:q=${details.spot.latitude},${details.spot.longitude}")
+                            val uri =
+                                "google.navigation:q=${details.spot.latitude},${details.spot.longitude}".toUri()
                             val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                                 setPackage("com.google.android.apps.maps")
                             }
@@ -755,7 +764,8 @@ fun DetailMetadataCard(
                                 context.startActivity(intent)
                             } else {
                                 // Fallback: try open in browser
-                                val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${details.spot.latitude},${details.spot.longitude}")
+                                val webUri =
+                                    "https://www.google.com/maps/dir/?api=1&destination=${details.spot.latitude},${details.spot.longitude}".toUri()
                                 context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
                             }
                         },

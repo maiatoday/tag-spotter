@@ -47,6 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import net.maiatoday.tagspotter.core.model.SpotImage
+import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun DetailPhotoTimeline(
@@ -185,7 +186,7 @@ fun SpotTimelineCard(
                 }
             }
 
-            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+            val sdf = SimpleDateFormat("MMM dd, yyyy", LocalLocale.current.platformLocale)
             val formattedDate = sdf.format(Date(image.timestamp))
             Column(
                 modifier = Modifier

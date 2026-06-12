@@ -39,7 +39,7 @@ class PackManagerTest {
     fun testExportAndImportPack() = runTest {
         val baseDir = File(tempFolder, "fake_android_dir").apply { mkdirs() }
         val context = FakeContext(baseDir)
-        val repository = FakeSpotRepository()
+        FakeSpotRepository()
 
         // 1. Create dummy files to export
         val imageDir = File(tempFolder, "images").apply { mkdirs() }

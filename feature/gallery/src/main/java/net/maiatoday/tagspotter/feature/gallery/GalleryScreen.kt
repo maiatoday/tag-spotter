@@ -1,10 +1,7 @@
 package net.maiatoday.tagspotter.feature.gallery
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -75,23 +72,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import net.maiatoday.tagspotter.core.database.PackManager
+import net.maiatoday.tagspotter.core.model.FilterCenter
+import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
-import net.maiatoday.tagspotter.core.model.FilterCenter
-import net.maiatoday.tagspotter.core.model.LocationUtils
-import net.maiatoday.tagspotter.core.database.PackManager
 import org.koin.androidx.compose.koinViewModel
 import java.io.File
 import java.text.SimpleDateFormat
@@ -115,7 +112,7 @@ fun GalleryScreen(
     val activeFilterCenter by viewModel.activeFilterCenter.collectAsStateWithLifecycle()
     val activeRadiusMeters by viewModel.activeRadiusMeters.collectAsStateWithLifecycle()
     val homeCityName by viewModel.homeCity.collectAsStateWithLifecycle()
-    
+
     var showFilterBottomSheet by remember { mutableStateOf(false) }
 
     var isMultiSelectMode by remember { mutableStateOf(false) }
@@ -139,7 +136,6 @@ fun GalleryScreen(
     }
 
 
-
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("*/*")
     ) { uri ->
@@ -147,20 +143,25 @@ fun GalleryScreen(
             val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
             try {
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    PackManager.exportPack(context, selectedSpots, outputStream, minRating = exportMinRatingThreshold)
+                    PackManager.exportPack(
+                        context,
+                        selectedSpots,
+                        outputStream,
+                        minRating = exportMinRatingThreshold
+                    )
                 }
                 Toast.makeText(context, "Saved successfully!", Toast.LENGTH_LONG).show()
                 selectedSpotIds.clear()
                 isMultiSelectMode = false
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "Failed to save: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Failed to save: ${e.localizedMessage}", Toast.LENGTH_LONG)
+                    .show()
             }
         }
     }
 
     val categories = listOf("All") + Spot.CATEGORIES
-    val sources = listOf("All", "My Spots", "Imported")
 
     if (showDeleteConfirmDialog) {
         AlertDialog(
@@ -174,7 +175,8 @@ fun GalleryScreen(
                             selectedSpotIds.clear()
                             isMultiSelectMode = false
                             showDeleteConfirmDialog = false
-                            Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT)
+                                .show()
                         }
                     }
                 ) {
@@ -221,29 +223,41 @@ fun GalleryScreen(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     // Star toggle
                     IconButton(
                         onClick = {
                             val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
                             val anyUnstarred = selectedSpots.any { !it.spot.isStarred }
                             if (anyUnstarred) {
-                                viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = true) {
+                                viewModel.bulkUpdateStarred(
+                                    selectedSpotIds.toList(),
+                                    isStarred = true
+                                ) {
                                     selectedSpotIds.clear()
                                     isMultiSelectMode = false
-                                    Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT)
+                                        .show()
                                 }
                             } else {
-                                viewModel.bulkUpdateStarred(selectedSpotIds.toList(), isStarred = false) {
+                                viewModel.bulkUpdateStarred(
+                                    selectedSpotIds.toList(),
+                                    isStarred = false
+                                ) {
                                     selectedSpotIds.clear()
                                     isMultiSelectMode = false
-                                    Toast.makeText(context, "Spots unstarred!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Spots unstarred!", Toast.LENGTH_SHORT)
+                                        .show()
                                 }
                             }
                         },
                         enabled = selectedSpotIds.isNotEmpty()
                     ) {
-                        val anyUnstarred = spots.filter { it.spot.id in selectedSpotIds }.any { !it.spot.isStarred }
+                        val anyUnstarred = spots.filter { it.spot.id in selectedSpotIds }
+                            .any { !it.spot.isStarred }
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Toggle Star",
@@ -285,12 +299,14 @@ fun GalleryScreen(
                                 text = { Text("Get Route in Google Maps") },
                                 onClick = {
                                     isShareMenuExpanded = false
-                                    val selectedSpots = selectedSpotIds.mapNotNull { id -> spots.find { it.spot.id == id } }
+                                    val selectedSpots =
+                                        selectedSpotIds.mapNotNull { id -> spots.find { it.spot.id == id } }
                                     if (selectedSpots.isNotEmpty()) {
                                         val destinationSpot = selectedSpots.last().spot
                                         val waypointSpots = selectedSpots.dropLast(1)
                                         val base = "https://www.google.com/maps/dir/?api=1"
-                                        val destParam = "&destination=${destinationSpot.latitude},${destinationSpot.longitude}"
+                                        val destParam =
+                                            "&destination=${destinationSpot.latitude},${destinationSpot.longitude}"
                                         val waypointsParam = if (waypointSpots.isNotEmpty()) {
                                             "&waypoints=" + waypointSpots.joinToString("|") { "${it.spot.latitude},${it.spot.longitude}" }
                                         } else {
@@ -301,7 +317,11 @@ fun GalleryScreen(
                                         try {
                                             context.startActivity(intent)
                                         } catch (_: Exception) {
-                                            Toast.makeText(context, "No app available to open route.", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                "No app available to open route.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                 }
@@ -310,27 +330,47 @@ fun GalleryScreen(
                                 text = { Text("Share KML for Google My Maps") },
                                 onClick = {
                                     isShareMenuExpanded = false
-                                    val selectedSpots = selectedSpotIds.mapNotNull { id -> spots.find { it.spot.id == id } }
+                                    val selectedSpots =
+                                        selectedSpotIds.mapNotNull { id -> spots.find { it.spot.id == id } }
                                     if (selectedSpots.isNotEmpty()) {
                                         val kmlString = KmlExporter.generateKml(selectedSpots)
                                         try {
-                                            val sdf = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault())
+                                            val sdf = SimpleDateFormat(
+                                                "yyyyMMdd_HHmm",
+                                                Locale.getDefault()
+                                            )
                                             val timestamp = sdf.format(Date())
                                             val filename = "spots_export_$timestamp.kml"
                                             val cacheFile = File(context.cacheDir, filename)
                                             cacheFile.writeText(kmlString)
                                             val authority = "${context.packageName}.fileprovider"
-                                            val uri = FileProvider.getUriForFile(context, authority, cacheFile)
+                                            val uri = FileProvider.getUriForFile(
+                                                context,
+                                                authority,
+                                                cacheFile
+                                            )
                                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                                 type = "application/vnd.google-earth.kml+xml"
                                                 putExtra(Intent.EXTRA_STREAM, uri)
-                                                putExtra(Intent.EXTRA_SUBJECT, "TagSpotter KML Export")
+                                                putExtra(
+                                                    Intent.EXTRA_SUBJECT,
+                                                    "TagSpotter KML Export"
+                                                )
                                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                             }
-                                            context.startActivity(Intent.createChooser(shareIntent, "Share KML"))
+                                            context.startActivity(
+                                                Intent.createChooser(
+                                                    shareIntent,
+                                                    "Share KML"
+                                                )
+                                            )
                                         } catch (e: Exception) {
                                             e.printStackTrace()
-                                            Toast.makeText(context, "Failed to share KML: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(
+                                                context,
+                                                "Failed to share KML: ${e.localizedMessage}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
                                         }
                                     }
                                 }
@@ -434,7 +474,11 @@ fun GalleryScreen(
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { viewModel.selectCategory(category) },
-                                label = { Text(category.replace("_", " ").replaceFirstChar { it.titlecase() }) },
+                                label = {
+                                    Text(
+                                        category.replace("_", " ")
+                                            .replaceFirstChar { it.titlecase() })
+                                },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = if (category == "All") {
                                         MaterialTheme.colorScheme.primary
@@ -565,7 +609,11 @@ fun GalleryScreen(
                         FilterChip(
                             selected = true,
                             onClick = { isSearchExpanded = true },
-                            label = { Text(selectedCategory.replace("_", " ").replaceFirstChar { it.titlecase() }) },
+                            label = {
+                                Text(
+                                    selectedCategory.replace("_", " ")
+                                        .replaceFirstChar { it.titlecase() })
+                            },
                             trailingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Close,
@@ -576,8 +624,12 @@ fun GalleryScreen(
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.categoryColors.getColorForCategory(selectedCategory).copy(alpha = 0.2f),
-                                selectedLabelColor = MaterialTheme.categoryColors.getColorForCategory(selectedCategory)
+                                selectedContainerColor = MaterialTheme.categoryColors.getColorForCategory(
+                                    selectedCategory
+                                ).copy(alpha = 0.2f),
+                                selectedLabelColor = MaterialTheme.categoryColors.getColorForCategory(
+                                    selectedCategory
+                                )
                             )
                         )
                     }
@@ -615,7 +667,11 @@ fun GalleryScreen(
                             onClick = { showFilterBottomSheet = true },
                             label = {
                                 Text(
-                                    text = "${activeFilterCenter?.displayName} (${LocationUtils.getRadiusLabel(activeRadiusMeters)})"
+                                    text = "${activeFilterCenter?.displayName} (${
+                                        LocationUtils.getRadiusLabel(
+                                            activeRadiusMeters
+                                        )
+                                    })"
                                 )
                             },
                             trailingIcon = {
@@ -792,9 +848,15 @@ fun GalleryScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
                     ) {
-                        Text("Min Rating: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Min Rating: ",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -863,7 +925,8 @@ fun SpotGridCard(
     activeFilterCenter: FilterCenter? = null
 ) {
     // Get main thumbnail or latest image based on timestamp
-    val latestImage = spotDetails.images.firstOrNull { it.isMain } ?: spotDetails.images.maxByOrNull { it.timestamp }
+    val latestImage = spotDetails.images.firstOrNull { it.isMain }
+        ?: spotDetails.images.maxByOrNull { it.timestamp }
     val isErased = spotDetails.spot.status == "erased"
 
     Card(
@@ -879,7 +942,8 @@ fun SpotGridCard(
                 } else if (isErased) {
                     Color.DarkGray
                 } else {
-                    MaterialTheme.categoryColors.getColorForCategory(spotDetails.spot.category).copy(alpha = 0.4f)
+                    MaterialTheme.categoryColors.getColorForCategory(spotDetails.spot.category)
+                        .copy(alpha = 0.4f)
                 },
                 RoundedCornerShape(8.dp)
             ),
@@ -898,11 +962,20 @@ fun SpotGridCard(
             ) {
                 if (latestImage != null) {
                     val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath) {
-                        if (latestImage.thumbnailPath.isNotEmpty() && !latestImage.thumbnailPath.startsWith("android.resource://") && !latestImage.thumbnailPath.startsWith("http")) {
+                        if (latestImage.thumbnailPath.isNotEmpty() && !latestImage.thumbnailPath.startsWith(
+                                "android.resource://"
+                            ) && !latestImage.thumbnailPath.startsWith("http")
+                        ) {
                             File(latestImage.thumbnailPath)
-                        } else if (latestImage.thumbnailPath.isNotEmpty() && (latestImage.thumbnailPath.startsWith("android.resource://") || latestImage.thumbnailPath.startsWith("http"))) {
+                        } else if (latestImage.thumbnailPath.isNotEmpty() && (latestImage.thumbnailPath.startsWith(
+                                "android.resource://"
+                            ) || latestImage.thumbnailPath.startsWith("http"))
+                        ) {
                             latestImage.thumbnailPath.toUri()
-                        } else if (latestImage.imagePath.startsWith("content://") || latestImage.imagePath.startsWith("android.resource://") || latestImage.imagePath.startsWith("http")) {
+                        } else if (latestImage.imagePath.startsWith("content://") || latestImage.imagePath.startsWith(
+                                "android.resource://"
+                            ) || latestImage.imagePath.startsWith("http")
+                        ) {
                             latestImage.imagePath.toUri()
                         } else {
                             File(latestImage.imagePath)
@@ -925,12 +998,17 @@ fun SpotGridCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = spotDetails.spot.category.getCategoryInactiveStatusLabel().uppercase(),
+                            text = spotDetails.spot.category.getCategoryInactiveStatusLabel()
+                                .uppercase(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
-                                .border(1.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(4.dp))
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.error,
+                                    RoundedCornerShape(4.dp)
+                                )
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -1023,7 +1101,7 @@ fun SpotGridCard(
                     .padding(8.dp)
             ) {
                 // Formatting timestamp
-                val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                val sdf = SimpleDateFormat("MMM dd, yyyy", LocalLocale.current.platformLocale)
                 val formattedDate = sdf.format(Date(spotDetails.spot.createdAt))
 
                 Text(

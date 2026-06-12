@@ -3,7 +3,6 @@ package net.maiatoday.tagspotter.feature.detail
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,12 +115,14 @@ fun DetailTagsCard(
                         ) {
                             IconButton(
                                 onClick = {
-                                    val cleaned = customTagEditInput.trim().lowercase().removePrefix("#")
-                                    val finalTags = if (cleaned.isNotEmpty() && !localTagsList.contains(cleaned)) {
-                                        localTagsList.toList() + cleaned
-                                    } else {
-                                        localTagsList.toList()
-                                    }
+                                    val cleaned =
+                                        customTagEditInput.trim().lowercase().removePrefix("#")
+                                    val finalTags =
+                                        if (cleaned.isNotEmpty() && !localTagsList.contains(cleaned)) {
+                                            localTagsList.toList() + cleaned
+                                        } else {
+                                            localTagsList.toList()
+                                        }
                                     onUpdateTags(finalTags)
                                     customTagEditInput = ""
                                     isEditingTags = false
@@ -156,7 +157,8 @@ fun DetailTagsCard(
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
 
-                    val predefinedTags = remember { setOf("mural", "stencil", "throwup", "pasteup", "sticker") }
+                    val predefinedTags =
+                        remember { setOf("mural", "stencil", "throwup", "pasteup", "sticker") }
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -256,7 +258,8 @@ fun DetailTagsCard(
                             ),
                             keyboardActions = KeyboardActions(
                                 onDone = {
-                                    val cleaned = customTagEditInput.trim().lowercase().removePrefix("#")
+                                    val cleaned =
+                                        customTagEditInput.trim().lowercase().removePrefix("#")
                                     if (cleaned.isNotEmpty()) {
                                         if (!localTagsList.contains(cleaned)) {
                                             localTagsList.add(cleaned)
@@ -277,7 +280,8 @@ fun DetailTagsCard(
 
                         IconButton(
                             onClick = {
-                                val cleaned = customTagEditInput.trim().lowercase().removePrefix("#")
+                                val cleaned =
+                                    customTagEditInput.trim().lowercase().removePrefix("#")
                                 if (cleaned.isNotEmpty()) {
                                     if (!localTagsList.contains(cleaned)) {
                                         localTagsList.add(cleaned)
@@ -288,7 +292,10 @@ fun DetailTagsCard(
                             },
                             modifier = Modifier
                                 .size(56.dp)
-                                .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+                                .background(
+                                    MaterialTheme.colorScheme.secondary,
+                                    RoundedCornerShape(8.dp)
+                                )
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
@@ -314,8 +321,15 @@ fun DetailTagsCard(
                         details.spot.tags.forEach { tag ->
                             Box(
                                 modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                                    .border(1.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+                                    .background(
+                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.secondary,
+                                        RoundedCornerShape(8.dp)
+                                    )
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(

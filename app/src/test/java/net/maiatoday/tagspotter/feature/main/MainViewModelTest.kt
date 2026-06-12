@@ -1,21 +1,18 @@
 package net.maiatoday.tagspotter.feature.main
 
-import android.graphics.Bitmap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import net.maiatoday.tagspotter.MainDispatcherExtension
-import net.maiatoday.tagspotter.core.location.LocationData
-import net.maiatoday.tagspotter.core.location.LocationProvider
-import net.maiatoday.tagspotter.core.photo.PhotoMetadata
-import net.maiatoday.tagspotter.core.photo.PhotoProcessor
-import net.maiatoday.tagspotter.core.photo.TempFileDetails
-import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
 import net.maiatoday.tagspotter.core.location.FakeLocationProvider
+import net.maiatoday.tagspotter.core.location.LocationData
 import net.maiatoday.tagspotter.core.photo.FakePhotoProcessor
+import net.maiatoday.tagspotter.core.photo.PhotoMetadata
+import net.maiatoday.tagspotter.core.photo.TempFileDetails
+import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -95,7 +92,7 @@ class MainViewModelTest {
         viewModel.updateLocationPermission(true)
 
         val eventsList = mutableListOf<MainEvent>()
-        val eventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.events.toList(eventsList)
         }
 
@@ -129,7 +126,7 @@ class MainViewModelTest {
         photoProcessor.metadataResult = PhotoMetadata(45.4642, 9.1900, 123456789L)
 
         val eventsList = mutableListOf<MainEvent>()
-        val eventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.events.toList(eventsList)
         }
 
@@ -163,7 +160,7 @@ class MainViewModelTest {
         viewModel.updateLocationPermission(true)
 
         val eventsList = mutableListOf<MainEvent>()
-        val eventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.events.toList(eventsList)
         }
 
@@ -187,7 +184,7 @@ class MainViewModelTest {
             UnconfinedTestDispatcher(testScheduler)
         )
 
-        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.showTestData.collect {}
         }
 

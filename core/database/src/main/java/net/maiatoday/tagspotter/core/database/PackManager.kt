@@ -4,7 +4,6 @@ import android.content.Context
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage

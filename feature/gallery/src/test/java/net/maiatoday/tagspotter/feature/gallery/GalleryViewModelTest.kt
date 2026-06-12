@@ -58,7 +58,7 @@ class GalleryViewModelTest {
         val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
-        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
         }
 
@@ -107,7 +107,7 @@ class GalleryViewModelTest {
 
         val viewModel = GalleryViewModel(repository, filterManager, settingsRepository)
 
-        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
         }
 
@@ -268,7 +268,7 @@ class GalleryViewModelTest {
         repository.setSpots(starredSpots + spotDetails1 + spotDetails2)
 
         var limitExceededEmitted = false
-        val collectEventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiEvent.collect { event ->
                 if (event is GalleryViewModel.UiEvent.StarLimitExceeded) {
                     limitExceededEmitted = true

@@ -4,10 +4,8 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -17,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.LocationUtils
@@ -42,11 +39,7 @@ class WearLocationForegroundService : Service(), KoinComponent {
         startForeground(
             NOTIFICATION_ID,
             buildNotification(),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-            } else {
-                0
-            }
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         )
 
         serviceScope.launch {
@@ -62,6 +55,7 @@ class WearLocationForegroundService : Service(), KoinComponent {
                     
                     // Sort by distance and filter those within 10 km (10000m) and are starred
                     val nearbySpots = spotDetailsList
+                        .asSequence()
                         .filter { it.spot.isStarred }
                         .map { details ->
                             val dist = LocationUtils.calculateDistance(
@@ -73,7 +67,8 @@ class WearLocationForegroundService : Service(), KoinComponent {
                         .filter { it.second <= 10000.0 }
                         .sortedBy { it.second }
                         .map { it.first }
-                        .take(10) // Limit to top 10 closest spots
+                        .take(10)
+                        .toList() // Limit to top 10 closest spots
 
                     Log.d("WearLocationService", "Filtered nearby spots count: ${nearbySpots.size}")
                     val json = Json.encodeToString(nearbySpots)
@@ -118,7 +113,7 @@ class WearLocationForegroundService : Service(), KoinComponent {
             "Wear Watch Location Query",
             NotificationManager.IMPORTANCE_LOW
         )
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
     }
 

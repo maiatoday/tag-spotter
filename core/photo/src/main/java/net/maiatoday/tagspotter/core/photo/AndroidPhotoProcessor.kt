@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+import androidx.core.graphics.createBitmap
 
 class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
 
@@ -35,15 +36,12 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
 
     override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? {
         val uri = uriString.toUri()
-        val photoUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        val photoUri =
             try {
                 android.provider.MediaStore.setRequireOriginal(uri)
             } catch (_: Exception) {
                 uri
             }
-        } else {
-            uri
-        }
         val meta = ExifLocationExtractor.getPhotoMetadata(context, photoUri) ?: return null
         return PhotoMetadata(
             latitude = meta.latitude,
@@ -96,8 +94,8 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
                     BitmapFactory.decodeStream(inputStream, null, options)
                 }
                 
-                var srcWidth = options.outWidth
-                var srcHeight = options.outHeight
+                val srcWidth = options.outWidth
+                val srcHeight = options.outHeight
                 if (srcWidth <= 0 || srcHeight <= 0) {
                     if (imagePath.startsWith("android.resource://")) {
                         val bitmap = decodeResourceToBitmap(context, uri, maxDimension)
@@ -160,14 +158,18 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
         try {
             val packageName = uri.authority ?: context.packageName
             val pathSegments = uri.pathSegments
-            val resId = if (pathSegments.size == 2) {
-                val type = pathSegments[0]
-                val name = pathSegments[1]
-                context.resources.getIdentifier(name, type, packageName)
-            } else if (pathSegments.size == 1) {
-                pathSegments[0].toIntOrNull() ?: 0
-            } else {
-                0
+            val resId = when (pathSegments.size) {
+                2 -> {
+                    val type = pathSegments[0]
+                    val name = pathSegments[1]
+                    context.resources.getIdentifier(name, type, packageName)
+                }
+                1 -> {
+                    pathSegments[0].toIntOrNull() ?: 0
+                }
+                else -> {
+                    0
+                }
             }
             if (resId != 0) {
                 val drawable = ResourcesCompat.getDrawable(context.resources, resId, context.theme)
@@ -180,7 +182,7 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
                     val finalWidth = (width * scale).toInt().coerceAtLeast(1)
                     val finalHeight = (height * scale).toInt().coerceAtLeast(1)
                     
-                    val bitmap = Bitmap.createBitmap(finalWidth, finalHeight, Bitmap.Config.ARGB_8888)
+                    val bitmap = createBitmap(finalWidth, finalHeight)
                     val canvas = Canvas(bitmap)
                     drawable.setBounds(0, 0, finalWidth, finalHeight)
                     drawable.draw(canvas)

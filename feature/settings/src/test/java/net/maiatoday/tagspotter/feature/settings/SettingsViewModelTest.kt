@@ -28,17 +28,17 @@ class SettingsViewModelTest {
         val viewModel = SettingsViewModel(settingsRepository, spotRepository)
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
-        val collectJobName = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.photographerName.collect {}
         }
-        val collectJobCity = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.homeCity.collect {}
         }
-        val collectJobShowTest = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.showTestData.collect {}
         }
 
-        val collectJobDarkMap = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.darkMapEnabled.collect {}
         }
 

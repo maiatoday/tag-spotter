@@ -4,17 +4,18 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.net.Uri
 import android.util.Log
+import androidx.core.graphics.scale
+import androidx.core.net.toUri
 import androidx.exifinterface.media.ExifInterface
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
-import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.File
 
@@ -66,7 +67,7 @@ class AndroidWearSyncManager(private val context: Context) : WearSyncManager {
                 val uri = if (imagePath.startsWith("content://") || 
                              imagePath.startsWith("android.resource://") || 
                              imagePath.startsWith("file://")) {
-                    Uri.parse(imagePath)
+                    imagePath.toUri()
                 } else {
                     Uri.fromFile(File(imagePath))
                 }
@@ -74,7 +75,7 @@ class AndroidWearSyncManager(private val context: Context) : WearSyncManager {
                 // Verify the URI is readable
                 val testStream = try {
                     context.contentResolver.openInputStream(uri)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
                 if (testStream == null) {
@@ -156,7 +157,7 @@ class AndroidWearSyncManager(private val context: Context) : WearSyncManager {
                 val finalBitmap = if (scale < 1.0f) {
                     val destW = (currentWidth * scale).toInt()
                     val destH = (currentHeight * scale).toInt()
-                    val scaled = Bitmap.createScaledBitmap(rotated, destW, destH, true)
+                    val scaled = rotated.scale(destW, destH)
                     if (scaled != rotated) {
                         rotated.recycle()
                     }

@@ -56,7 +56,7 @@ class MapViewModelTest {
         val viewModel = MapViewModel(repository, filterManager, settingsRepository)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
-        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spots.collect {}
         }
         testScheduler.runCurrent()
@@ -88,7 +88,7 @@ class MapViewModelTest {
         val viewModel = MapViewModel(repository, filterManager, settingsRepo)
 
         // Collect initialMapCenter to trigger StateFlow updates
-        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.initialMapCenter.collect {}
         }
 

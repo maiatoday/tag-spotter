@@ -1,12 +1,11 @@
 package net.maiatoday.tagspotter.core.database
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.model.SpotNote
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 
 interface SpotRepository {

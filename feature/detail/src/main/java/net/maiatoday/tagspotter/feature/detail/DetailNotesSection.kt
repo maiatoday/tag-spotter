@@ -61,6 +61,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import net.maiatoday.tagspotter.core.model.SpotNote
+import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun DetailNotesSection(
@@ -117,7 +118,7 @@ fun DetailNotesSection(
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = "Search Wikipedia using AI",
+                        contentDescription = "Search for links using AI",
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(18.dp)
                     )
@@ -147,7 +148,7 @@ fun DetailNotesSection(
                     )
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        val sdf = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault())
+                        val sdf = SimpleDateFormat("MMM dd, yyyy - hh:mm a", LocalLocale.current.platformLocale)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -261,7 +262,7 @@ fun DetailNotesSection(
                             }
                             try {
                                 speechRecognizerLauncher.launch(intent)
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 Toast.makeText(context, "Speech recognition is not supported on this device.", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -309,7 +310,7 @@ fun DetailNotesSection(
 fun rememberLinkifiedText(text: String): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     return remember(text, linkColor) {
-        val pattern = """\[([^\]]+)\]\((https?://[^\s)]+)\)|(https?://\S+)""".toRegex()
+        val pattern = """\[([^]]+)]\((https?://[^\s)]+)\)|(https?://\S+)""".toRegex()
         buildAnnotatedString {
             var lastIdx = 0
             pattern.findAll(text).forEach { matchResult ->

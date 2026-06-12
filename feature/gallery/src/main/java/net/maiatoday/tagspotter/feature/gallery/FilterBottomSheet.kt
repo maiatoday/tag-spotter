@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,6 +32,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,8 +47,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
-import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.location.LocationHelper
+import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,8 +70,14 @@ fun FilterBottomSheet(
 
     var hasLocationPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
         )
     }
 
@@ -80,7 +85,7 @@ fun FilterBottomSheet(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
     }
 
     // Local State
@@ -102,7 +107,7 @@ fun FilterBottomSheet(
     }
 
     var sliderValue by remember {
-        mutableStateOf(LocationUtils.getSliderValueForRadius(currentRadiusMeters))
+        mutableFloatStateOf(LocationUtils.getSliderValueForRadius(currentRadiusMeters))
     }
 
     val activeRadius = LocationUtils.getLogarithmicRadiusMeters(sliderValue)
@@ -133,10 +138,12 @@ fun FilterBottomSheet(
                     val gp = LocationUtils.CITIES[homeCityName] ?: LocationUtils.CITIES["Milan"]!!
                     FilterCenter.HomeCity(homeCityName, gp.first, gp.second)
                 }
+
                 "Focus" -> {
                     val gp = LocationUtils.CITIES[focusCity] ?: LocationUtils.CITIES["Milan"]!!
                     FilterCenter.FocusCity(focusCity, gp.first, gp.second)
                 }
+
                 else -> null
             }
             onApplyFilter(finalCenter, radius)
@@ -183,7 +190,9 @@ fun FilterBottomSheet(
                             val isSelected = localSource == src
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                color = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant.copy(
+                                    alpha = 0.5f
+                                ),
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable {
@@ -249,7 +258,9 @@ fun FilterBottomSheet(
                 // 0. None (No Location Filter) Option
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (selectedType == "None") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    color = if (selectedType == "None") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(
+                        alpha = 0.5f
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -283,7 +294,9 @@ fun FilterBottomSheet(
                 // 1. Current GPS Location Option
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (selectedType == "GPS") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    color = if (selectedType == "GPS") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(
+                        alpha = 0.5f
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -344,7 +357,9 @@ fun FilterBottomSheet(
                 // 2. Home City Option
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (selectedType == "Home") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    color = if (selectedType == "Home") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(
+                        alpha = 0.5f
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -380,7 +395,9 @@ fun FilterBottomSheet(
                 // 3. Focus City Option
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (selectedType == "Focus") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    color = if (selectedType == "Focus") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(
+                        alpha = 0.5f
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
