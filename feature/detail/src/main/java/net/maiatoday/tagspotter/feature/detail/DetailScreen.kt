@@ -393,7 +393,7 @@ fun DetailScreen(
                 context.getString(R.string.err_safety_blocked_title) to context.getString(R.string.err_safety_blocked_msg)
             }
             is AiState.Error.Generic -> {
-                context.getString(R.string.err_generic_recognition_title) to (error.message ?: "")
+                context.getString(R.string.err_generic_recognition_title) to error.message
             }
         }
 
