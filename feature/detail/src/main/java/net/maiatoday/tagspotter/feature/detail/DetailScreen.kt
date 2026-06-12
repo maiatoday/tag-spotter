@@ -81,7 +81,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
-import net.maiatoday.tagspotter.core.model.getCategoryCreatorLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
+import androidx.compose.ui.res.stringResource
+import net.maiatoday.tagspotter.feature.detail.R
 import net.maiatoday.tagspotter.core.photo.ImageOptimizer
 import net.maiatoday.tagspotter.core.ui.OsmMapView
 import net.maiatoday.tagspotter.core.ui.OsmMarker
@@ -151,16 +153,16 @@ fun DetailScreen(
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(Intent.createChooser(intent, "Search Artist"))
+                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.content_desc_search_lens)))
                 } else {
-                    Toast.makeText(context, "Image file not found.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_img_file_not_found), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "Failed to share image: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.toast_failed_share_img, e.message ?: ""), Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(context, "No image available to search.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_no_img_search), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -168,7 +170,7 @@ fun DetailScreen(
         if (mainImagePath.isNotEmpty()) {
             viewModel.identifyArtist(mainImagePath)
         } else {
-            Toast.makeText(context, "No image available to analyze.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_no_img_analyze), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -207,13 +209,13 @@ fun DetailScreen(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("AI Recognition Suggestions")
+                    Text(stringResource(R.string.ai_suggestions_title))
                 }
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Gemini identified the following details from your photo. Select which ones to apply:",
+                        text = stringResource(R.string.ai_suggestions_intro),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -231,7 +233,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text(spotDetails?.spot?.category?.getCategoryCreatorLabel() ?: "Artist / Crew", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(spotDetails?.spot?.category?.let { stringResource(it.getCategoryCreatorLabel()) } ?: stringResource(net.maiatoday.tagspotter.core.ui.R.string.creator_label_default), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                                 Text(suggestionArtist, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
@@ -250,7 +252,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text("Suggested Title", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(stringResource(R.string.suggested_title), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                                 Text(suggestionTitle, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
@@ -286,7 +288,7 @@ fun DetailScreen(
                                     }
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Suggested Tags", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(stringResource(R.string.suggested_tags), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                             }
                             
                             Spacer(modifier = Modifier.height(4.dp))
@@ -330,7 +332,7 @@ fun DetailScreen(
                                             if (isSelected) {
                                                 Icon(
                                                     imageVector = Icons.Default.Close,
-                                                    contentDescription = "Deselect",
+                                                    contentDescription = stringResource(R.string.content_desc_deselect),
                                                     modifier = Modifier.size(12.dp)
                                                 )
                                             }
@@ -363,12 +365,12 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 ) {
-                    Text("Apply Selected")
+                    Text(stringResource(R.string.apply_selected))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.resetAiState() }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -379,19 +381,19 @@ fun DetailScreen(
         val error = aiState as AiState.Error
         val (title, message) = when (error) {
             is AiState.Error.MissingKey -> {
-                "Gemini API Key Missing" to "A Gemini API Key is required for in-app recognition. Please configure it in Settings."
+                context.getString(R.string.err_key_missing_title) to context.getString(R.string.err_key_missing_msg)
             }
             is AiState.Error.InvalidKey -> {
-                "Invalid API Key" to "The configured Gemini API Key is invalid or unauthorized. Please verify it in Settings."
+                context.getString(R.string.err_key_invalid_title) to context.getString(R.string.err_key_invalid_msg)
             }
             is AiState.Error.QuotaExceeded -> {
-                "API Quota Exceeded" to "You have exceeded your Gemini API limit. Please wait a while before trying again."
+                context.getString(R.string.err_quota_exceeded_title) to context.getString(R.string.err_quota_exceeded_msg)
             }
             is AiState.Error.SafetyBlocked -> {
-                "Safety Blocked" to "The image was flagged by Gemini's safety filters and could not be analyzed."
+                context.getString(R.string.err_safety_blocked_title) to context.getString(R.string.err_safety_blocked_msg)
             }
             is AiState.Error.Generic -> {
-                "Recognition Error" to error.message
+                context.getString(R.string.err_generic_recognition_title) to (error.message ?: "")
             }
         }
 
@@ -418,7 +420,7 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
@@ -430,7 +432,7 @@ fun DetailScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.resetWikiSearchState() },
                 confirmButton = {},
-                title = { Text("Searching for Links...") },
+                title = { Text(stringResource(R.string.wiki_searching_title)) },
                 text = {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -454,11 +456,11 @@ fun DetailScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Link")
+                        Text(stringResource(R.string.wiki_add_link_title))
                     }
                 },
                 text = {
-                    Text("Found relevant Wikipedia page for \"${state.title}\":\n\n${state.url}\n\nWould you like to add this to the field notes?")
+                    Text(stringResource(R.string.wiki_success_msg, state.title, state.url))
                 },
                 confirmButton = {
                     TextButton(
@@ -467,19 +469,19 @@ fun DetailScreen(
                             viewModel.resetWikiSearchState()
                         }
                     ) {
-                        Text("Add")
+                        Text(stringResource(R.string.wiki_btn_add))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.resetWikiSearchState() }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
         }
         is WikiSearchState.NotFound -> {
             LaunchedEffect(state) {
-                Toast.makeText(context, "No relevant Wikipedia page found.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.wiki_not_found_toast), Toast.LENGTH_SHORT).show()
                 viewModel.resetWikiSearchState()
             }
         }
@@ -503,8 +505,8 @@ fun DetailScreen(
         val targetImg = imageToDelete!!
         AlertDialog(
             onDismissRequest = { imageToDelete = null },
-            title = { Text("Delete Photo?") },
-            text = { Text("Are you sure you want to delete this photo from the timeline? This action cannot be undone.") },
+            title = { Text(stringResource(R.string.delete_photo_title)) },
+            text = { Text(stringResource(R.string.delete_photo_msg)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -516,12 +518,12 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete_btn))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { imageToDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -533,8 +535,8 @@ fun DetailScreen(
         val targetNote = noteToDelete!!
         AlertDialog(
             onDismissRequest = { noteToDelete = null },
-            title = { Text("Delete Note?") },
-            text = { Text("Are you sure you want to delete this note? This action cannot be undone.") },
+            title = { Text(stringResource(R.string.delete_note_title)) },
+            text = { Text(stringResource(R.string.delete_note_msg)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -546,12 +548,12 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete_btn))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { noteToDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -747,7 +749,7 @@ fun DetailScreen(
                                     contentColor = Color.White
                                 )
                             ) {
-                                Text("Cancel")
+                                Text(stringResource(R.string.cancel))
                             }
 
                             Button(
@@ -758,7 +760,7 @@ fun DetailScreen(
                                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             ) {
-                                Text("Save Spot")
+                                Text(stringResource(R.string.save_spot))
                             }
                         }
                     }
@@ -938,7 +940,7 @@ fun DetailScreen(
                                 contentColor = Color.White
                             )
                         ) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.cancel))
                         }
 
                         Button(
@@ -949,7 +951,7 @@ fun DetailScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         ) {
-                            Text("Save Spot")
+                            Text(stringResource(R.string.save_spot))
                         }
                     }
                 }
@@ -1016,14 +1018,14 @@ fun DetailScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "Update Coordinates",
+                        text = stringResource(R.string.update_coords_title),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
                     Text(
-                        text = "Tap on the map to move the tag pin.",
+                        text = stringResource(R.string.update_coords_msg),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -1042,7 +1044,7 @@ fun DetailScreen(
                             longitude = tempLng,
                             category = spotDetails?.spot?.category ?: "graffiti",
                             status = "active",
-                            title = "Spot Location",
+                            title = stringResource(R.string.spot_location_marker),
                             onClick = {}
                         )
 
@@ -1073,14 +1075,14 @@ fun DetailScreen(
                                 containerColor = Color.DarkGray
                             )
                         ) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.cancel))
                         }
 
                         Button(
                             onClick = {
                                 viewModel.updateLocation(tempLat, tempLng)
                                 isMapPickerDialogVisible = false
-                                Toast.makeText(context, "Location Updated!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.location_updated_toast), Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1.5f),
                             colors = ButtonDefaults.buttonColors(
@@ -1088,7 +1090,7 @@ fun DetailScreen(
                                 contentColor = MaterialTheme.colorScheme.background
                             )
                         ) {
-                            Text("Confirm Location")
+                            Text(stringResource(R.string.confirm_location_btn))
                         }
                     }
                 }
@@ -1101,13 +1103,13 @@ fun DetailScreen(
     if (showLimitExceededDialog) {
         AlertDialog(
             onDismissRequest = { showLimitExceededDialog = false },
-            title = { Text("Starred Limit Reached") },
+            title = { Text(stringResource(R.string.starred_limit_title)) },
             text = {
-                Text("You can only star up to 100 spots due to geofencing limits. Please unstar some spots first.")
+                Text(stringResource(R.string.starred_limit_msg))
             },
             confirmButton = {
                 TextButton(onClick = { showLimitExceededDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )

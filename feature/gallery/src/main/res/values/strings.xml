@@ -1,0 +1,47 @@
+<resources>
+    <string name="delete_selected_spots_title">Delete Selected Spots</string>
+    <string name="delete_selected_spots_confirm">Are you sure you want to delete the %1$d selected spot(s)? This action cannot be undone and will delete all associated images and notes.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="export_pack">Export TagSpotter Pack (.ts_pack)</string>
+    <string name="get_route_google_maps">Get Route in Google Maps</string>
+    <string name="share_kml">Share KML for Google My Maps</string>
+    <string name="search_placeholder">Search tags, artists, photographers…</string>
+    <string name="search_label">Search: \u201c%1$s\u201d</string>
+    <string name="starred_only">Starred Only</string>
+    <string name="starred_limit_reached_title">Starred Limit Reached</string>
+    <string name="starred_limit_reached_message">Adding these spots would exceed the limit of 100 starred spots. Please unstar some spots first.</string>
+    <string name="ok">OK</string>
+    <string name="export_pack_options_title">Export Pack Options</string>
+    <string name="export">Export</string>
+    <string name="show_all_spots">Show All Spots</string>
+
+    <!-- Toasts -->
+    <string name="deleted_successfully">Deleted successfully</string>
+    <string name="spots_starred">Spots starred!</string>
+    <string name="spots_unstarred">Spots unstarred!</string>
+    <string name="no_app_available_route">No app available to open route.</string>
+
+    <!-- Content Descriptions -->
+    <string name="content_desc_toggle_star">Toggle Star</string>
+    <string name="content_desc_export">Export</string>
+
+    <!-- Export Pack Dialog Options -->
+    <string name="export_min_rating_help">Filter images by minimum rating. Images below this rating will be excluded from the pack (the main hero image is always included).</string>
+    <string name="min_rating_label">Min Rating: </string>
+    <string name="rating_all_photos">All photos (no filter)</string>
+    <string name="rating_1_and_above">1 Star and above</string>
+    <string name="rating_2_and_above">2 Stars and above</string>
+    <string name="rating_3_and_above">3 Stars and above</string>
+    <string name="rating_4_and_above">4 Stars and above</string>
+    <string name="rating_5_only">5 Stars only</string>
+    <string name="content_desc_star_rating">Star %1$d</string>
+
+    <!-- Empty States -->
+    <string name="no_spots_found">No Spots Found</string>
+    <string name="no_spots_range">No spots found within range of %1$s.</string>
+    <string name="no_starred_spots">No starred spots found.</string>
+    <string name="no_spots_match_query">No spots match \u2018%1$s\u2019.</string>
+    <string name="first_spot_instruction">Document your city walks! Tap the \u2018Capture\u2019 tab below to photograph your first spot.</string>
+    <string name="empty_category_instruction">You haven\u2019t tagged any items in the \u2018%1$s\u2019 category yet.</string>
+</resources>

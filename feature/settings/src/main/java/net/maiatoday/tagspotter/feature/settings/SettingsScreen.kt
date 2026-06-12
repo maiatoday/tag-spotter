@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.maiatoday.tagspotter.feature.settings.R
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,10 +111,10 @@ fun SettingsScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.content_desc_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -153,14 +155,14 @@ fun SettingsScreen(
                         modifier = Modifier.padding(20.dp)
                     ) {
                     Text(
-                        text = "Photographer Profile",
+                        text = stringResource(R.string.profile_section_title),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Set your photographer name. This name will be automatically associated with any new spot you capture.",
+                        text = stringResource(R.string.profile_section_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -169,8 +171,8 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = photographerNameInput,
                         onValueChange = { photographerNameInput = it },
-                        label = { Text("Photographer Name") },
-                        placeholder = { Text("e.g. Jane Doe") },
+                        label = { Text(stringResource(R.string.photographer_name_label)) },
+                        placeholder = { Text(stringResource(R.string.photographer_name_placeholder)) },
                         singleLine = true,
                         leadingIcon = {
                             Icon(
@@ -190,14 +192,14 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = "Map Preferences",
+                        text = stringResource(R.string.map_preferences_title),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Select your home city. This city will be the default focus when you open the map and have no tagged spots yet.",
+                        text = stringResource(R.string.map_preferences_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -205,10 +207,10 @@ fun SettingsScreen(
 
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
-                            value = homeCityInput,
+                            value = if (homeCityInput == "Custom") stringResource(R.string.city_custom) else homeCityInput,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Home City") },
+                            label = { Text(stringResource(R.string.home_city_label)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Home,
@@ -240,7 +242,7 @@ fun SettingsScreen(
                         ) {
                             cities.forEach { city ->
                                 DropdownMenuItem(
-                                    text = { Text(city) },
+                                    text = { Text(if (city == "Custom") stringResource(R.string.city_custom) else city) },
                                     onClick = {
                                         homeCityInput = city
                                         showCityDropdown = false
@@ -259,8 +261,8 @@ fun SettingsScreen(
                             OutlinedTextField(
                                 value = customLatInput,
                                 onValueChange = { customLatInput = it },
-                                label = { Text("Latitude") },
-                                placeholder = { Text("e.g. 52.5200") },
+                                label = { Text(stringResource(R.string.latitude_label)) },
+                                placeholder = { Text(stringResource(R.string.latitude_placeholder)) },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -272,8 +274,8 @@ fun SettingsScreen(
                             OutlinedTextField(
                                 value = customLngInput,
                                 onValueChange = { customLngInput = it },
-                                label = { Text("Longitude") },
-                                placeholder = { Text("e.g. 13.4050") },
+                                label = { Text(stringResource(R.string.longitude_label)) },
+                                placeholder = { Text(stringResource(R.string.longitude_placeholder)) },
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -295,13 +297,13 @@ fun SettingsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Darkmode Map Renders",
+                                    text = stringResource(R.string.darkmode_map_title),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Use dark themed tiles when system is in dark mode.",
+                                    text = stringResource(R.string.darkmode_map_desc),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color.Gray
                                 )
@@ -333,13 +335,13 @@ fun SettingsScreen(
                                 val lng = customLngInput.trim().toDoubleOrNull()
                                 if (lat != null && lng != null) {
                                     viewModel.updateHomeCity("Custom: $lat, $lng")
-                                    Toast.makeText(context, "Settings Saved!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.settings_saved_toast), Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context, "Please enter valid coordinates", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, context.getString(R.string.invalid_coordinates_toast), Toast.LENGTH_LONG).show()
                                 }
                             } else {
                                 viewModel.updateHomeCity(homeCityInput)
-                                Toast.makeText(context, "Settings Saved!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.settings_saved_toast), Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -356,7 +358,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.size(8.dp))
                         Text(
-                            text = "Save Settings",
+                            text = stringResource(R.string.save_settings_btn),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.bodyLarge
                         )
@@ -380,14 +382,14 @@ fun SettingsScreen(
                     modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
-                        text = "Artist Identification",
+                        text = stringResource(R.string.artist_id_title),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Identify street art and graffiti artists automatically using visual search options or AI.",
+                        text = stringResource(R.string.artist_id_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -399,7 +401,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Enable Recognition Features",
+                            text = stringResource(R.string.enable_recognition_title),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium
@@ -421,14 +423,14 @@ fun SettingsScreen(
                     if (artistRecognitionEnabled) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "In-App AI Detection (Gemini)",
+                            text = stringResource(R.string.ai_detection_title),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "To use in-app AI recognition, provide your personal Gemini API key. This key is stored securely on your device.",
+                            text = stringResource(R.string.ai_detection_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -437,8 +439,8 @@ fun SettingsScreen(
                         OutlinedTextField(
                             value = geminiApiKeyInput,
                             onValueChange = { geminiApiKeyInput = it },
-                            label = { Text("Gemini API Key") },
-                            placeholder = { Text("AIzaSy...") },
+                            label = { Text(stringResource(R.string.gemini_api_key_label)) },
+                            placeholder = { Text(stringResource(R.string.gemini_api_key_placeholder)) },
                             singleLine = true,
                             visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             leadingIcon = {
@@ -450,7 +452,7 @@ fun SettingsScreen(
                             },
                             trailingIcon = {
                                 val image = if (isApiKeyVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                                val description = if (isApiKeyVisible) "Hide API Key" else "Show API Key"
+                                val description = if (isApiKeyVisible) stringResource(R.string.content_desc_hide_api_key) else stringResource(R.string.content_desc_show_api_key)
                                 IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
                                     Icon(imageVector = image, contentDescription = description)
                                 }

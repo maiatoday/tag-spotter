@@ -29,8 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
-import net.maiatoday.tagspotter.core.model.getCategoryActiveStatusLabel
-import net.maiatoday.tagspotter.core.model.getCategoryInactiveStatusLabel
+import androidx.compose.ui.res.stringResource
+import net.maiatoday.tagspotter.core.ui.getCategoryActiveStatusLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
+import net.maiatoday.tagspotter.feature.detail.R
 import java.io.File
 
 @Composable
@@ -105,7 +107,7 @@ fun DetailHeroSection(
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = if (status == "erased") category.getCategoryInactiveStatusLabel() else category.getCategoryActiveStatusLabel(),
+                    text = stringResource(id = if (status == "erased") category.getCategoryInactiveStatusLabel() else category.getCategoryActiveStatusLabel()),
                     color = if (status == "erased") MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                 )
@@ -137,13 +139,13 @@ fun DetailHeroSection(
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = "GPS Signal Weak",
+                            text = stringResource(R.string.gps_weak),
                             color = MaterialTheme.colorScheme.tertiary,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     } else {
                         Text(
-                            text = "Verified GPS",
+                            text = stringResource(R.string.gps_verified),
                             color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )

@@ -41,7 +41,7 @@ class DataStoreSettingsRepository(
     private val dataStore: DataStore<Preferences> = context.dataStore
 ) : SettingsRepository {
     
-    @Suppress("DEPRECATION")
+    //@Suppress("DEPRECATION")
     private val securePreferences = try {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

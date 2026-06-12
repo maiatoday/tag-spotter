@@ -57,12 +57,14 @@ import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.wear.R
 
 class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListener {
 
@@ -134,7 +136,7 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                             )
                         } else {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No Details Found", color = Color.Gray)
+                                Text(stringResource(R.string.no_details_found), color = Color.Gray)
                             }
                         }
                     }
@@ -166,7 +168,7 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    errorState.value = "Failed to parse spots."
+                    errorState.value = getString(R.string.failed_parse_spots)
                     isLoadingState.value = false
                 }
             }
@@ -236,7 +238,7 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                 val nodes = Tasks.await(nodeClient.connectedNodes)
                 if (nodes.isEmpty()) {
                     withContext(Dispatchers.Main) {
-                        errorState.value = "No phone connected."
+                        errorState.value = getString(R.string.no_phone_connected)
                         isLoadingState.value = false
                     }
                     return@launch
@@ -250,7 +252,7 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    errorState.value = "Failed to search phone."
+                    errorState.value = getString(R.string.failed_search_phone)
                     isLoadingState.value = false
                 }
             }
@@ -290,7 +292,7 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                 if (nodes.isEmpty()) {
                     withContext(Dispatchers.Main) {
                         Log.d("WearMainActivity", "No nodes connected, showing toast")
-                        Toast.makeText(this@WearMainActivity, "No phone connected.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@WearMainActivity, getString(R.string.no_phone_connected), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -303,13 +305,13 @@ class WearMainActivity : ComponentActivity(), MessageClient.OnMessageReceivedLis
                     Log.d("WearMainActivity", "Sent successfully to node: ${node.id}")
                 }
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@WearMainActivity, "Opening on phone...", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@WearMainActivity, getString(R.string.opening_on_phone), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e("WearMainActivity", "Error sending open on phone message", e)
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@WearMainActivity, "Connection failed.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@WearMainActivity, getString(R.string.connection_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -357,7 +359,7 @@ fun SpotListScreen(
                 CircularProgressIndicator(modifier = Modifier.size(36.dp))
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Searching...",
+                    stringResource(R.string.searching_loading),
                     style = MaterialTheme.typography.body2,
                     color = Color.Gray
                 )
@@ -375,13 +377,13 @@ fun SpotListScreen(
                     onClick = onRefresh,
                     modifier = Modifier.size(ButtonDefaults.SmallButtonSize)
                 ) {
-                    Text("Retry", fontSize = 10.sp)
+                    Text(stringResource(R.string.retry_btn), fontSize = 10.sp)
                 }
             }
         } else if (spots.isEmpty()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    "No starred spots\nwithin 10km",
+                    stringResource(R.string.no_starred_spots_nearby),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.body2,
                     color = Color.Gray
@@ -391,7 +393,7 @@ fun SpotListScreen(
                     onClick = onRefresh,
                     modifier = Modifier.size(ButtonDefaults.SmallButtonSize)
                 ) {
-                    Text("Refresh", fontSize = 10.sp)
+                    Text(stringResource(R.string.refresh_btn), fontSize = 10.sp)
                 }
             }
         } else {
@@ -402,7 +404,7 @@ fun SpotListScreen(
             ) {
                 item {
                     Text(
-                        text = "STARRED SPOTS",
+                        text = stringResource(R.string.starred_spots_title),
                         style = MaterialTheme.typography.caption1,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colors.primary,
@@ -459,7 +461,7 @@ fun SpotDetailScreen(
                 item {
                     Image(
                         bitmap = photo.asImageBitmap(),
-                        contentDescription = "Spot Photo",
+                        contentDescription = stringResource(R.string.content_desc_spot_photo),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(imageHeight),
@@ -514,7 +516,7 @@ fun SpotDetailScreen(
                         try {
                             context.startActivity(mapIntent)
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Maps app not found", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.toast_maps_app_not_found), Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -525,7 +527,7 @@ fun SpotDetailScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    Text("Navigate on Watch", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.btn_navigate_on_watch), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
             item {
@@ -539,7 +541,7 @@ fun SpotDetailScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    Text("Open on Phone", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.btn_open_on_phone), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
             item {

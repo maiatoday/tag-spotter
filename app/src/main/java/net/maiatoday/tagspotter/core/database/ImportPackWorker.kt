@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.TagSpotterApplication
+import net.maiatoday.tagspotter.R
 import net.maiatoday.tagspotter.feature.main.MainActivity
 import java.io.File
 import java.io.FileInputStream
@@ -52,11 +53,10 @@ class ImportPackWorker(
                     )
                 }
             }
-            Log.i(TAG, "Successfully imported $importedCount spots")
             showImportNotification(
                 context = applicationContext,
-                title = "Import Successful",
-                message = "Imported $importedCount spots!",
+                title = applicationContext.getString(R.string.import_success_title),
+                message = applicationContext.getString(R.string.import_success_message, importedCount),
                 isSuccess = true
             )
             Result.success(workDataOf(KEY_IMPORTED_COUNT to importedCount))
@@ -64,8 +64,8 @@ class ImportPackWorker(
             Log.e(TAG, "Failed to import pack", e)
             showImportNotification(
                 context = applicationContext,
-                title = "Import Failed",
-                message = "Failed to import: ${e.localizedMessage}",
+                title = applicationContext.getString(R.string.import_failed_title),
+                message = applicationContext.getString(R.string.import_failed_message, e.localizedMessage ?: ""),
                 isSuccess = false
             )
             Result.failure(workDataOf(KEY_ERROR_MESSAGE to (e.localizedMessage ?: "Unknown error")))
@@ -92,10 +92,10 @@ class ImportPackWorker(
 
         val channel = NotificationChannel(
             channelId,
-            "Import Status Alerts",
+            context.getString(R.string.import_notification_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Notifies you when a spot pack import finishes."
+            description = context.getString(R.string.import_notification_channel_desc)
         }
         notificationManager.createNotificationChannel(channel)
 

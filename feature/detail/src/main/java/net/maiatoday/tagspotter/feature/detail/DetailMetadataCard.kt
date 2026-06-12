@@ -59,17 +59,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.compose.ui.res.stringResource
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
-import net.maiatoday.tagspotter.core.model.getCategoryCreatorLabel
-import net.maiatoday.tagspotter.core.model.getCategoryCreatorPlaceholder
-import net.maiatoday.tagspotter.core.model.getCategoryCreatorTextFieldLabel
-import net.maiatoday.tagspotter.core.model.getCategoryCreatorUnknownLabel
-import net.maiatoday.tagspotter.core.model.getCategoryDateLabel
-import net.maiatoday.tagspotter.core.model.getCategoryDatePlaceholder
-import net.maiatoday.tagspotter.core.model.getCategoryDateTextFieldLabel
-import net.maiatoday.tagspotter.core.model.getCategoryStatusActionMarkInactiveText
+import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryCreatorPlaceholder
+import net.maiatoday.tagspotter.core.ui.getCategoryCreatorTextFieldLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryCreatorUnknownLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryDateLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryDatePlaceholder
+import net.maiatoday.tagspotter.core.ui.getCategoryDateTextFieldLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryStatusActionMarkInactiveText
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
+import net.maiatoday.tagspotter.feature.detail.R
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -178,7 +180,7 @@ fun DetailMetadataCard(
 
                 if (isCreationMode) {
                     Text(
-                        text = "NEW SPOT",
+                        text = stringResource(R.string.new_spot),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.Bold
@@ -192,7 +194,7 @@ fun DetailMetadataCard(
                         }
                     ) {
                         Text(
-                            text = if (isErased) "Mark Active" else details.spot.category.getCategoryStatusActionMarkInactiveText(),
+                            text = if (isErased) stringResource(R.string.mark_active) else stringResource(details.spot.category.getCategoryStatusActionMarkInactiveText()),
                             color = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
@@ -211,7 +213,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "TITLE",
+                            text = stringResource(R.string.title_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
@@ -228,7 +230,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Save title",
+                                        contentDescription = stringResource(R.string.content_desc_save_title),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -239,7 +241,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Cancel edit",
+                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -255,8 +257,8 @@ fun DetailMetadataCard(
                             descriptionEditInput = it
                             if (isCreationMode) onUpdateDescription(it)
                         },
-                        label = { Text("Title") },
-                        placeholder = { Text("e.g. Neon face stencil near Duomo") },
+                        label = { Text(stringResource(R.string.title_label)) },
+                        placeholder = { Text(stringResource(R.string.title_placeholder)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 4,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -274,7 +276,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "TITLE",
+                            text = stringResource(R.string.title_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
@@ -285,7 +287,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit title",
+                                contentDescription = stringResource(R.string.content_desc_edit_title),
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -293,7 +295,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = details.spot.description.ifEmpty { "No title logged." },
+                        text = details.spot.description.ifEmpty { stringResource(R.string.no_title_logged) },
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
                             fontWeight = FontWeight.Bold
@@ -318,7 +320,7 @@ fun DetailMetadataCard(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = details.spot.category.getCategoryCreatorLabel(),
+                                text = stringResource(details.spot.category.getCategoryCreatorLabel()),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.Bold
@@ -338,7 +340,7 @@ fun DetailMetadataCard(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.ImageSearch,
-                                            contentDescription = "Search artist with Lens",
+                                            contentDescription = stringResource(R.string.content_desc_search_lens),
                                             tint = MaterialTheme.colorScheme.secondary,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -349,7 +351,7 @@ fun DetailMetadataCard(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.AutoAwesome,
-                                            contentDescription = "Identify artist with AI",
+                                            contentDescription = stringResource(R.string.content_desc_identify_ai),
                                             tint = MaterialTheme.colorScheme.tertiary,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -380,7 +382,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Save artists",
+                                        contentDescription = stringResource(R.string.content_desc_save_artists),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -391,7 +393,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Cancel edit",
+                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -408,8 +410,8 @@ fun DetailMetadataCard(
                         OutlinedTextField(
                             value = artistEditInput,
                             onValueChange = { artistEditInput = it },
-                            label = { Text(details.spot.category.getCategoryCreatorTextFieldLabel()) },
-                            placeholder = { Text(details.spot.category.getCategoryCreatorPlaceholder()) },
+                            label = { Text(stringResource(details.spot.category.getCategoryCreatorTextFieldLabel())) },
+                            placeholder = { Text(stringResource(details.spot.category.getCategoryCreatorPlaceholder())) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(
@@ -452,7 +454,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Navigation,
-                                contentDescription = "Add artist",
+                                contentDescription = stringResource(R.string.content_desc_add_artist),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -492,7 +494,7 @@ fun DetailMetadataCard(
                                         )
                                         Icon(
                                             imageVector = Icons.Default.Close,
-                                            contentDescription = "Remove artist",
+                                            contentDescription = stringResource(R.string.content_desc_remove_artist),
                                             tint = MaterialTheme.colorScheme.error,
                                             modifier = Modifier
                                                 .size(14.dp)
@@ -517,26 +519,26 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = details.spot.category.getCategoryCreatorLabel(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Bold
-                        )
-                        IconButton(
-                            onClick = { isEditingArtists = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit artists",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
+                                text = stringResource(details.spot.category.getCategoryCreatorLabel()),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Bold
                             )
+                            IconButton(
+                                onClick = { isEditingArtists = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = stringResource(R.string.content_desc_edit_artists),
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (details.spot.artists.isEmpty()) details.spot.category.getCategoryCreatorUnknownLabel() else details.spot.artists.joinToString(
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (details.spot.artists.isEmpty()) stringResource(details.spot.category.getCategoryCreatorUnknownLabel()) else details.spot.artists.joinToString(
                             ", "
                         ),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -556,7 +558,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "PHOTOGRAPHER",
+                            text = stringResource(R.string.photographer_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
@@ -573,7 +575,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Save photographer",
+                                        contentDescription = stringResource(R.string.content_desc_save_photographer),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -584,7 +586,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Cancel edit",
+                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -600,8 +602,8 @@ fun DetailMetadataCard(
                             photographerEditInput = it
                             if (isCreationMode) onUpdatePhotographer(it)
                         },
-                        label = { Text("Photographer") },
-                        placeholder = { Text(defaultPhotographer.ifEmpty { "Enter name" }) },
+                        label = { Text(stringResource(R.string.photographer_label)) },
+                        placeholder = { Text(if (defaultPhotographer.isEmpty()) stringResource(R.string.photographer_placeholder_name) else defaultPhotographer) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -619,7 +621,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "PHOTOGRAPHER",
+                            text = stringResource(R.string.photographer_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
@@ -630,7 +632,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit photographer",
+                                contentDescription = stringResource(R.string.content_desc_edit_photographer),
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -638,7 +640,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = details.spot.photographer.ifEmpty { defaultPhotographer.ifEmpty { "Not set" } },
+                        text = details.spot.photographer.ifEmpty { defaultPhotographer.ifEmpty { stringResource(R.string.not_set) } },
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -656,7 +658,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = details.spot.category.getCategoryDateLabel(),
+                            text = stringResource(details.spot.category.getCategoryDateLabel()),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
@@ -673,7 +675,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Save artwork date",
+                                        contentDescription = stringResource(R.string.content_desc_save_artwork_date),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -684,7 +686,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Cancel edit",
+                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -700,8 +702,8 @@ fun DetailMetadataCard(
                             artworkDateEditInput = it
                             if (isCreationMode) onUpdateArtworkDate(it)
                         },
-                        label = { Text(details.spot.category.getCategoryDateTextFieldLabel()) },
-                        placeholder = { Text(details.spot.category.getCategoryDatePlaceholder()) },
+                        label = { Text(stringResource(details.spot.category.getCategoryDateTextFieldLabel())) },
+                        placeholder = { Text(stringResource(details.spot.category.getCategoryDatePlaceholder())) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -719,7 +721,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = details.spot.category.getCategoryDateLabel(),
+                            text = stringResource(details.spot.category.getCategoryDateLabel()),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
@@ -730,7 +732,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit artwork date",
+                                contentDescription = stringResource(R.string.content_desc_edit_artwork_date),
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -738,7 +740,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = details.spot.artworkDate.ifEmpty { "Unknown" },
+                        text = details.spot.artworkDate.ifEmpty { stringResource(R.string.date_unknown) },
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -784,7 +786,7 @@ fun DetailMetadataCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "NAVIGATE",
+                            text = stringResource(R.string.btn_navigate),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     }
@@ -807,7 +809,7 @@ fun DetailMetadataCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isCreationMode) "REFINE" else "MAP IT",
+                        text = if (isCreationMode) stringResource(R.string.btn_refine) else stringResource(R.string.btn_map_it),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                     )
                 }

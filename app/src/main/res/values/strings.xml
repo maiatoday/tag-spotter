@@ -1,3 +1,41 @@
 <resources>
     <string name="app_name">TagSpotter</string>
+
+    <!-- MainActivity / Import Toasts -->
+    <string name="toast_invalid_pack">Not a valid TagSpotter Pack (.ts_pack)</string>
+    <string name="toast_starting_import">Starting pack import…</string>
+    <string name="toast_failed_import_start">Failed to start import: %1$s</string>
+    <string name="toast_failed_camera_launch">Failed to launch device camera.</string>
+
+    <!-- Navigation Drawer -->
+    <string name="drawer_settings_label">Settings</string>
+    <string name="content_desc_settings">Settings</string>
+    <string name="drawer_mock_data_label">Load Mock Test Data</string>
+    <string name="drawer_version_format">Version %1$s</string>
+
+    <!-- Tab Layout -->
+    <string name="tab_gallery_label">Gallery</string>
+    <string name="tab_maps_label">Maps</string>
+    <string name="tab_camera_label">Camera</string>
+    <string name="tab_files_label">Files</string>
+    <string name="content_desc_gallery_tab">Gallery</string>
+    <string name="content_desc_maps_tab">Maps</string>
+    <string name="content_desc_camera_tab">Camera</string>
+    <string name="content_desc_files_tab">Files</string>
+
+    <!-- Loading Indicators -->
+    <string name="loading_processing_image">Processing image…</string>
+
+    <!-- ImportPackWorker Notification -->
+    <string name="import_notification_channel_name">Import Status Alerts</string>
+    <string name="import_notification_channel_desc">Notifies you when a spot pack import finishes.</string>
+    <string name="import_success_title">Import Successful</string>
+    <string name="import_success_message">Imported %1$d spots!</string>
+    <string name="import_failed_title">Import Failed</string>
+    <string name="import_failed_message">Failed to import: %1$s</string>
+
+    <!-- Wear Location Service Notification -->
+    <string name="wear_notification_channel_name">Wear Watch Location Query</string>
+    <string name="wear_notification_title">TagSpotter Watch Query</string>
+    <string name="wear_notification_message">Querying nearby street art spots for your watch…</string>
 </resources>

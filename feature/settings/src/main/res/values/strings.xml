@@ -1,0 +1,39 @@
+<resources>
+    <!-- Settings Core -->
+    <string name="settings_title">Settings</string>
+    <string name="content_desc_back">Back</string>
+
+    <!-- Photographer Profile -->
+    <string name="profile_section_title">Photographer Profile</string>
+    <string name="profile_section_desc">Set your photographer name. This name will be automatically associated with any new spot you capture.</string>
+    <string name="photographer_name_label">Photographer Name</string>
+    <string name="photographer_name_placeholder">e.g. Jane Doe</string>
+
+    <!-- Map Preferences -->
+    <string name="map_preferences_title">Map Preferences</string>
+    <string name="map_preferences_desc">Select your home city. This city will be the default focus when you open the map and have no tagged spots yet.</string>
+    <string name="home_city_label">Home City</string>
+    <string name="city_custom">Custom</string>
+    <string name="latitude_label">Latitude</string>
+    <string name="latitude_placeholder">e.g. 52.5200</string>
+    <string name="longitude_label">Longitude</string>
+    <string name="longitude_placeholder">e.g. 13.4050</string>
+    <string name="darkmode_map_title">Darkmode Map Renders</string>
+    <string name="darkmode_map_desc">Use dark themed tiles when system is in dark mode.</string>
+
+    <!-- Actions & Toasts -->
+    <string name="settings_saved_toast">Settings Saved!</string>
+    <string name="invalid_coordinates_toast">Please enter valid coordinates</string>
+    <string name="save_settings_btn">Save Settings</string>
+
+    <!-- Artist Identification (AI) -->
+    <string name="artist_id_title">Artist Identification</string>
+    <string name="artist_id_desc">Identify street art and graffiti artists automatically using visual search options or AI.</string>
+    <string name="enable_recognition_title">Enable Recognition Features</string>
+    <string name="ai_detection_title">In-App AI Detection (Gemini)</string>
+    <string name="ai_detection_desc">To use in-app AI recognition, provide your personal Gemini API key. This key is stored securely on your device.</string>
+    <string name="gemini_api_key_label">Gemini API Key</string>
+    <string name="gemini_api_key_placeholder">AIzaSy…</string>
+    <string name="content_desc_hide_api_key">Hide API Key</string>
+    <string name="content_desc_show_api_key">Show API Key</string>
+</resources>

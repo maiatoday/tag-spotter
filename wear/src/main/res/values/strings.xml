@@ -1,0 +1,24 @@
+<resources>
+    <string name="wear_app_name">TagSpotter</string>
+
+    <!-- Wear MainActivity Screens -->
+    <string name="no_details_found">No Details Found</string>
+    <string name="failed_parse_spots">Failed to parse spots.</string>
+    <string name="no_phone_connected">No phone connected.</string>
+    <string name="failed_search_phone">Failed to search phone.</string>
+    <string name="opening_on_phone">Opening on phone…</string>
+    <string name="connection_failed">Connection failed.</string>
+    <string name="searching_loading">Searching…</string>
+    <string name="retry_btn">Retry</string>
+    <string name="no_starred_spots_nearby">No starred spots\nwithin 10km</string>
+    <string name="refresh_btn">Refresh</string>
+    <string name="starred_spots_title">STARRED SPOTS</string>
+    <string name="content_desc_spot_photo">Spot Photo</string>
+    <string name="toast_maps_app_not_found">Maps app not found</string>
+    <string name="btn_navigate_on_watch">Navigate on Watch</string>
+    <string name="btn_open_on_phone">Open on Phone</string>
+
+    <!-- Starred Spots Tile -->
+    <string name="starred_spots_tile_title">Starred Spots</string>
+    <string name="no_spots_cached_tile">No spots cached</string>
+</resources>

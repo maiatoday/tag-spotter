@@ -76,6 +76,7 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -87,7 +88,7 @@ import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
-import net.maiatoday.tagspotter.core.model.getCategoryInactiveStatusLabel
+import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import org.koin.androidx.compose.koinViewModel
 import java.io.File
@@ -166,8 +167,8 @@ fun GalleryScreen(
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("Delete Selected Spots") },
-            text = { Text("Are you sure you want to delete the ${selectedSpotIds.size} selected spot(s)? This action cannot be undone and will delete all associated images and notes.") },
+            title = { Text(stringResource(R.string.delete_selected_spots_title)) },
+            text = { Text(stringResource(R.string.delete_selected_spots_confirm, selectedSpotIds.size)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -175,17 +176,17 @@ fun GalleryScreen(
                             selectedSpotIds.clear()
                             isMultiSelectMode = false
                             showDeleteConfirmDialog = false
-                            Toast.makeText(context, "Deleted successfully", Toast.LENGTH_SHORT)
+                            Toast.makeText(context, context.getString(R.string.deleted_successfully), Toast.LENGTH_SHORT)
                                 .show()
                         }
                     }
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -239,7 +240,7 @@ fun GalleryScreen(
                                 ) {
                                     selectedSpotIds.clear()
                                     isMultiSelectMode = false
-                                    Toast.makeText(context, "Spots starred!", Toast.LENGTH_SHORT)
+                                    Toast.makeText(context, context.getString(R.string.spots_starred), Toast.LENGTH_SHORT)
                                         .show()
                                 }
                             } else {
@@ -249,7 +250,7 @@ fun GalleryScreen(
                                 ) {
                                     selectedSpotIds.clear()
                                     isMultiSelectMode = false
-                                    Toast.makeText(context, "Spots unstarred!", Toast.LENGTH_SHORT)
+                                    Toast.makeText(context, context.getString(R.string.spots_unstarred), Toast.LENGTH_SHORT)
                                         .show()
                                 }
                             }
@@ -260,7 +261,7 @@ fun GalleryScreen(
                             .any { !it.spot.isStarred }
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = "Toggle Star",
+                            contentDescription = stringResource(R.string.content_desc_toggle_star),
                             tint = if (selectedSpotIds.isEmpty()) {
                                 Color.Gray
                             } else if (anyUnstarred) {
@@ -280,7 +281,7 @@ fun GalleryScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Export",
+                                contentDescription = stringResource(R.string.content_desc_export),
                                 tint = if (selectedSpotIds.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray
                             )
                         }
@@ -289,14 +290,14 @@ fun GalleryScreen(
                             onDismissRequest = { isShareMenuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Export TagSpotter Pack (.ts_pack)") },
+                                text = { Text(stringResource(R.string.export_pack)) },
                                 onClick = {
                                     isShareMenuExpanded = false
                                     showExportOptionsDialog = true
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Get Route in Google Maps") },
+                                text = { Text(stringResource(R.string.get_route_google_maps)) },
                                 onClick = {
                                     isShareMenuExpanded = false
                                     val selectedSpots =
@@ -319,7 +320,7 @@ fun GalleryScreen(
                                         } catch (_: Exception) {
                                             Toast.makeText(
                                                 context,
-                                                "No app available to open route.",
+                                                context.getString(R.string.no_app_available_route),
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
@@ -327,7 +328,7 @@ fun GalleryScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Share KML for Google My Maps") },
+                                text = { Text(stringResource(R.string.share_kml)) },
                                 onClick = {
                                     isShareMenuExpanded = false
                                     val selectedSpots =
@@ -411,7 +412,7 @@ fun GalleryScreen(
                         modifier = Modifier
                             .weight(1f)
                             .padding(vertical = 4.dp),
-                        placeholder = { Text("Search tags, artists, photographers...") },
+                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
                         leadingIcon = null,
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
@@ -585,7 +586,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = true,
                             onClick = { isSearchExpanded = true },
-                            label = { Text("Search: \"$searchQuery\"") },
+                            label = { Text(stringResource(R.string.search_label, searchQuery)) },
                             trailingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Close,
@@ -697,7 +698,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = true,
                             onClick = { viewModel.toggleShowStarredOnly() },
-                            label = { Text("Starred Only") },
+                            label = { Text(stringResource(R.string.starred_only)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Filled.Star,
@@ -820,13 +821,13 @@ fun GalleryScreen(
     if (showLimitExceededDialog) {
         AlertDialog(
             onDismissRequest = { showLimitExceededDialog = false },
-            title = { Text("Starred Limit Reached") },
+            title = { Text(stringResource(R.string.starred_limit_reached_title)) },
             text = {
-                Text("Adding these spots would exceed the limit of 100 starred spots. Please unstar some spots first.")
+                Text(stringResource(R.string.starred_limit_reached_message))
             },
             confirmButton = {
                 TextButton(onClick = { showLimitExceededDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
@@ -836,11 +837,11 @@ fun GalleryScreen(
         var tempMinRating by remember { mutableIntStateOf(0) }
         AlertDialog(
             onDismissRequest = { showExportOptionsDialog = false },
-            title = { Text("Export Pack Options") },
+            title = { Text(stringResource(R.string.export_pack_options_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Filter images by minimum rating. Images below this rating will be excluded from the pack (the main hero image is always included).",
+                        text = stringResource(R.string.export_min_rating_help),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -853,7 +854,7 @@ fun GalleryScreen(
                             .padding(vertical = 8.dp)
                     ) {
                         Text(
-                            "Min Rating: ",
+                            stringResource(R.string.min_rating_label),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -865,7 +866,7 @@ fun GalleryScreen(
                                 val isStarred = i <= tempMinRating
                                 Icon(
                                     imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                    contentDescription = "Star $i",
+                                    contentDescription = stringResource(R.string.content_desc_star_rating, i),
                                     tint = if (isStarred) Color(0xFFFFD700) else Color.Gray,
                                     modifier = Modifier
                                         .size(28.dp)
@@ -877,12 +878,12 @@ fun GalleryScreen(
                         }
                     }
                     val ratingLabel = when (tempMinRating) {
-                        0 -> "All photos (no filter)"
-                        1 -> "1 Star and above"
-                        2 -> "2 Stars and above"
-                        3 -> "3 Stars and above"
-                        4 -> "4 Stars and above"
-                        5 -> "5 Stars only"
+                        0 -> stringResource(R.string.rating_all_photos)
+                        1 -> stringResource(R.string.rating_1_and_above)
+                        2 -> stringResource(R.string.rating_2_and_above)
+                        3 -> stringResource(R.string.rating_3_and_above)
+                        4 -> stringResource(R.string.rating_4_and_above)
+                        5 -> stringResource(R.string.rating_5_only)
                         else -> ""
                     }
                     Text(
@@ -901,12 +902,12 @@ fun GalleryScreen(
                         createDocumentLauncher.launch("spots_export.ts_pack")
                     }
                 ) {
-                    Text("Export")
+                    Text(stringResource(R.string.export))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showExportOptionsDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -998,7 +999,7 @@ fun SpotGridCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = spotDetails.spot.category.getCategoryInactiveStatusLabel()
+                            text = stringResource(id = spotDetails.spot.category.getCategoryInactiveStatusLabel())
                                 .uppercase(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall,
@@ -1194,22 +1195,22 @@ fun EmptyGalleryState(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No Spots Found",
+            text = stringResource(R.string.no_spots_found),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = if (activeFilterCenter != null) {
-                "No spots found within range of ${activeFilterCenter.displayName}."
+                stringResource(R.string.no_spots_range, activeFilterCenter.displayName)
             } else if (showStarredOnly) {
-                "No starred spots found."
+                stringResource(R.string.no_starred_spots)
             } else if (query.isNotEmpty()) {
-                "No spots match '$query'."
+                stringResource(R.string.no_spots_match_query, query)
             } else if (category == "All") {
-                "Document your city walks! Tap the 'Capture' tab below to photograph your first spot."
+                stringResource(R.string.first_spot_instruction)
             } else {
-                "You haven't tagged any items in the '${category.replace("_", " ")}' category yet."
+                stringResource(R.string.empty_category_instruction, category.replace("_", " "))
             },
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray,
@@ -1226,7 +1227,7 @@ fun EmptyGalleryState(
                     containerColor = MaterialTheme.colorScheme.secondary
                 )
             ) {
-                Text("Show All Spots")
+                Text(stringResource(R.string.show_all_spots))
             }
         }
     }

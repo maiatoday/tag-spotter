@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.LocationUtils
+import net.maiatoday.tagspotter.R
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -110,7 +111,7 @@ class WearLocationForegroundService : Service(), KoinComponent {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Wear Watch Location Query",
+            getString(R.string.wear_notification_channel_name),
             NotificationManager.IMPORTANCE_LOW
         )
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -119,8 +120,8 @@ class WearLocationForegroundService : Service(), KoinComponent {
 
     private fun buildNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("TagSpotter Watch Query")
-            .setContentText("Querying nearby street art spots for your watch...")
+            .setContentTitle(getString(R.string.wear_notification_title))
+            .setContentText(getString(R.string.wear_notification_message))
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()

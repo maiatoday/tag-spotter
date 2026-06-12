@@ -50,8 +50,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import net.maiatoday.tagspotter.R
 import androidx.core.content.ContextCompat
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
@@ -182,7 +184,7 @@ fun MainContainer(
                 takePictureLauncher.launch(uriStr.toUri())
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "Failed to launch device camera.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.toast_failed_camera_launch), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -233,7 +235,7 @@ fun MainContainer(
 
                         // Drawer Item: Settings
                         NavigationDrawerItem(
-                            label = { Text("Settings", fontWeight = FontWeight.Bold) },
+                            label = { Text(stringResource(R.string.drawer_settings_label), fontWeight = FontWeight.Bold) },
                             selected = false,
                             onClick = {
                                 scope.launch {
@@ -244,7 +246,7 @@ fun MainContainer(
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.Settings,
-                                    contentDescription = "Settings",
+                                    contentDescription = stringResource(R.string.content_desc_settings),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             },
@@ -264,7 +266,7 @@ fun MainContainer(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Load Mock Test Data",
+                                text = stringResource(R.string.drawer_mock_data_label),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Medium
@@ -286,7 +288,7 @@ fun MainContainer(
 
                     // Drawer Footer: Version
                     Text(
-                        text = "Version $versionName",
+                        text = stringResource(R.string.drawer_version_format, versionName),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -310,7 +312,7 @@ fun MainContainer(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     imageVector = Icons.Default.PhotoLibrary,
-                                    contentDescription = "Gallery",
+                                    contentDescription = stringResource(R.string.content_desc_gallery_tab),
                                     tint = if (selectedTab == Tab.Gallery) MaterialTheme.colorScheme.primary else Color.Gray
                                 )
                                 if (selectedTab == Tab.Gallery) {
@@ -329,7 +331,7 @@ fun MainContainer(
                                 }
                             }
                         },
-                        label = { Text("Gallery") },
+                        label = { Text(stringResource(R.string.tab_gallery_label)) },
                         colors = NavigationRailItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             unselectedIconColor = Color.Gray,
@@ -345,7 +347,7 @@ fun MainContainer(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     imageVector = Icons.Default.Map,
-                                    contentDescription = "Maps",
+                                    contentDescription = stringResource(R.string.content_desc_maps_tab),
                                     tint = if (selectedTab == Tab.Map) MaterialTheme.colorScheme.secondary else Color.Gray
                                 )
                                 if (selectedTab == Tab.Map) {
@@ -364,7 +366,7 @@ fun MainContainer(
                                 }
                             }
                         },
-                        label = { Text("Maps") },
+                        label = { Text(stringResource(R.string.tab_maps_label)) },
                         colors = NavigationRailItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.secondary,
                             unselectedIconColor = Color.Gray,
@@ -379,11 +381,11 @@ fun MainContainer(
                         icon = {
                             Icon(
                                 imageVector = Icons.Default.CameraAlt,
-                                contentDescription = "Camera",
+                                contentDescription = stringResource(R.string.content_desc_camera_tab),
                                 tint = Color.Gray
                             )
                         },
-                        label = { Text("Camera") },
+                        label = { Text(stringResource(R.string.tab_camera_label)) },
                         colors = NavigationRailItemDefaults.colors(
                             unselectedIconColor = Color.Gray,
                             unselectedTextColor = Color.Gray,
@@ -396,11 +398,11 @@ fun MainContainer(
                         icon = {
                             Icon(
                                 imageVector = Icons.Default.Folder,
-                                contentDescription = "Files",
+                                contentDescription = stringResource(R.string.content_desc_files_tab),
                                 tint = Color.Gray
                             )
                         },
-                        label = { Text("Files") },
+                        label = { Text(stringResource(R.string.tab_files_label)) },
                         colors = NavigationRailItemDefaults.colors(
                             unselectedIconColor = Color.Gray,
                             unselectedTextColor = Color.Gray,
@@ -441,7 +443,7 @@ fun MainContainer(
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
                                         imageVector = Icons.Default.PhotoLibrary,
-                                        contentDescription = "Gallery",
+                                        contentDescription = stringResource(R.string.content_desc_gallery_tab),
                                         tint = if (selectedTab == Tab.Gallery) MaterialTheme.colorScheme.primary else Color.Gray
                                     )
                                     if (selectedTab == Tab.Gallery) {
@@ -460,7 +462,7 @@ fun MainContainer(
                                     }
                                 }
                             },
-                            label = { Text("Gallery") },
+                            label = { Text(stringResource(R.string.tab_gallery_label)) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 unselectedIconColor = Color.Gray,
@@ -476,7 +478,7 @@ fun MainContainer(
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
                                         imageVector = Icons.Default.Map,
-                                        contentDescription = "Map",
+                                        contentDescription = stringResource(R.string.content_desc_maps_tab),
                                         tint = if (selectedTab == Tab.Map) MaterialTheme.colorScheme.secondary else Color.Gray
                                     )
                                     if (selectedTab == Tab.Map) {
@@ -495,7 +497,7 @@ fun MainContainer(
                                     }
                                 }
                             },
-                            label = { Text("Maps") },
+                            label = { Text(stringResource(R.string.tab_maps_label)) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.secondary,
                                 unselectedIconColor = Color.Gray,
@@ -510,11 +512,11 @@ fun MainContainer(
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.CameraAlt,
-                                    contentDescription = "Camera",
+                                    contentDescription = stringResource(R.string.content_desc_camera_tab),
                                     tint = Color.Gray
                                 )
                             },
-                            label = { Text("Camera") },
+                            label = { Text(stringResource(R.string.tab_camera_label)) },
                             colors = NavigationBarItemDefaults.colors(
                                 unselectedIconColor = Color.Gray,
                                 unselectedTextColor = Color.Gray,
@@ -527,11 +529,11 @@ fun MainContainer(
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.Folder,
-                                    contentDescription = "Files",
+                                    contentDescription = stringResource(R.string.content_desc_files_tab),
                                     tint = Color.Gray
                                 )
                             },
-                            label = { Text("Files") },
+                            label = { Text(stringResource(R.string.tab_files_label)) },
                             colors = NavigationBarItemDefaults.colors(
                                 unselectedIconColor = Color.Gray,
                                 unselectedTextColor = Color.Gray,
@@ -579,7 +581,7 @@ fun MainContainer(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Processing image...",
+                        text = stringResource(R.string.loading_processing_image),
                         color = Color.White,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold

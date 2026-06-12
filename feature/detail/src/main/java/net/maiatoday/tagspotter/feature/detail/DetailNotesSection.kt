@@ -38,6 +38,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import net.maiatoday.tagspotter.feature.detail.R
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -105,7 +107,7 @@ fun DetailNotesSection(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "FIELD NOTES",
+                text = stringResource(R.string.field_notes_header),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -118,7 +120,7 @@ fun DetailNotesSection(
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = "Search for links using AI",
+                        contentDescription = stringResource(R.string.content_desc_wiki_ai_search),
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(18.dp)
                     )
@@ -130,7 +132,7 @@ fun DetailNotesSection(
 
         if (sortedNotes.isEmpty()) {
             Text(
-                text = "No notes written at this spot yet.",
+                text = stringResource(R.string.no_notes_written),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -172,7 +174,7 @@ fun DetailNotesSection(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit note",
+                                        contentDescription = stringResource(R.string.content_desc_edit_note),
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -184,7 +186,7 @@ fun DetailNotesSection(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete note",
+                                        contentDescription = stringResource(R.string.content_desc_delete_note),
                                         tint = MaterialTheme.colorScheme.error,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -209,7 +211,7 @@ fun DetailNotesSection(
                                     horizontalArrangement = Arrangement.End
                                 ) {
                                     TextButton(onClick = { editingNoteId = null }) {
-                                        Text("Cancel")
+                                        Text(stringResource(R.string.cancel))
                                     }
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Button(
@@ -221,7 +223,7 @@ fun DetailNotesSection(
                                             }
                                         }
                                     ) {
-                                        Text("Save")
+                                        Text(stringResource(R.string.save))
                                     }
                                 }
                             }
@@ -249,8 +251,8 @@ fun DetailNotesSection(
             OutlinedTextField(
                 value = noteInput,
                 onValueChange = onNoteInputChange,
-                label = { Text("Write a note...") },
-                placeholder = { Text("e.g. Tag faded, style details...") },
+                label = { Text(stringResource(R.string.write_note_label)) },
+                placeholder = { Text(stringResource(R.string.write_note_placeholder)) },
                 modifier = Modifier.weight(1f),
                 trailingIcon = {
                     IconButton(
@@ -258,18 +260,18 @@ fun DetailNotesSection(
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now...")
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.recognizer_prompt))
                             }
                             try {
                                 speechRecognizerLauncher.launch(intent)
                             } catch (_: Exception) {
-                                Toast.makeText(context, "Speech recognition is not supported on this device.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.speech_recognition_unsupported), Toast.LENGTH_SHORT).show()
                             }
                         }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Mic,
-                            contentDescription = "Voice input",
+                            contentDescription = stringResource(R.string.content_desc_voice_input),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -298,7 +300,7 @@ fun DetailNotesSection(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send note",
+                    contentDescription = stringResource(R.string.content_desc_send_note),
                     tint = MaterialTheme.colorScheme.background
                 )
             }

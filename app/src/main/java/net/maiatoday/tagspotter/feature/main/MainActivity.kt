@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.widget.Toast
+import net.maiatoday.tagspotter.R
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -92,11 +93,11 @@ class MainActivity : ComponentActivity() {
     if (isFileScheme && fileName != null && 
         !fileName.endsWith(".ts_pack", ignoreCase = true) && 
         !fileName.endsWith(".zip", ignoreCase = true)) {
-      Toast.makeText(this, "Not a valid TagSpotter Pack (.ts_pack)", Toast.LENGTH_LONG).show()
+      Toast.makeText(this, getString(R.string.toast_invalid_pack), Toast.LENGTH_LONG).show()
       return
     }
 
-    Toast.makeText(this, "Starting pack import...", Toast.LENGTH_SHORT).show()
+    Toast.makeText(this, getString(R.string.toast_starting_import), Toast.LENGTH_SHORT).show()
 
     lifecycleScope.launch(Dispatchers.IO) {
       try {
@@ -122,7 +123,7 @@ class MainActivity : ComponentActivity() {
         withContext(Dispatchers.Main) {
           Toast.makeText(
             this@MainActivity,
-            "Failed to start import: ${e.localizedMessage}",
+            getString(R.string.toast_failed_import_start, e.localizedMessage ?: ""),
             Toast.LENGTH_LONG
           ).show()
         }

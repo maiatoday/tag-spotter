@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.wear.R
 
 class StarredSpotsTileService : TileService() {
 
@@ -119,7 +120,7 @@ class StarredSpotsTileService : TileService() {
 
         // Title text
         columnBuilder.addContent(
-            Text.Builder(context, "Starred Spots")
+            Text.Builder(context, context.getString(R.string.starred_spots_tile_title))
                 .setTypography(androidx.wear.protolayout.material.Typography.TYPOGRAPHY_TITLE3)
                 .setColor(ColorBuilders.argb(0xFF00FFCC.toInt())) // Neon cyan
                 .build()
@@ -133,7 +134,7 @@ class StarredSpotsTileService : TileService() {
 
         if (spots.isEmpty()) {
             columnBuilder.addContent(
-                Text.Builder(context, "No spots cached")
+                Text.Builder(context, context.getString(R.string.no_spots_cached_tile))
                     .setTypography(androidx.wear.protolayout.material.Typography.TYPOGRAPHY_BODY2)
                     .setColor(ColorBuilders.argb(0xFF888888.toInt()))
                     .build()
@@ -189,7 +190,7 @@ class StarredSpotsTileService : TileService() {
             )
             .build()
 
-        val refreshChip = CompactChip.Builder(context, "Refresh", refreshClickable, deviceParams)
+        val refreshChip = CompactChip.Builder(context, context.getString(R.string.refresh_btn), refreshClickable, deviceParams)
             .build()
 
         columnBuilder.addContent(refreshChip)

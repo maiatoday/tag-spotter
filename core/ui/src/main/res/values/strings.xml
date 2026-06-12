@@ -1,0 +1,86 @@
+<resources>
+    <!-- Category Creator Labels -->
+    <string name="creator_label_sculpture">SCULPTOR</string>
+    <string name="creator_label_architecture">ARCHITECT</string>
+    <string name="creator_label_nature">GARDENER / PLANNER</string>
+    <string name="creator_label_public_place">DESIGNER / CREATOR</string>
+    <string name="creator_label_food">CHEF</string>
+    <string name="creator_label_default">ARTIST / CREW</string>
+
+    <!-- Category Creator Placeholders -->
+    <string name="creator_placeholder_sculpture">e.g. Michelangelo</string>
+    <string name="creator_placeholder_architecture">e.g. Frank Gehry</string>
+    <string name="creator_placeholder_nature">e.g. Landscape Architect, City Parks</string>
+    <string name="creator_placeholder_public_place">e.g. City Council</string>
+    <string name="creator_placeholder_food">e.g. Gordon Ramsay</string>
+    <string name="creator_placeholder_default">e.g. Banksy</string>
+
+    <!-- Category Creator TextField Labels -->
+    <string name="creator_tf_label_sculpture">Sculptor Name</string>
+    <string name="creator_tf_label_architecture">Architect Name</string>
+    <string name="creator_tf_label_nature">Gardener/Planner Name</string>
+    <string name="creator_tf_label_public_place">Designer/Creator Name</string>
+    <string name="creator_tf_label_food">Chef Name</string>
+    <string name="creator_tf_label_default">Artist Name</string>
+
+    <!-- Category Creator Unknown Labels -->
+    <string name="creator_unknown_sculpture">Unknown Sculptor</string>
+    <string name="creator_unknown_architecture">Unknown Architect</string>
+    <string name="creator_unknown_nature">Unknown Designer</string>
+    <string name="creator_unknown_public_place">Unknown Creator</string>
+    <string name="creator_unknown_food">Unknown Chef</string>
+    <string name="creator_unknown_default">Unknown Artist</string>
+
+    <!-- Category Active Status Labels -->
+    <string name="status_active_sculpture">On Display</string>
+    <string name="status_active_architecture">Standing</string>
+    <string name="status_active_nature">Vibrant</string>
+    <string name="status_active_public_place">Active</string>
+    <string name="status_active_food">Open</string>
+    <string name="status_active_default">Active Spot</string>
+
+    <!-- Category Inactive Status Labels -->
+    <string name="status_inactive_graffiti">Painted Over</string>
+    <string name="status_inactive_sculpture">Removed</string>
+    <string name="status_inactive_architecture">Demolished</string>
+    <string name="status_inactive_nature">Gone</string>
+    <string name="status_inactive_public_place">Closed</string>
+    <string name="status_inactive_food">Closed</string>
+    <string name="status_inactive_default">Inactive</string>
+
+    <!-- Category Status Action Mark Inactive Text -->
+    <string name="status_action_inactive_graffiti">Mark as Painted Over</string>
+    <string name="status_action_inactive_sculpture">Mark as Removed</string>
+    <string name="status_action_inactive_architecture">Mark as Demolished</string>
+    <string name="status_action_inactive_nature">Mark as Gone</string>
+    <string name="status_action_inactive_public_place">Mark as Closed</string>
+    <string name="status_action_inactive_food">Mark as Closed</string>
+    <string name="status_action_inactive_default">Mark as Inactive</string>
+
+    <!-- Category Date Labels -->
+    <string name="date_label_graffiti">PAINTED DATE</string>
+    <string name="date_label_sculpture">CREATION DATE</string>
+    <string name="date_label_architecture">COMPLETED DATE</string>
+    <string name="date_label_nature">ESTABLISHED DATE</string>
+    <string name="date_label_public_place">ESTABLISHED DATE</string>
+    <string name="date_label_food">VISITED DATE</string>
+    <string name="date_label_default">CREATION DATE</string>
+
+    <!-- Category Date TextField Labels -->
+    <string name="date_tf_label_graffiti">Painted Date</string>
+    <string name="date_tf_label_sculpture">Creation Date</string>
+    <string name="date_tf_label_architecture">Completed Date</string>
+    <string name="date_tf_label_nature">Established Date</string>
+    <string name="date_tf_label_public_place">Established Date</string>
+    <string name="date_tf_label_food">Visited Date</string>
+    <string name="date_tf_label_default">Creation Date</string>
+
+    <!-- Category Date Placeholders -->
+    <string name="date_placeholder_graffiti">e.g. circa 2023, Dec 2024</string>
+    <string name="date_placeholder_sculpture">e.g. 1504, circa 2020</string>
+    <string name="date_placeholder_architecture">e.g. 1939, built 2005</string>
+    <string name="date_placeholder_nature">e.g. planted 2020, Spring 2023</string>
+    <string name="date_placeholder_public_place">e.g. opened 2010, circa 1990</string>
+    <string name="date_placeholder_food">e.g. June 2024, last week</string>
+    <string name="date_placeholder_default">e.g. circa 2023, Dec 2024</string>
+</resources>
