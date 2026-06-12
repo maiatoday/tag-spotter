@@ -21,6 +21,7 @@ journeysJunitEngine = "0.3.0"
 camerax = "1.6.1"
 playServicesLocation = "21.3.0"
 exifinterface = "1.4.2"
+kim = "0.26.2"
 room = "2.8.4"
 osmdroid = "6.1.20"
 coil = "2.7.0"
@@ -64,6 +65,7 @@ androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycl
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
+ashampoo-kim = { group = "com.ashampoo", name = "kim", version.ref = "kim" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }

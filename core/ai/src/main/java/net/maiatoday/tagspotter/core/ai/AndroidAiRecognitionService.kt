@@ -27,13 +27,15 @@ class AndroidAiRecognitionService(
         thumbnailPath: String?
     ): AiSuggestion {
         // 1. Load and downscale image using PhotoProcessor
-        var bitmap = photoProcessor.decodeScaledBitmap(imagePath, 1024)
-        if (bitmap == null && !thumbnailPath.isNullOrEmpty()) {
-            bitmap = photoProcessor.decodeScaledBitmap(thumbnailPath, 1024)
+        var scaledBytes = photoProcessor.decodeScaledBitmap(imagePath, 1024)
+        if (scaledBytes == null && !thumbnailPath.isNullOrEmpty()) {
+            scaledBytes = photoProcessor.decodeScaledBitmap(thumbnailPath, 1024)
         }
-        if (bitmap == null) {
+        if (scaledBytes == null) {
             throw IllegalArgumentException("Failed to load image.")
         }
+        val bitmap = android.graphics.BitmapFactory.decodeByteArray(scaledBytes, 0, scaledBytes.size)
+            ?: throw IllegalArgumentException("Failed to decode image bytes.")
 
         // 2. Initialize Gemini with responseSchema
         val model = GenerativeModel(

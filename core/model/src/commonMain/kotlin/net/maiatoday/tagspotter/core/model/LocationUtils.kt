@@ -49,15 +49,17 @@ object LocationUtils {
         "Sydney" to Pair(-33.8688, 151.2093)
     )
 
+    private fun toRadians(deg: Double): Double = deg * kotlin.math.PI / 180.0
+
     /**
      * Calculates the distance in meters between two coordinates using the Haversine formula.
      */
     fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val r = 6371000.0 // Earth radius in meters
-        val dLat = (lat2 - lat1) * PI / 180.0
-        val dLon = (lon2 - lon1) * PI / 180.0
+        val dLat = toRadians(lat2 - lat1)
+        val dLon = toRadians(lon2 - lon1)
         val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(lat1 * PI / 180.0) * cos(lat2 * PI / 180.0) *
+                cos(toRadians(lat1)) * cos(toRadians(lat2)) *
                 sin(dLon / 2) * sin(dLon / 2)
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return r * c

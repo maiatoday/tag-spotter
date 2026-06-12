@@ -1,35 +1,49 @@
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    kotlin("multiplatform")
 }
 
-android {
-    namespace = "net.maiatoday.tagspotter.core.photo"
-    compileSdk = 37
-
-    defaultConfig {
+kotlin {
+    android {
+        namespace = "net.maiatoday.tagspotter.core.photo"
+        compileSdk = 37
         minSdk = 29
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+    
+    jvm()
+    
+    iosSimulatorArm64()
+    iosArm64()
+    
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
     }
     
-    testFixtures {
-        enable = true
+    sourceSets {
+        commonMain.dependencies {
+            implementation(project(":core:model"))
+            implementation(libs.ashampoo.kim)
+            implementation(libs.koin.core)
+        }
+        
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+        
+        androidMain.dependencies {
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.koin.android)
+            implementation(libs.androidx.exifinterface)
+        }
+        
+        wasmJsMain.dependencies {
+            implementation(npm("pako", "2.1.0"))
+        }
     }
 }
 
-dependencies {
-    implementation(project(":core:model"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.exifinterface)
-    
-    // Koin
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    implementation(libs.koin.android) // because it uses androidContext()
-    
-    // Test Fixtures
-    testFixturesImplementation(project(":core:model"))
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    failOnNoDiscoveredTests = false
 }

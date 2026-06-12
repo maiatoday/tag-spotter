@@ -1,6 +1,6 @@
 package net.maiatoday.tagspotter.core.photo
 
-import android.graphics.Bitmap
+
 
 class FakePhotoProcessor : PhotoProcessor {
     var saveToPublicResult: String? = "public_uri"
@@ -9,7 +9,7 @@ class FakePhotoProcessor : PhotoProcessor {
     var metadataResult: PhotoMetadata? = PhotoMetadata(12.34, 56.78, 123456789L)
     var deleteFileResult: Boolean = true
     var tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
-    var decodeScaledBitmapResult: Bitmap? = null
+    var decodeScaledBitmapResult: ByteArray? = null
 
     var deleteFileCalledWith: String? = null
     var saveImageCalledWith: String? = null
@@ -46,7 +46,7 @@ class FakePhotoProcessor : PhotoProcessor {
         return deleteFileResult
     }
 
-    override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): Bitmap? {
+    override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? {
         return decodeScaledBitmapResult
     }
 }

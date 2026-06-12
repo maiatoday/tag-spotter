@@ -1,7 +1,5 @@
 package net.maiatoday.tagspotter.core.photo
 
-import android.graphics.Bitmap
-
 data class PhotoMetadata(
     val latitude: Double?,
     val longitude: Double?,
@@ -20,5 +18,5 @@ interface PhotoProcessor {
     suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata?
     fun createTempCameraFile(): TempFileDetails
     fun deleteFile(filePath: String): Boolean
-    suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): Bitmap?
+    suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray?
 }

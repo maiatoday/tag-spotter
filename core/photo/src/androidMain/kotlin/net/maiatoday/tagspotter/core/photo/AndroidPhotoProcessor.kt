@@ -34,20 +34,21 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
         return ImageOptimizer.createThumbnail(context, uri)
     }
 
-    override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? {
-        val uri = uriString.toUri()
-        val photoUri =
-            try {
-                android.provider.MediaStore.setRequireOriginal(uri)
-            } catch (_: Exception) {
-                uri
-            }
-        val meta = ExifLocationExtractor.getPhotoMetadata(context, photoUri) ?: return null
-        return PhotoMetadata(
-            latitude = meta.latitude,
-            longitude = meta.longitude,
-            timestamp = meta.timestamp
-        )
+    override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? = withContext(Dispatchers.IO) {
+        try {
+            val uri = uriString.toUri()
+            val photoUri =
+                try {
+                    android.provider.MediaStore.setRequireOriginal(uri)
+                } catch (_: Exception) {
+                    uri
+                }
+            val bytes = context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() } ?: return@withContext null
+            ExifMetadataParser.extractMetadata(bytes)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     override fun createTempCameraFile(): TempFileDetails {
@@ -82,7 +83,15 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
         }
     }
 
-    override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): Bitmap? = withContext(Dispatchers.IO) {
+    override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? = withContext(Dispatchers.IO) {
+        val bitmap = decodeScaledBitmapToAndroidBitmap(imagePath, maxDimension) ?: return@withContext null
+        val stream = java.io.ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+        bitmap.recycle()
+        stream.toByteArray()
+    }
+
+    private fun decodeScaledBitmapToAndroidBitmap(imagePath: String, maxDimension: Int): Bitmap? {
         try {
             if (imagePath.startsWith("content://") || imagePath.startsWith("file://") || imagePath.startsWith("android.resource://")) {
                 val uri = imagePath.toUri()
@@ -99,9 +108,9 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
                 if (srcWidth <= 0 || srcHeight <= 0) {
                     if (imagePath.startsWith("android.resource://")) {
                         val bitmap = decodeResourceToBitmap(context, uri, maxDimension)
-                        if (bitmap != null) return@withContext bitmap
+                        if (bitmap != null) return bitmap
                     }
-                    return@withContext null
+                    return null
                 }
                 
                 // Calculate sample size (power of 2)
@@ -119,12 +128,12 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
                 }
                 if (bitmap == null && imagePath.startsWith("android.resource://")) {
                     val fallbackBitmap = decodeResourceToBitmap(context, uri, maxDimension)
-                    if (fallbackBitmap != null) return@withContext fallbackBitmap
+                    if (fallbackBitmap != null) return fallbackBitmap
                 }
-                bitmap
+                return bitmap
             } else {
                 val file = File(imagePath)
-                if (!file.exists()) return@withContext null
+                if (!file.exists()) return null
                 
                 // Get dimensions
                 val options = BitmapFactory.Options().apply {
@@ -134,7 +143,7 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
                 
                 val srcWidth = options.outWidth
                 val srcHeight = options.outHeight
-                if (srcWidth <= 0 || srcHeight <= 0) return@withContext null
+                if (srcWidth <= 0 || srcHeight <= 0) return null
                 
                 // Calculate sample size (power of 2)
                 var inSampleSize = 1
@@ -146,11 +155,11 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
                 val decodeOptions = BitmapFactory.Options().apply {
                     this.inSampleSize = inSampleSize
                 }
-                BitmapFactory.decodeFile(imagePath, decodeOptions)
+                return BitmapFactory.decodeFile(imagePath, decodeOptions)
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            null
+            return null
         }
     }
 
