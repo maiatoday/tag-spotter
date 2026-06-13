@@ -1,69 +1,125 @@
 plugins {
-    alias(libs.plugins.android.library)
+    kotlin("multiplatform")
+    alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
 
-android {
-    namespace = "net.maiatoday.tagspotter.core.database"
-    compileSdk = 37
-
-    defaultConfig {
+kotlin {
+    androidLibrary {
+        namespace = "net.maiatoday.tagspotter.core.database"
+        compileSdk = 37
         minSdk = 29
+        
+        withHostTestBuilder { }
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+    
+    jvm()
+    iosSimulatorArm64()
+    iosArm64()
+    wasmJs {
+        browser()
     }
-
-    testFixtures {
-        enable = true
-    }
-
-    testOptions {
-        unitTests {
-            all {
-                it.useJUnitPlatform()
+    
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation(project(":core:model"))
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.koin.core)
             }
+        }
+        
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
+        
+        val nonWebMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(project(":core:photo"))
+                implementation(project(":core:location"))
+                
+                // Room
+                implementation(libs.room.runtime)
+                implementation(libs.sqlite.bundled)
+            }
+        }
+        
+        androidMain {
+            dependsOn(nonWebMain)
+            dependencies {
+                implementation(libs.androidx.core.ktx)
+                // WorkManager (needed by PackManager / Workers)
+                implementation(libs.androidx.work.runtime.ktx)
+                // Koin
+                implementation(libs.koin.android)
+            }
+        }
+        
+        jvmMain {
+            dependsOn(nonWebMain)
+        }
+        
+        iosMain {
+            dependsOn(nonWebMain)
+        }
+        
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain.get())
+        }
+        
+        val iosArm64Main by getting {
+            dependsOn(iosMain.get())
+        }
+        
+        wasmJsMain {
+            dependencies {
+                // No Room dependencies here
+            }
+        }
+        
+        val nonWebTest by creating {
+            dependsOn(commonTest.get())
+        }
+        
+        val androidHostTest by getting {
+            dependsOn(nonWebTest)
+            dependencies {
+                implementation(libs.androidx.test.core)
+                implementation(libs.androidx.test.ext.junit)
+                implementation(libs.androidx.test.runner)
+                implementation(libs.junit.jupiter.api)
+                implementation("org.robolectric:robolectric:4.12.2")
+            }
+        }
+        
+        val jvmTest by getting {
+            dependsOn(nonWebTest)
+        }
+        
+        val iosTest by creating {
+            dependsOn(nonWebTest)
+        }
+        
+        val iosSimulatorArm64Test by getting {
+            dependsOn(iosTest)
+        }
+        
+        val iosArm64Test by getting {
+            dependsOn(iosTest)
         }
     }
 }
 
 dependencies {
-    implementation(project(":core:model"))
-    implementation(project(":core:photo"))
-    implementation(project(":core:location"))
-    
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.kotlinx.serialization.json)
-    
-    // Room
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
-
-    // WorkManager (needed by PackManager / Workers)
-    implementation(libs.androidx.work.runtime.ktx)
-    
-    // Koin
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    implementation(libs.koin.android)
-    
-    // Testing & Test Fixtures
-    testFixturesApi(libs.junit.jupiter.api)
-    testFixturesApi(libs.kotlinx.coroutines.test)
-    testFixturesImplementation(project(":core:model"))
-    testFixturesImplementation(project(":core:settings")) // FakeSpotRepository references settings to import fakes or load test data
-    
-    testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.platform.launcher)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(testFixtures(project(":core:settings"))) // to use FakeSettingsRepository in database tests
-    androidTestImplementation(libs.androidx.test.core)
-    androidTestImplementation(libs.androidx.test.ext.junit)
-    androidTestImplementation(libs.androidx.test.runner)
-    androidTestImplementation(libs.room.runtime) // for in-memory testing
+    add("kspAndroid", libs.room.compiler)
+    add("kspJvm", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    // No KSP Room compiler for wasmJs
 }

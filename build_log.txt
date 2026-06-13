@@ -1,0 +1,491 @@
+Calculating task graph as no cached configuration is available for tasks: :core:database:assemble
+
+> Configure project :app
+WARNING: The option setting 'android.experimental.enableTestFixturesKotlinSupport=true' is experimental.
+The current default is 'false'.
+WARNING: The option setting 'android.experimental.testSuiteSupport=true' is experimental.
+The current default is 'false'.
+
+> Configure project :core:database
+w: ⚠️ Default Kotlin Hierarchy Template Not Applied Correctly
+The Default Kotlin Hierarchy Template was not applied to 'project ':core:database'':
+Explicit .dependsOn() edges were configured for the following source sets:
+[androidHostTest, androidMain, iosArm64Main, iosArm64Test, iosMain, iosSimulatorArm64Main, iosSimulatorArm64Test, iosTest, jvmMain, jvmTest, nonWebMain, nonWebTest]
+
+Consider removing dependsOn-calls or disabling the default template by adding
+    'kotlin.mpp.applyDefaultHierarchyTemplate=false'
+to your gradle.properties
+Solution: Please remove the dependsOn-calls or disable the default template.
+Learn more about hierarchy templates: https://kotl.in/hierarchy-template
+
+
+> Configure project :core:location
+WARNING: The 'commonTest' source directory exists, but android host tests are not enabled. To enable android host tests, add `withHostTest {}` to your android target configuration in the Gradle build file.
+
+> Configure project :core:model
+WARNING: The 'commonTest' source directory exists, but android host tests are not enabled. To enable android host tests, add `withHostTest {}` to your android target configuration in the Gradle build file.
+
+> Configure project :core:photo
+WARNING: The 'commonTest' source directory exists, but android host tests are not enabled. To enable android host tests, add `withHostTest {}` to your android target configuration in the Gradle build file.
+
+> Configure project :core:settings
+w: ⚠️ Default Kotlin Hierarchy Template Not Applied Correctly
+The Default Kotlin Hierarchy Template was not applied to 'project ':core:settings'':
+Explicit .dependsOn() edges were configured for the following source sets:
+[androidHostTest, androidMain, iosArm64Main, iosArm64Test, iosMain, iosSimulatorArm64Main, iosSimulatorArm64Test, iosTest, jvmMain, jvmTest, nonWebMain, nonWebTest]
+
+Consider removing dependsOn-calls or disabling the default template by adding
+    'kotlin.mpp.applyDefaultHierarchyTemplate=false'
+to your gradle.properties
+Solution: Please remove the dependsOn-calls or disable the default template.
+Learn more about hierarchy templates: https://kotl.in/hierarchy-template
+
+Configuration 'wasmJsNpmAggregated' was resolved during configuration time.
+This is a build performance and scalability issue.
+See https://github.com/gradle/gradle/issues/2298
+Run with --info for a stacktrace.
+
+[Incubating] Problems report is available at: file:///Users/maia/.gemini/antigravity/brain/2933ac8c-4012-47ea-a581-ba9f3bcbc98e/.system_generated/worktrees/subagent-Database-Module-KMP-Migrator-kmp-module-migrator-55516e0d/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Could not determine the dependencies of task ':core:database:wasmJsPackageJson'.
+> Could not resolve all dependencies for configuration ':core:database:wasmJsNpmAggregated'.
+   > Could not resolve androidx.room:room-runtime:2.8.4.
+     Required by:
+         project ':core:database'
+      > No matching variant of androidx.room:room-runtime:2.8.4 was found. The consumer was configured to find a library for use during 'kotlin-runtime', preferably optimized for non-jvm, as well as attribute 'org.jetbrains.kotlin.js.public.package.json' with value 'public-package-json', attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm', attribute 'org.jetbrains.kotlin.wasm.target' with value 'js' but:
+          - Variant 'androidApiElements-published' declares a library, preferably optimized for Android:
+              - Incompatible because this component declares a component for use during compile-time, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'androidRuntimeElements-published' declares a library for use during runtime, preferably optimized for Android:
+              - Incompatible because this component declares a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'androidSourcesElements-published' declares a component for use during runtime, preferably optimized for Android:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'androidxSourcesElements':
+              - Incompatible because this component declares documentation for use during 'androidx-multiplatform-docs' and the consumer needed a library for use during 'kotlin-runtime'
+              - Other compatible attributes:
+                  - Doesn't say anything about its target Java environment (preferred optimized for non-jvm)
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.platform.type (required 'wasm')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosSimulatorArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosSimulatorArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosSimulatorArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosX64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'jvmApiElements-published' declares a library, preferably optimized for standard JVMs:
+              - Incompatible because this component declares a component for use during compile-time, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'jvmRuntimeElements-published' declares a library for use during runtime, preferably optimized for standard JVMs:
+              - Incompatible because this component declares a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'jvmSourcesElements-published' declares a component for use during runtime, preferably optimized for standard JVMs:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'libraryVersionMetadata':
+              - Incompatible because this component declares documentation for use during 'library-version-metadata' and the consumer needed a library for use during 'kotlin-runtime'
+              - Other compatible attributes:
+                  - Doesn't say anything about its target Java environment (preferred optimized for non-jvm)
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.platform.type (required 'wasm')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosX64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'metadataApiElements' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'common' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'metadataSourcesElements' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'common' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosSimulatorArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosSimulatorArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosSimulatorArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosX64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'tvosX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosArm32ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosArm32MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosArm32SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosDeviceArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosDeviceArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosDeviceArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosSimulatorArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosSimulatorArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosSimulatorArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosX64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'watchosX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+   > Could not resolve androidx.sqlite:sqlite-bundled:2.5.0-alpha13.
+     Required by:
+         project ':core:database'
+      > No matching variant of androidx.sqlite:sqlite-bundled:2.5.0-alpha13 was found. The consumer was configured to find a library for use during 'kotlin-runtime', preferably optimized for non-jvm, as well as attribute 'org.jetbrains.kotlin.js.public.package.json' with value 'public-package-json', attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm', attribute 'org.jetbrains.kotlin.wasm.target' with value 'js' but:
+          - Variant 'androidxSourcesElements':
+              - Incompatible because this component declares documentation for use during 'androidx-multiplatform-docs' and the consumer needed a library for use during 'kotlin-runtime'
+              - Other compatible attributes:
+                  - Doesn't say anything about its target Java environment (preferred optimized for non-jvm)
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.platform.type (required 'wasm')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosSimulatorArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosSimulatorArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosSimulatorArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosX64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'iosX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'jvmApiElements-published' declares a library, preferably optimized for standard JVMs:
+              - Incompatible because this component declares a component for use during compile-time, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'jvmRuntimeElements-published' declares a library for use during runtime, preferably optimized for standard JVMs:
+              - Incompatible because this component declares a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'jvmSourcesElements-published' declares a component for use during runtime, preferably optimized for standard JVMs:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'jvm' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'libraryVersionMetadata':
+              - Incompatible because this component declares documentation for use during 'library-version-metadata' and the consumer needed a library for use during 'kotlin-runtime'
+              - Other compatible attributes:
+                  - Doesn't say anything about its target Java environment (preferred optimized for non-jvm)
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.platform.type (required 'wasm')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'linuxX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosArm64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosArm64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosArm64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosX64ApiElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-api', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosX64MetadataElements-published' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'macosX64SourcesElements-published' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'native' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'metadataApiElements' declares a library, preferably optimized for non-jvm:
+              - Incompatible because this component declares a component for use during 'kotlin-metadata', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'common' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'metadataSourcesElements' declares a component for use during 'kotlin-runtime', preferably optimized for non-jvm:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'common' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'releaseApiElements-published' declares a library, preferably optimized for Android:
+              - Incompatible because this component declares a component for use during compile-time, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'androidJvm' and the consumer needed a component for use during 'kotlin-runtime', as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'releaseRuntimeElements-published' declares a library for use during runtime, preferably optimized for Android:
+              - Incompatible because this component declares a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'androidJvm' and the consumer needed a component, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+          - Variant 'releaseSourcesElements-published' declares a component for use during runtime, preferably optimized for Android:
+              - Incompatible because this component declares documentation, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'androidJvm' and the consumer needed a library, as well as attribute 'org.jetbrains.kotlin.platform.type' with value 'wasm'
+              - Other compatible attributes:
+                  - Doesn't say anything about org.jetbrains.kotlin.js.public.package.json (required 'public-package-json')
+                  - Doesn't say anything about org.jetbrains.kotlin.wasm.target (required 'js')
+
+* Try:
+> No matching variant errors are explained in more detail at https://docs.gradle.org/9.5.1/userguide/variant_model.html#sub:variant-no-match.
+> Review the variant matching algorithm at https://docs.gradle.org/9.5.1/userguide/variant_attributes.html#sec:abm_algorithm.
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 804ms
+Configuration cache entry stored.

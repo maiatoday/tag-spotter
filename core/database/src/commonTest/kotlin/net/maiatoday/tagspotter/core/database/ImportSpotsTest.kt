@@ -1,0 +1,91 @@
+package net.maiatoday.tagspotter.core.database
+
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import net.maiatoday.tagspotter.core.model.Spot
+import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.model.SpotImage
+import net.maiatoday.tagspotter.core.model.SpotNote
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class ImportSpotsTest {
+
+    @Test
+    fun testImportSpotsFilterDuplicatesAndInsertsCorrectly() = runTest {
+        val repository = FakeSpotRepository()
+
+        // 1. Initial state: load test data (3 spots)
+        repository.loadTestData()
+
+        // Assert initial spots are NOT marked as imported
+        val initialSpots: List<SpotDetails> = repository.getAllSpots().first()
+        initialSpots.forEach {
+            assertTrue(!it.spot.isImported)
+        }
+
+        // 2. Prepare imported spots:
+        // - Spot A: identical coordinates and createdAt as mock spot 9001 (should be skipped)
+        // - Spot B: unique coordinates and createdAt (should be imported)
+        val now = epochMillis()
+        val mockSpot1Details: SpotDetails? = repository.getSpotById(9001L).first()
+        assertNotNull(mockSpot1Details)
+
+        val spotA = Spot(
+            id = 9999L, // different ID, but coordinates and time match
+            latitude = 45.4642,
+            longitude = 9.1899,
+            createdAt = mockSpot1Details!!.spot.createdAt,
+            description = "Stunning street art stencil near the Duomo in Milan.",
+            tags = listOf("milan"),
+            category = "graffiti",
+            status = "active"
+        )
+        val spotB = Spot(
+            id = 8888L,
+            latitude = 12.3456,
+            longitude = 78.9012,
+            createdAt = now + 5000L,
+            description = "New unique imported spot",
+            tags = listOf("imported"),
+            category = "sculpture",
+            status = "active"
+        )
+
+        val detailsA = SpotDetails(
+            spotA,
+            listOf(SpotImage(id = 1L, spotId = 9999L, imagePath = "imgA", timestamp = now)),
+            emptyList()
+        )
+        val detailsB = SpotDetails(
+            spotB,
+            listOf(SpotImage(id = 1L, spotId = 8888L, imagePath = "imgB", timestamp = now)),
+            listOf(SpotNote(id = 1L, spotId = 8888L, noteText = "Note B", timestamp = now))
+        )
+
+        // Let's run import
+        val importedCount = repository.importSpots(listOf(detailsA, detailsB))
+
+        // Spot A should be skipped as duplicate, Spot B should be imported
+        assertEquals(1, importedCount)
+
+        // Verify Spot B exists in repo with a newly generated ID (not 8888L)
+        val allSpots: List<SpotDetails> = repository.getAllSpots().first()
+        assertEquals(4, allSpots.size) // 3 initial + 1 imported
+
+        val importedSpotDetails: SpotDetails? =
+            allSpots.find { it.spot.description == "New unique imported spot" }
+        assertNotNull(importedSpotDetails)
+        assertNotEquals(8888L, importedSpotDetails!!.spot.id)
+        assertEquals("imgB", importedSpotDetails.images.first().imagePath)
+        assertEquals(importedSpotDetails.spot.id, importedSpotDetails.images.first().spotId)
+        assertEquals("Note B", importedSpotDetails.notes.first().noteText)
+        assertEquals(importedSpotDetails.spot.id, importedSpotDetails.notes.first().spotId)
+
+        // Assert imported spot IS marked as imported
+        assertTrue(importedSpotDetails.spot.isImported)
+    }
+}
