@@ -6,8 +6,11 @@ import androidx.compose.runtime.Composable
 @Retention(AnnotationRetention.BINARY)
 expect annotation class StringRes()
 
-expect object R {
-    object string {
+expect object DetailRes {
+    val string: DetailStrings
+}
+
+expect object DetailStrings {
         val field_notes_header: Int
         val content_desc_wiki_ai_search: Int
         val no_notes_written: Int
@@ -103,7 +106,6 @@ expect object R {
         val toast_no_img_search: Int
         val toast_no_img_analyze: Int
     }
-}
 
 @Composable
 expect fun stringResource(id: Int): String

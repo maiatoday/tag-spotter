@@ -1,6 +1,6 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import net.maiatoday.tagspotter.feature.detail.res.R
+import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 
 
 
@@ -98,7 +98,7 @@ fun DetailNotesSection(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = stringResource(R.string.field_notes_header),
+                text = stringResource(DetailRes.string.field_notes_header),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -111,7 +111,7 @@ fun DetailNotesSection(
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = stringResource(R.string.content_desc_wiki_ai_search),
+                        contentDescription = stringResource(DetailRes.string.content_desc_wiki_ai_search),
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(18.dp)
                     )
@@ -123,7 +123,7 @@ fun DetailNotesSection(
 
         if (sortedNotes.isEmpty()) {
             Text(
-                text = stringResource(R.string.no_notes_written),
+                text = stringResource(DetailRes.string.no_notes_written),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -165,7 +165,7 @@ fun DetailNotesSection(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Edit,
-                                        contentDescription = stringResource(R.string.content_desc_edit_note),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_edit_note),
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -177,7 +177,7 @@ fun DetailNotesSection(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = stringResource(R.string.content_desc_delete_note),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_delete_note),
                                         tint = MaterialTheme.colorScheme.error,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -202,7 +202,7 @@ fun DetailNotesSection(
                                     horizontalArrangement = Arrangement.End
                                 ) {
                                     TextButton(onClick = { editingNoteId = null }) {
-                                        Text(stringResource(R.string.cancel))
+                                        Text(stringResource(DetailRes.string.cancel))
                                     }
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Button(
@@ -214,7 +214,7 @@ fun DetailNotesSection(
                                             }
                                         }
                                     ) {
-                                        Text(stringResource(R.string.save))
+                                        Text(stringResource(DetailRes.string.save))
                                     }
                                 }
                             }
@@ -242,8 +242,8 @@ fun DetailNotesSection(
             OutlinedTextField(
                 value = noteInput,
                 onValueChange = onNoteInputChange,
-                label = { Text(stringResource(R.string.write_note_label)) },
-                placeholder = { Text(stringResource(R.string.write_note_placeholder)) },
+                label = { Text(stringResource(DetailRes.string.write_note_label)) },
+                placeholder = { Text(stringResource(DetailRes.string.write_note_placeholder)) },
                 modifier = Modifier.weight(1f),
                 trailingIcon = {
                     IconButton(
@@ -251,7 +251,7 @@ fun DetailNotesSection(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Mic,
-                            contentDescription = stringResource(R.string.content_desc_voice_input),
+                            contentDescription = stringResource(DetailRes.string.content_desc_voice_input),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -280,7 +280,7 @@ fun DetailNotesSection(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = stringResource(R.string.content_desc_send_note),
+                    contentDescription = stringResource(DetailRes.string.content_desc_send_note),
                     tint = MaterialTheme.colorScheme.background
                 )
             }

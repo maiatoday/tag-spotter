@@ -1,6 +1,6 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import net.maiatoday.tagspotter.feature.detail.res.R
+import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -86,7 +86,7 @@ fun DetailTagsCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = stringResource(R.string.tags_header),
+                    text = stringResource(DetailRes.string.tags_header),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.Gray,
                     fontWeight = FontWeight.Bold
@@ -99,7 +99,7 @@ fun DetailTagsCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.content_desc_edit_tags),
+                            contentDescription = stringResource(DetailRes.string.content_desc_edit_tags),
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -134,7 +134,7 @@ fun DetailTagsCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = stringResource(R.string.content_desc_save_tags),
+                                    contentDescription = stringResource(DetailRes.string.content_desc_save_tags),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -145,7 +145,7 @@ fun DetailTagsCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.content_desc_cancel_edit),
+                                    contentDescription = stringResource(DetailRes.string.content_desc_cancel_edit),
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -154,7 +154,7 @@ fun DetailTagsCard(
 
                     // Predefined Quick Tags
                     Text(
-                        text = stringResource(R.string.quick_select_tags),
+                        text = stringResource(DetailRes.string.quick_select_tags),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -201,7 +201,7 @@ fun DetailTagsCard(
                     if (recentTagsToShow.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = stringResource(R.string.recent_custom_tags),
+                            text = stringResource(DetailRes.string.recent_custom_tags),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.Gray,
                             modifier = Modifier.padding(bottom = 4.dp)
@@ -252,8 +252,8 @@ fun DetailTagsCard(
                         OutlinedTextField(
                             value = customTagEditInput,
                             onValueChange = { customTagEditInput = it },
-                            label = { Text(stringResource(R.string.add_custom_tag_label)) },
-                            placeholder = { Text(stringResource(R.string.add_custom_tag_placeholder)) },
+                            label = { Text(stringResource(DetailRes.string.add_custom_tag_label)) },
+                            placeholder = { Text(stringResource(DetailRes.string.add_custom_tag_placeholder)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(
@@ -302,7 +302,7 @@ fun DetailTagsCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = stringResource(R.string.content_desc_add_custom_tag),
+                                contentDescription = stringResource(DetailRes.string.content_desc_add_custom_tag),
                                 tint = MaterialTheme.colorScheme.background
                             )
                         }
@@ -311,7 +311,7 @@ fun DetailTagsCard(
             } else {
                 if (details.spot.tags.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.no_tags_added),
+                        text = stringResource(DetailRes.string.no_tags_added),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.LightGray
                     )

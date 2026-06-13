@@ -56,7 +56,7 @@ import net.maiatoday.tagspotter.core.ui.OsmMapView
 import net.maiatoday.tagspotter.core.ui.OsmMarker
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.FilterBottomSheet
-import net.maiatoday.tagspotter.feature.map.res.R
+import net.maiatoday.tagspotter.feature.map.res.MapRes
 import net.maiatoday.tagspotter.feature.map.res.stringResource
 import net.maiatoday.tagspotter.feature.map.res.formatImageModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -169,7 +169,7 @@ fun MapScreen(
                         .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (category == "All") stringResource(R.string.filter_all) else category.replace("_", " ").replaceFirstChar { it.titlecase() },
+                        text = if (category == "All") stringResource(MapRes.string.filter_all) else category.replace("_", " ").replaceFirstChar { it.titlecase() },
                         color = if (isSelected) categoryColor else Color.LightGray,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
@@ -224,7 +224,7 @@ fun MapScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.content_desc_clear_category_filter),
+                                contentDescription = stringResource(MapRes.string.content_desc_clear_category_filter),
                                 tint = Color.Gray,
                                 modifier = Modifier
                                     .size(16.dp)
@@ -246,7 +246,7 @@ fun MapScreen(
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.search_query_chip_label, searchQuery),
+                                text = stringResource(MapRes.string.search_query_chip_label, searchQuery),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
@@ -254,7 +254,7 @@ fun MapScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.content_desc_clear_search_query),
+                                contentDescription = stringResource(MapRes.string.content_desc_clear_search_query),
                                 tint = Color.Gray,
                                 modifier = Modifier
                                     .size(16.dp)
@@ -284,7 +284,7 @@ fun MapScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.content_desc_clear_source_filter),
+                                contentDescription = stringResource(MapRes.string.content_desc_clear_source_filter),
                                 tint = Color.Gray,
                                 modifier = Modifier
                                     .size(16.dp)
@@ -314,7 +314,7 @@ fun MapScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.content_desc_clear_location_filter),
+                                contentDescription = stringResource(MapRes.string.content_desc_clear_location_filter),
                                 tint = Color.Gray,
                                 modifier = Modifier
                                     .size(16.dp)
@@ -343,7 +343,7 @@ fun MapScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = stringResource(R.string.starred_only_filter_label),
+                                text = stringResource(MapRes.string.starred_only_filter_label),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
@@ -351,7 +351,7 @@ fun MapScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.content_desc_clear_starred_filter),
+                                contentDescription = stringResource(MapRes.string.content_desc_clear_starred_filter),
                                 tint = Color.Gray,
                                 modifier = Modifier
                                     .size(16.dp)
@@ -365,7 +365,7 @@ fun MapScreen(
                 if (mapActiveFiltersCount > 1) {
                     item {
                         Text(
-                            text = stringResource(R.string.clear_all_filters),
+                            text = stringResource(MapRes.string.clear_all_filters),
                             color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
@@ -402,7 +402,7 @@ fun MapScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.add_filters_btn),
+                    text = stringResource(MapRes.string.add_filters_btn),
                     color = Color.LightGray,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
@@ -472,7 +472,7 @@ fun MapScreen(
                                     if (spot.spot.isStarred) {
                                         Icon(
                                             imageVector = Icons.Filled.Star,
-                                            contentDescription = stringResource(R.string.content_desc_starred_marker),
+                                            contentDescription = stringResource(MapRes.string.content_desc_starred_marker),
                                             tint = Color(0xFFFFD700),
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -489,7 +489,7 @@ fun MapScreen(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 
                                 Text(
-                                    text = spot.spot.description.ifEmpty { stringResource(R.string.no_description_added) },
+                                    text = spot.spot.description.ifEmpty { stringResource(MapRes.string.no_description_added) },
                                     style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
@@ -525,7 +525,7 @@ fun MapScreen(
                                     shape = RoundedCornerShape(6.dp),
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
-                                    Text(stringResource(R.string.view_history_notes), style = MaterialTheme.typography.bodyMedium)
+                                    Text(stringResource(MapRes.string.view_history_notes), style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
@@ -533,7 +533,7 @@ fun MapScreen(
                         // Close icon overlay
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.content_desc_close_details_overlay),
+                            contentDescription = stringResource(MapRes.string.content_desc_close_details_overlay),
                             tint = Color.Gray,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)

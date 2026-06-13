@@ -132,16 +132,14 @@ dependencies {
   implementation(libs.osmdroid.android)
   implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.coil.compose)
+  implementation(libs.ktor.client.okhttp)
   implementation(libs.play.services.location)
   implementation(libs.play.services.wearable)
   implementation(libs.room.runtime)
   implementation(libs.room.ktx)
+  implementation(libs.sqlite.bundled)
 
   // Local tests: jUnit, coroutines, Android runner
-  testImplementation(testFixtures(project(":core:database")))
-  testImplementation(testFixtures(project(":core:settings")))
-  testImplementation(testFixtures(project(":core:photo")))
-  testImplementation(testFixtures(project(":core:location")))
   testImplementation(libs.junit.jupiter.api)
   testRuntimeOnly(libs.junit.jupiter.engine)
   testRuntimeOnly(libs.junit.platform.launcher)

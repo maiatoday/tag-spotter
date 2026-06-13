@@ -79,7 +79,7 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.res.DateFormatter
-import net.maiatoday.tagspotter.feature.gallery.res.R
+import net.maiatoday.tagspotter.feature.gallery.res.GalleryStrings
 import net.maiatoday.tagspotter.feature.gallery.res.formatImageModel
 import net.maiatoday.tagspotter.feature.gallery.res.rememberGalleryPlatformHelper
 import net.maiatoday.tagspotter.feature.gallery.res.stringResource
@@ -93,9 +93,9 @@ fun GalleryScreen(
     viewModel: GalleryViewModel = koinViewModel()
 ) {
     val platformHelper = rememberGalleryPlatformHelper()
-    val deletedSuccessfullyText = stringResource(R.string.deleted_successfully)
-    val spotsStarredText = stringResource(R.string.spots_starred)
-    val spotsUnstarredText = stringResource(R.string.spots_unstarred)
+    val deletedSuccessfullyText = stringResource(GalleryStrings.deleted_successfully)
+    val spotsStarredText = stringResource(GalleryStrings.spots_starred)
+    val spotsUnstarredText = stringResource(GalleryStrings.spots_unstarred)
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
     val spots by viewModel.spots.collectAsStateWithLifecycle()
@@ -150,8 +150,8 @@ fun GalleryScreen(
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text(stringResource(R.string.delete_selected_spots_title)) },
-            text = { Text(stringResource(R.string.delete_selected_spots_confirm, selectedSpotIds.size)) },
+            title = { Text(stringResource(GalleryStrings.delete_selected_spots_title)) },
+            text = { Text(stringResource(GalleryStrings.delete_selected_spots_confirm, selectedSpotIds.size)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -163,12 +163,12 @@ fun GalleryScreen(
                         }
                     }
                 ) {
-                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(GalleryStrings.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text(stringResource(R.string.cancel))
+                    Text(stringResource(GalleryStrings.cancel))
                 }
             }
         )
@@ -241,7 +241,7 @@ fun GalleryScreen(
                             .any { !it.spot.isStarred }
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = stringResource(R.string.content_desc_toggle_star),
+                            contentDescription = stringResource(GalleryStrings.content_desc_toggle_star),
                             tint = if (selectedSpotIds.isEmpty()) {
                                 Color.Gray
                             } else if (anyUnstarred) {
@@ -261,7 +261,7 @@ fun GalleryScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = stringResource(R.string.content_desc_export),
+                                contentDescription = stringResource(GalleryStrings.content_desc_export),
                                 tint = if (selectedSpotIds.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.Gray
                             )
                         }
@@ -270,14 +270,14 @@ fun GalleryScreen(
                             onDismissRequest = { isShareMenuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.export_pack)) },
+                                text = { Text(stringResource(GalleryStrings.export_pack)) },
                                 onClick = {
                                     isShareMenuExpanded = false
                                     showExportOptionsDialog = true
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.get_route_google_maps)) },
+                                text = { Text(stringResource(GalleryStrings.get_route_google_maps)) },
                                 onClick = {
                                     isShareMenuExpanded = false
                                     val selectedSpots =
@@ -288,7 +288,7 @@ fun GalleryScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.share_kml)) },
+                                text = { Text(stringResource(GalleryStrings.share_kml)) },
                                 onClick = {
                                     isShareMenuExpanded = false
                                     val selectedSpots =
@@ -334,7 +334,7 @@ fun GalleryScreen(
                         modifier = Modifier
                             .weight(1f)
                             .padding(vertical = 4.dp),
-                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                        placeholder = { Text(stringResource(GalleryStrings.search_placeholder)) },
                         leadingIcon = null,
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
@@ -508,7 +508,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = true,
                             onClick = { isSearchExpanded = true },
-                            label = { Text(stringResource(R.string.search_label, searchQuery)) },
+                            label = { Text(stringResource(GalleryStrings.search_label, searchQuery)) },
                             trailingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Close,
@@ -620,7 +620,7 @@ fun GalleryScreen(
                         FilterChip(
                             selected = true,
                             onClick = { viewModel.toggleShowStarredOnly() },
-                            label = { Text(stringResource(R.string.starred_only)) },
+                            label = { Text(stringResource(GalleryStrings.starred_only)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Filled.Star,
@@ -740,13 +740,13 @@ fun GalleryScreen(
     if (showLimitExceededDialog) {
         AlertDialog(
             onDismissRequest = { showLimitExceededDialog = false },
-            title = { Text(stringResource(R.string.starred_limit_reached_title)) },
+            title = { Text(stringResource(GalleryStrings.starred_limit_reached_title)) },
             text = {
-                Text(stringResource(R.string.starred_limit_reached_message))
+                Text(stringResource(GalleryStrings.starred_limit_reached_message))
             },
             confirmButton = {
                 TextButton(onClick = { showLimitExceededDialog = false }) {
-                    Text(stringResource(R.string.ok))
+                    Text(stringResource(GalleryStrings.ok))
                 }
             }
         )
@@ -756,11 +756,11 @@ fun GalleryScreen(
         var tempMinRating by remember { mutableIntStateOf(0) }
         AlertDialog(
             onDismissRequest = { showExportOptionsDialog = false },
-            title = { Text(stringResource(R.string.export_pack_options_title)) },
+            title = { Text(stringResource(GalleryStrings.export_pack_options_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = stringResource(R.string.export_min_rating_help),
+                        text = stringResource(GalleryStrings.export_min_rating_help),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -773,7 +773,7 @@ fun GalleryScreen(
                             .padding(vertical = 8.dp)
                     ) {
                         Text(
-                            stringResource(R.string.min_rating_label),
+                            stringResource(GalleryStrings.min_rating_label),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -785,7 +785,7 @@ fun GalleryScreen(
                                 val isStarred = i <= tempMinRating
                                 Icon(
                                     imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                    contentDescription = stringResource(R.string.content_desc_star_rating, i),
+                                    contentDescription = stringResource(GalleryStrings.content_desc_star_rating, i),
                                     tint = if (isStarred) Color(0xFFFFD700) else Color.Gray,
                                     modifier = Modifier
                                         .size(28.dp)
@@ -797,12 +797,12 @@ fun GalleryScreen(
                         }
                     }
                     val ratingLabel = when (tempMinRating) {
-                        0 -> stringResource(R.string.rating_all_photos)
-                        1 -> stringResource(R.string.rating_1_and_above)
-                        2 -> stringResource(R.string.rating_2_and_above)
-                        3 -> stringResource(R.string.rating_3_and_above)
-                        4 -> stringResource(R.string.rating_4_and_above)
-                        5 -> stringResource(R.string.rating_5_only)
+                        0 -> stringResource(GalleryStrings.rating_all_photos)
+                        1 -> stringResource(GalleryStrings.rating_1_and_above)
+                        2 -> stringResource(GalleryStrings.rating_2_and_above)
+                        3 -> stringResource(GalleryStrings.rating_3_and_above)
+                        4 -> stringResource(GalleryStrings.rating_4_and_above)
+                        5 -> stringResource(GalleryStrings.rating_5_only)
                         else -> ""
                     }
                     Text(
@@ -821,12 +821,12 @@ fun GalleryScreen(
                         createDocumentLauncher()
                     }
                 ) {
-                    Text(stringResource(R.string.export))
+                    Text(stringResource(GalleryStrings.export))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showExportOptionsDialog = false }) {
-                    Text(stringResource(R.string.cancel))
+                    Text(stringResource(GalleryStrings.cancel))
                 }
             }
         )
@@ -1098,22 +1098,22 @@ fun EmptyGalleryState(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = stringResource(R.string.no_spots_found),
+            text = stringResource(GalleryStrings.no_spots_found),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = if (activeFilterCenter != null) {
-                stringResource(R.string.no_spots_range, activeFilterCenter.displayName)
+                stringResource(GalleryStrings.no_spots_range, activeFilterCenter.displayName)
             } else if (showStarredOnly) {
-                stringResource(R.string.no_starred_spots)
+                stringResource(GalleryStrings.no_starred_spots)
             } else if (query.isNotEmpty()) {
-                stringResource(R.string.no_spots_match_query, query)
+                stringResource(GalleryStrings.no_spots_match_query, query)
             } else if (category == "All") {
-                stringResource(R.string.first_spot_instruction)
+                stringResource(GalleryStrings.first_spot_instruction)
             } else {
-                stringResource(R.string.empty_category_instruction, category.replace("_", " "))
+                stringResource(GalleryStrings.empty_category_instruction, category.replace("_", " "))
             },
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray,
@@ -1130,7 +1130,7 @@ fun EmptyGalleryState(
                     containerColor = MaterialTheme.colorScheme.secondary
                 )
             ) {
-                Text(stringResource(R.string.show_all_spots))
+                Text(stringResource(GalleryStrings.show_all_spots))
             }
         }
     }

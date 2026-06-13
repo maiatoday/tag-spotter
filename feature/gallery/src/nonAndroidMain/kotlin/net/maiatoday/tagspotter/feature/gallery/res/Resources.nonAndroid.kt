@@ -7,46 +7,44 @@ import androidx.compose.runtime.remember
 @Retention(AnnotationRetention.BINARY)
 actual annotation class StringRes
 
-actual object R {
-    actual object string {
-        actual val delete_selected_spots_title: Int = 1
-        actual val delete_selected_spots_confirm: Int = 2
-        actual val delete: Int = 3
-        actual val cancel: Int = 4
-        actual val export_pack: Int = 5
-        actual val get_route_google_maps: Int = 6
-        actual val share_kml: Int = 7
-        actual val search_placeholder: Int = 8
-        actual val search_label: Int = 9
-        actual val starred_only: Int = 10
-        actual val starred_limit_reached_title: Int = 11
-        actual val starred_limit_reached_message: Int = 12
-        actual val ok: Int = 13
-        actual val export_pack_options_title: Int = 14
-        actual val export: Int = 15
-        actual val show_all_spots: Int = 16
-        actual val deleted_successfully: Int = 17
-        actual val spots_starred: Int = 18
-        actual val spots_unstarred: Int = 19
-        actual val no_app_available_route: Int = 20
-        actual val content_desc_toggle_star: Int = 21
-        actual val content_desc_export: Int = 22
-        actual val export_min_rating_help: Int = 23
-        actual val min_rating_label: Int = 24
-        actual val rating_all_photos: Int = 25
-        actual val rating_1_and_above: Int = 26
-        actual val rating_2_and_above: Int = 27
-        actual val rating_3_and_above: Int = 28
-        actual val rating_4_and_above: Int = 29
-        actual val rating_5_only: Int = 30
-        actual val content_desc_star_rating: Int = 31
-        actual val no_spots_found: Int = 32
-        actual val no_spots_range: Int = 33
-        actual val no_starred_spots: Int = 34
-        actual val no_spots_match_query: Int = 35
-        actual val first_spot_instruction: Int = 36
-        actual val empty_category_instruction: Int = 37
-    }
+actual object GalleryStrings {
+    actual val delete_selected_spots_title: Int = 1
+    actual val delete_selected_spots_confirm: Int = 2
+    actual val delete: Int = 3
+    actual val cancel: Int = 4
+    actual val export_pack: Int = 5
+    actual val get_route_google_maps: Int = 6
+    actual val share_kml: Int = 7
+    actual val search_placeholder: Int = 8
+    actual val search_label: Int = 9
+    actual val starred_only: Int = 10
+    actual val starred_limit_reached_title: Int = 11
+    actual val starred_limit_reached_message: Int = 12
+    actual val ok: Int = 13
+    actual val export_pack_options_title: Int = 14
+    actual val export: Int = 15
+    actual val show_all_spots: Int = 16
+    actual val deleted_successfully: Int = 17
+    actual val spots_starred: Int = 18
+    actual val spots_unstarred: Int = 19
+    actual val no_app_available_route: Int = 20
+    actual val content_desc_toggle_star: Int = 21
+    actual val content_desc_export: Int = 22
+    actual val export_min_rating_help: Int = 23
+    actual val min_rating_label: Int = 24
+    actual val rating_all_photos: Int = 25
+    actual val rating_1_and_above: Int = 26
+    actual val rating_2_and_above: Int = 27
+    actual val rating_3_and_above: Int = 28
+    actual val rating_4_and_above: Int = 29
+    actual val rating_5_only: Int = 30
+    actual val content_desc_star_rating: Int = 31
+    actual val no_spots_found: Int = 32
+    actual val no_spots_range: Int = 33
+    actual val no_starred_spots: Int = 34
+    actual val no_spots_match_query: Int = 35
+    actual val first_spot_instruction: Int = 36
+    actual val empty_category_instruction: Int = 37
 }
 
 private val stringMap = mapOf(

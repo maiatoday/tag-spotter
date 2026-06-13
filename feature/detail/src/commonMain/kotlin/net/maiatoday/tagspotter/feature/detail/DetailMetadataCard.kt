@@ -1,6 +1,6 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import net.maiatoday.tagspotter.feature.detail.res.R
+import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 
 
 import androidx.compose.foundation.BorderStroke
@@ -181,7 +181,7 @@ fun DetailMetadataCard(
 
                 if (isCreationMode) {
                     Text(
-                        text = stringResource(R.string.new_spot),
+                        text = stringResource(DetailRes.string.new_spot),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.Bold
@@ -195,7 +195,7 @@ fun DetailMetadataCard(
                         }
                     ) {
                         Text(
-                            text = if (isErased) stringResource(R.string.mark_active) else stringResource(details.spot.category.getCategoryStatusActionMarkInactiveText()),
+                            text = if (isErased) stringResource(DetailRes.string.mark_active) else stringResource(details.spot.category.getCategoryStatusActionMarkInactiveText()),
                             color = if (isErased) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
@@ -214,7 +214,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.title_header),
+                            text = stringResource(DetailRes.string.title_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
@@ -231,7 +231,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = stringResource(R.string.content_desc_save_title),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_save_title),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -242,7 +242,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -258,8 +258,8 @@ fun DetailMetadataCard(
                             descriptionEditInput = it
                             if (isCreationMode) onUpdateDescription(it)
                         },
-                        label = { Text(stringResource(R.string.title_label)) },
-                        placeholder = { Text(stringResource(R.string.title_placeholder)) },
+                        label = { Text(stringResource(DetailRes.string.title_label)) },
+                        placeholder = { Text(stringResource(DetailRes.string.title_placeholder)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 4,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -277,7 +277,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.title_header),
+                            text = stringResource(DetailRes.string.title_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
@@ -288,7 +288,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.content_desc_edit_title),
+                                contentDescription = stringResource(DetailRes.string.content_desc_edit_title),
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -296,7 +296,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = details.spot.description.ifEmpty { stringResource(R.string.no_title_logged) },
+                        text = details.spot.description.ifEmpty { stringResource(DetailRes.string.no_title_logged) },
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = MaterialTheme.typography.displayMedium.fontFamily,
                             fontWeight = FontWeight.Bold
@@ -341,7 +341,7 @@ fun DetailMetadataCard(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.ImageSearch,
-                                            contentDescription = stringResource(R.string.content_desc_search_lens),
+                                            contentDescription = stringResource(DetailRes.string.content_desc_search_lens),
                                             tint = MaterialTheme.colorScheme.secondary,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -352,7 +352,7 @@ fun DetailMetadataCard(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.AutoAwesome,
-                                            contentDescription = stringResource(R.string.content_desc_identify_ai),
+                                            contentDescription = stringResource(DetailRes.string.content_desc_identify_ai),
                                             tint = MaterialTheme.colorScheme.tertiary,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -383,7 +383,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = stringResource(R.string.content_desc_save_artists),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_save_artists),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -394,7 +394,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -455,7 +455,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Navigation,
-                                contentDescription = stringResource(R.string.content_desc_add_artist),
+                                contentDescription = stringResource(DetailRes.string.content_desc_add_artist),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -495,7 +495,7 @@ fun DetailMetadataCard(
                                         )
                                         Icon(
                                             imageVector = Icons.Default.Close,
-                                            contentDescription = stringResource(R.string.content_desc_remove_artist),
+                                            contentDescription = stringResource(DetailRes.string.content_desc_remove_artist),
                                             tint = MaterialTheme.colorScheme.error,
                                             modifier = Modifier
                                                 .size(14.dp)
@@ -531,7 +531,7 @@ fun DetailMetadataCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Edit,
-                                    contentDescription = stringResource(R.string.content_desc_edit_artists),
+                                    contentDescription = stringResource(DetailRes.string.content_desc_edit_artists),
                                     tint = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -559,7 +559,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.photographer_header),
+                            text = stringResource(DetailRes.string.photographer_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold
@@ -576,7 +576,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = stringResource(R.string.content_desc_save_photographer),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_save_photographer),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -587,7 +587,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -603,8 +603,8 @@ fun DetailMetadataCard(
                             photographerEditInput = it
                             if (isCreationMode) onUpdatePhotographer(it)
                         },
-                        label = { Text(stringResource(R.string.photographer_label)) },
-                        placeholder = { Text(defaultPhotographer.ifEmpty { stringResource(R.string.photographer_placeholder_name) }) },
+                        label = { Text(stringResource(DetailRes.string.photographer_label)) },
+                        placeholder = { Text(defaultPhotographer.ifEmpty { stringResource(DetailRes.string.photographer_placeholder_name) }) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -622,7 +622,7 @@ fun DetailMetadataCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.photographer_header),
+                            text = stringResource(DetailRes.string.photographer_header),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
@@ -633,7 +633,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.content_desc_edit_photographer),
+                                contentDescription = stringResource(DetailRes.string.content_desc_edit_photographer),
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -641,7 +641,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = details.spot.photographer.ifEmpty { defaultPhotographer.ifEmpty { stringResource(R.string.not_set) } },
+                        text = details.spot.photographer.ifEmpty { defaultPhotographer.ifEmpty { stringResource(DetailRes.string.not_set) } },
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -676,7 +676,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = stringResource(R.string.content_desc_save_artwork_date),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_save_artwork_date),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -687,7 +687,7 @@ fun DetailMetadataCard(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = stringResource(R.string.content_desc_cancel_edit),
+                                        contentDescription = stringResource(DetailRes.string.content_desc_cancel_edit),
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -733,7 +733,7 @@ fun DetailMetadataCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.content_desc_edit_artwork_date),
+                                contentDescription = stringResource(DetailRes.string.content_desc_edit_artwork_date),
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -741,7 +741,7 @@ fun DetailMetadataCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = details.spot.artworkDate.ifEmpty { stringResource(R.string.date_unknown) },
+                        text = details.spot.artworkDate.ifEmpty { stringResource(DetailRes.string.date_unknown) },
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -775,7 +775,7 @@ fun DetailMetadataCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = stringResource(R.string.btn_navigate),
+                            text = stringResource(DetailRes.string.btn_navigate),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     }
@@ -798,7 +798,7 @@ fun DetailMetadataCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isCreationMode) stringResource(R.string.btn_refine) else stringResource(R.string.btn_map_it),
+                        text = if (isCreationMode) stringResource(DetailRes.string.btn_refine) else stringResource(DetailRes.string.btn_map_it),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                     )
                 }

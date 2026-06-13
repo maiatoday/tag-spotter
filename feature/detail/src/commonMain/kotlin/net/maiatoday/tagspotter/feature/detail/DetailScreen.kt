@@ -2,7 +2,7 @@ package net.maiatoday.tagspotter.feature.detail
 
 import net.maiatoday.tagspotter.core.database.epochMillis
 
-import net.maiatoday.tagspotter.feature.detail.res.R
+import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 
 
 
@@ -153,7 +153,7 @@ fun DetailScreen(
         if (mainImagePath.isNotEmpty()) {
             viewModel.identifyArtist(mainImagePath)
         } else {
-            toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.R.string.toast_no_img_analyze)
+            toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.toast_no_img_analyze)
         }
     }
 
@@ -192,13 +192,13 @@ fun DetailScreen(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.ai_suggestions_title))
+                    Text(stringResource(DetailRes.string.ai_suggestions_title))
                 }
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = stringResource(R.string.ai_suggestions_intro),
+                        text = stringResource(DetailRes.string.ai_suggestions_intro),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -216,7 +216,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text(spotDetails?.spot?.category?.let { stringResource(it.getCategoryCreatorLabel()) } ?: stringResource(net.maiatoday.tagspotter.core.ui.res.R.string.creator_label_default), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(spotDetails?.spot?.category?.let { stringResource(it.getCategoryCreatorLabel()) } ?: stringResource(net.maiatoday.tagspotter.core.ui.res.TagRes.string.creator_label_default), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                                 Text(suggestionArtist, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
@@ -235,7 +235,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text(stringResource(R.string.suggested_title), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(stringResource(DetailRes.string.suggested_title), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                                 Text(suggestionTitle, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
@@ -271,7 +271,7 @@ fun DetailScreen(
                                     }
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.suggested_tags), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(stringResource(DetailRes.string.suggested_tags), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                             }
                             
                             Spacer(modifier = Modifier.height(4.dp))
@@ -315,7 +315,7 @@ fun DetailScreen(
                                             if (isSelected) {
                                                 Icon(
                                                     imageVector = Icons.Default.Close,
-                                                    contentDescription = stringResource(R.string.content_desc_deselect),
+                                                    contentDescription = stringResource(DetailRes.string.content_desc_deselect),
                                                     modifier = Modifier.size(12.dp)
                                                 )
                                             }
@@ -348,12 +348,12 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 ) {
-                    Text(stringResource(R.string.apply_selected))
+                    Text(stringResource(DetailRes.string.apply_selected))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.resetAiState() }) {
-                    Text(stringResource(R.string.cancel))
+                    Text(stringResource(DetailRes.string.cancel))
                 }
             }
         )
@@ -364,19 +364,19 @@ fun DetailScreen(
         val error = aiState as AiState.Error
         val (title, message) = when (error) {
             is AiState.Error.MissingKey -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_key_missing_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_key_missing_msg)
+                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_missing_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_missing_msg)
             }
             is AiState.Error.InvalidKey -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_key_invalid_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_key_invalid_msg)
+                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_invalid_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_invalid_msg)
             }
             is AiState.Error.QuotaExceeded -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_quota_exceeded_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_quota_exceeded_msg)
+                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_quota_exceeded_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_quota_exceeded_msg)
             }
             is AiState.Error.SafetyBlocked -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_safety_blocked_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_safety_blocked_msg)
+                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_safety_blocked_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_safety_blocked_msg)
             }
             is AiState.Error.Generic -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.R.string.err_generic_recognition_title) to error.message
+                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_generic_recognition_title) to error.message
             }
         }
 
@@ -403,7 +403,7 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     )
                 ) {
-                    Text(stringResource(R.string.ok))
+                    Text(stringResource(DetailRes.string.ok))
                 }
             }
         )
@@ -415,7 +415,7 @@ fun DetailScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.resetWikiSearchState() },
                 confirmButton = {},
-                title = { Text(stringResource(R.string.wiki_searching_title)) },
+                title = { Text(stringResource(DetailRes.string.wiki_searching_title)) },
                 text = {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -439,11 +439,11 @@ fun DetailScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.wiki_add_link_title))
+                        Text(stringResource(DetailRes.string.wiki_add_link_title))
                     }
                 },
                 text = {
-                    Text(stringResource(R.string.wiki_success_msg, state.title, state.url))
+                    Text(stringResource(DetailRes.string.wiki_success_msg, state.title, state.url))
                 },
                 confirmButton = {
                     TextButton(
@@ -452,19 +452,19 @@ fun DetailScreen(
                             viewModel.resetWikiSearchState()
                         }
                     ) {
-                        Text(stringResource(R.string.wiki_btn_add))
+                        Text(stringResource(DetailRes.string.wiki_btn_add))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.resetWikiSearchState() }) {
-                        Text(stringResource(R.string.cancel))
+                        Text(stringResource(DetailRes.string.cancel))
                     }
                 }
             )
         }
         is WikiSearchState.NotFound -> {
             LaunchedEffect(state) {
-                toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.R.string.wiki_not_found_toast)
+                toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.wiki_not_found_toast)
                 viewModel.resetWikiSearchState()
             }
         }
@@ -488,8 +488,8 @@ fun DetailScreen(
         val targetImg = imageToDelete!!
         AlertDialog(
             onDismissRequest = { imageToDelete = null },
-            title = { Text(stringResource(R.string.delete_photo_title)) },
-            text = { Text(stringResource(R.string.delete_photo_msg)) },
+            title = { Text(stringResource(DetailRes.string.delete_photo_title)) },
+            text = { Text(stringResource(DetailRes.string.delete_photo_msg)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -501,12 +501,12 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text(stringResource(R.string.delete_btn))
+                    Text(stringResource(DetailRes.string.delete_btn))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { imageToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
+                    Text(stringResource(DetailRes.string.cancel))
                 }
             }
         )
@@ -518,8 +518,8 @@ fun DetailScreen(
         val targetNote = noteToDelete!!
         AlertDialog(
             onDismissRequest = { noteToDelete = null },
-            title = { Text(stringResource(R.string.delete_note_title)) },
-            text = { Text(stringResource(R.string.delete_note_msg)) },
+            title = { Text(stringResource(DetailRes.string.delete_note_title)) },
+            text = { Text(stringResource(DetailRes.string.delete_note_msg)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -531,12 +531,12 @@ fun DetailScreen(
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text(stringResource(R.string.delete_btn))
+                    Text(stringResource(DetailRes.string.delete_btn))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { noteToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
+                    Text(stringResource(DetailRes.string.cancel))
                 }
             }
         )
@@ -704,7 +704,7 @@ fun DetailScreen(
                                     contentColor = Color.White
                                 )
                             ) {
-                                Text(stringResource(R.string.cancel))
+                                Text(stringResource(DetailRes.string.cancel))
                             }
 
                             Button(
@@ -715,7 +715,7 @@ fun DetailScreen(
                                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             ) {
-                                Text(stringResource(R.string.save_spot))
+                                Text(stringResource(DetailRes.string.save_spot))
                             }
                         }
                     }
@@ -895,7 +895,7 @@ fun DetailScreen(
                                 contentColor = Color.White
                             )
                         ) {
-                            Text(stringResource(R.string.cancel))
+                            Text(stringResource(DetailRes.string.cancel))
                         }
 
                         Button(
@@ -906,7 +906,7 @@ fun DetailScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         ) {
-                            Text(stringResource(R.string.save_spot))
+                            Text(stringResource(DetailRes.string.save_spot))
                         }
                     }
                 }
@@ -974,14 +974,14 @@ fun DetailScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.update_coords_title),
+                        text = stringResource(DetailRes.string.update_coords_title),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
                     Text(
-                        text = stringResource(R.string.update_coords_msg),
+                        text = stringResource(DetailRes.string.update_coords_msg),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -1000,7 +1000,7 @@ fun DetailScreen(
                             longitude = tempLng,
                             category = spotDetails?.spot?.category ?: "graffiti",
                             status = "active",
-                            title = stringResource(R.string.spot_location_marker),
+                            title = stringResource(DetailRes.string.spot_location_marker),
                             onClick = {}
                         )
 
@@ -1031,14 +1031,14 @@ fun DetailScreen(
                                 containerColor = Color.DarkGray
                             )
                         ) {
-                            Text(stringResource(R.string.cancel))
+                            Text(stringResource(DetailRes.string.cancel))
                         }
 
                         Button(
                             onClick = {
                                 viewModel.updateLocation(tempLat, tempLng)
                                 isMapPickerDialogVisible = false
-                                toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.R.string.location_updated_toast)
+                                toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.location_updated_toast)
                             },
                             modifier = Modifier.weight(1.5f),
                             colors = ButtonDefaults.buttonColors(
@@ -1046,7 +1046,7 @@ fun DetailScreen(
                                 contentColor = MaterialTheme.colorScheme.background
                             )
                         ) {
-                            Text(stringResource(R.string.confirm_location_btn))
+                            Text(stringResource(DetailRes.string.confirm_location_btn))
                         }
                     }
                 }
@@ -1059,13 +1059,13 @@ fun DetailScreen(
     if (showLimitExceededDialog) {
         AlertDialog(
             onDismissRequest = { showLimitExceededDialog = false },
-            title = { Text(stringResource(R.string.starred_limit_title)) },
+            title = { Text(stringResource(DetailRes.string.starred_limit_title)) },
             text = {
-                Text(stringResource(R.string.starred_limit_msg))
+                Text(stringResource(DetailRes.string.starred_limit_msg))
             },
             confirmButton = {
                 TextButton(onClick = { showLimitExceededDialog = false }) {
-                    Text(stringResource(R.string.ok))
+                    Text(stringResource(DetailRes.string.ok))
                 }
             }
         )

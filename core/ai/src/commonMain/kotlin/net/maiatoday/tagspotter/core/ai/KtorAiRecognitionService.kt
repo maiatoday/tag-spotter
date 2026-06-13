@@ -4,27 +4,21 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
-@Serializable
-internal data class WikiSuggestion(
-    val url: String? = null
-)
-
 class KtorAiRecognitionService(
     private val photoProcessor: PhotoProcessor,
-    private val httpClient: HttpClient = HttpClient {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-    }
+    private val httpClient: HttpClient
 ) : AiRecognitionService {
+
+    @Serializable
+    internal data class WikiSuggestion(
+        val url: String? = null
+    )
 
     @OptIn(ExperimentalEncodingApi::class)
     override suspend fun identifyArtist(
@@ -164,7 +158,7 @@ class KtorAiRecognitionService(
             })
         }
         
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey"
         
         val response = httpClient.post(url) {
             contentType(ContentType.Application.Json)
@@ -250,7 +244,7 @@ class KtorAiRecognitionService(
             })
         }
         
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey"
         
         val response = httpClient.post(url) {
             contentType(ContentType.Application.Json)

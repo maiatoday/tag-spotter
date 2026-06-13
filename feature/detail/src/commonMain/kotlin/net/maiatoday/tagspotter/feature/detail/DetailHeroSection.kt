@@ -1,6 +1,6 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import net.maiatoday.tagspotter.feature.detail.res.R
+import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -132,13 +132,13 @@ fun DetailHeroSection(
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = stringResource(R.string.gps_weak),
+                            text = stringResource(DetailRes.string.gps_weak),
                             color = MaterialTheme.colorScheme.tertiary,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     } else {
                         Text(
-                            text = stringResource(R.string.gps_verified),
+                            text = stringResource(DetailRes.string.gps_verified),
                             color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                         )

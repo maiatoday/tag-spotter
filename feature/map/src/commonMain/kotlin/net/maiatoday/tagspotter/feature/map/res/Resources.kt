@@ -6,23 +6,25 @@ import androidx.compose.runtime.Composable
 @Retention(AnnotationRetention.BINARY)
 expect annotation class StringRes()
 
-expect object R {
-    object string {
-        val filter_all: Int
-        val content_desc_clear_category_filter: Int
-        val search_query_chip_label: Int
-        val content_desc_clear_search_query: Int
-        val content_desc_clear_source_filter: Int
-        val content_desc_clear_location_filter: Int
-        val starred_only_filter_label: Int
-        val content_desc_clear_starred_filter: Int
-        val clear_all_filters: Int
-        val add_filters_btn: Int
-        val content_desc_starred_marker: Int
-        val no_description_added: Int
-        val view_history_notes: Int
-        val content_desc_close_details_overlay: Int
-    }
+expect object MapRes {
+    val string: MapStrings
+}
+
+expect object MapStrings {
+    val filter_all: Int
+    val content_desc_clear_category_filter: Int
+    val search_query_chip_label: Int
+    val content_desc_clear_search_query: Int
+    val content_desc_clear_source_filter: Int
+    val content_desc_clear_location_filter: Int
+    val starred_only_filter_label: Int
+    val content_desc_clear_starred_filter: Int
+    val clear_all_filters: Int
+    val add_filters_btn: Int
+    val content_desc_starred_marker: Int
+    val no_description_added: Int
+    val view_history_notes: Int
+    val content_desc_close_details_overlay: Int
 }
 
 @Composable

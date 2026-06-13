@@ -1,6 +1,6 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import net.maiatoday.tagspotter.feature.detail.res.R
+import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,7 +68,7 @@ fun DetailPhotoTimeline(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = stringResource(R.string.photo_timeline_header),
+                text = stringResource(DetailRes.string.photo_timeline_header),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -82,7 +82,7 @@ fun DetailPhotoTimeline(
             ) {
                 Icon(
                     imageVector = Icons.Default.AddPhotoAlternate,
-                    contentDescription = stringResource(R.string.content_desc_add_image),
+                    contentDescription = stringResource(DetailRes.string.content_desc_add_image),
                     tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -157,7 +157,7 @@ fun SpotTimelineCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.content_desc_delete_image),
+                        contentDescription = stringResource(DetailRes.string.content_desc_delete_image),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(18.dp)
                     )
@@ -173,7 +173,7 @@ fun SpotTimelineCard(
                 ) {
                     Icon(
                         imageVector = if (isMain) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = stringResource(R.string.content_desc_main_thumbnail),
+                        contentDescription = stringResource(DetailRes.string.content_desc_main_thumbnail),
                         tint = if (isMain) Color(0xFFF43F5E) else Color.White,
                         modifier = Modifier.size(18.dp)
                     )
@@ -203,7 +203,7 @@ fun SpotTimelineCard(
                         val isStarred = i <= image.rating
                         Icon(
                             imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                            contentDescription = stringResource(R.string.content_desc_star_timeline, i),
+                            contentDescription = stringResource(DetailRes.string.content_desc_star_timeline, i),
                             tint = if (isStarred) Color(0xFFFFD700) else Color.Gray,
                             modifier = Modifier
                                 .size(16.dp)
