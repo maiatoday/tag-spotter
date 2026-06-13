@@ -1,23 +1,32 @@
 package net.maiatoday.tagspotter.core.ai
 
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
-import com.google.ai.client.generativeai.type.generationConfig
-import com.google.ai.client.generativeai.type.Schema
-import com.google.ai.client.generativeai.type.FunctionType
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 @Serializable
 internal data class WikiSuggestion(
     val url: String? = null
 )
 
-class AndroidAiRecognitionService(
-    private val photoProcessor: PhotoProcessor
+class KtorAiRecognitionService(
+    private val photoProcessor: PhotoProcessor,
+    private val httpClient: HttpClient = HttpClient {
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
+    }
 ) : AiRecognitionService {
 
+    @OptIn(ExperimentalEncodingApi::class)
     override suspend fun identifyArtist(
         imagePath: String,
         apiKey: String,
@@ -25,8 +34,7 @@ class AndroidAiRecognitionService(
         currentArtist: String?,
         currentTitle: String?,
         thumbnailPath: String?
-    ): AiSuggestion {
-        // 1. Load and downscale image using PhotoProcessor
+    ): AiSuggestion? {
         var scaledBytes = photoProcessor.decodeScaledBitmap(imagePath, 1024)
         if (scaledBytes == null && !thumbnailPath.isNullOrEmpty()) {
             scaledBytes = photoProcessor.decodeScaledBitmap(thumbnailPath, 1024)
@@ -34,48 +42,9 @@ class AndroidAiRecognitionService(
         if (scaledBytes == null) {
             throw IllegalArgumentException("Failed to load image.")
         }
-        val bitmap = android.graphics.BitmapFactory.decodeByteArray(scaledBytes, 0, scaledBytes.size)
-            ?: throw IllegalArgumentException("Failed to decode image bytes.")
-
-        // 2. Initialize Gemini with responseSchema
-        val model = GenerativeModel(
-            modelName = "gemini-2.5-flash",
-            apiKey = apiKey,
-            generationConfig = generationConfig {
-                responseMimeType = "application/json"
-                responseSchema = Schema(
-                    name = "AiSuggestion",
-                    description = "Artist suggestion details",
-                    type = FunctionType.OBJECT,
-                    properties = mapOf(
-                        "artist" to Schema(
-                            name = "artist",
-                            description = "Name of the artist or creator if known, or null if unknown",
-                            nullable = true,
-                            type = FunctionType.STRING
-                        ),
-                        "title" to Schema(
-                            name = "title",
-                            description = "Suggested title for the spot/art, or null if unknown",
-                            nullable = true,
-                            type = FunctionType.STRING
-                        ),
-                        "tags" to Schema(
-                            name = "tags",
-                            description = "List of tag suggestions",
-                            type = FunctionType.ARRAY,
-                            items = Schema(
-                                name = "tag",
-                                description = "tag name",
-                                type = FunctionType.STRING
-                            )
-                        )
-                    ),
-                    required = listOf("artist", "title", "tags")
-                )
-            }
-        )
-
+        
+        val base64Image = Base64.encode(scaledBytes)
+        
         val artistRoleDescription = when (category) {
             "sculpture" -> "sculptor, artist, designer, or creator"
             "architecture" -> "architect, designer, or builder"
@@ -130,7 +99,7 @@ class AndroidAiRecognitionService(
             }
         }
 
-        val prompt = """
+        val promptText = """
             Analyze this image of a spot in the category: "$category".
             Identify the $artistRoleDescription (if known), suggest a title, and suggest tags.
             
@@ -150,45 +119,74 @@ class AndroidAiRecognitionService(
             If you do not know the creator/artist/architect/chef, set the "artist" field to null. If you cannot suggest a title, set the "title" field to null.
         """.trimIndent()
 
-        val response = model.generateContent(
-            content {
-                image(bitmap)
-                text(prompt)
-            }
-        )
-
-        val responseText = response.text ?: ""
-        if (responseText.isEmpty()) {
+        val requestBody = buildJsonObject {
+            put("contents", buildJsonArray {
+                add(buildJsonObject {
+                    put("parts", buildJsonArray {
+                        add(buildJsonObject {
+                            put("text", promptText)
+                        })
+                        add(buildJsonObject {
+                            put("inlineData", buildJsonObject {
+                                put("mimeType", "image/jpeg")
+                                put("data", base64Image)
+                            })
+                        })
+                    })
+                })
+            })
+            put("generationConfig", buildJsonObject {
+                put("responseMimeType", "application/json")
+                put("responseSchema", buildJsonObject {
+                    put("type", "OBJECT")
+                    put("properties", buildJsonObject {
+                        put("artist", buildJsonObject {
+                            put("type", "STRING")
+                            put("nullable", true)
+                        })
+                        put("title", buildJsonObject {
+                            put("type", "STRING")
+                            put("nullable", true)
+                        })
+                        put("tags", buildJsonObject {
+                            put("type", "ARRAY")
+                            put("items", buildJsonObject {
+                                put("type", "STRING")
+                            })
+                        })
+                    })
+                    put("required", buildJsonArray {
+                        add("artist")
+                        add("title")
+                        add("tags")
+                    })
+                })
+            })
+        }
+        
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+        
+        val response = httpClient.post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(requestBody)
+        }
+        
+        if (!response.status.isSuccess()) {
+            throw IllegalStateException("API call failed: ${response.status}")
+        }
+        
+        val jsonResponse = response.body<JsonObject>()
+        val candidates = jsonResponse["candidates"]?.jsonArray
+        val text = candidates?.firstOrNull()?.jsonObject?.get("content")?.jsonObject?.get("parts")?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: ""
+        
+        if (text.isEmpty()) {
             throw IllegalStateException("Empty response from AI model.")
         }
-
-        return Json.decodeFromString<AiSuggestion>(responseText.trim())
+        
+        return Json.decodeFromString<AiSuggestion>(text.trim())
     }
 
     override suspend fun searchWikipediaForSpot(title: String, category: String, artists: List<String>, apiKey: String): String? {
-        // Initialize Gemini with responseSchema
-        val model = GenerativeModel(
-            modelName = "gemini-2.5-flash",
-            apiKey = apiKey,
-            generationConfig = generationConfig {
-                responseMimeType = "application/json"
-                responseSchema = Schema(
-                    name = "WikiSuggestion",
-                    description = "Wikipedia page or artist website URL suggestion",
-                    type = FunctionType.OBJECT,
-                    properties = mapOf(
-                        "url" to Schema(
-                            name = "url",
-                            description = "Most relevant Wikipedia page URL or official artist/creator/architect/chef website URL, or null if none exists",
-                            nullable = true,
-                            type = FunctionType.STRING
-                        )
-                    ),
-                    required = listOf("url")
-                )
-            }
-        )
-
         val categoryContext = when (category) {
             "nature" -> "This is a natural feature (e.g. plant, flower, tree species, park, geological formation). Find the Wikipedia page for the species, genus, common name, or location."
             "food" -> "This is a food place, dish, or specialty food item. Find the Wikipedia page for the dish, style, chef, or notable restaurant."
@@ -198,7 +196,7 @@ class AndroidAiRecognitionService(
             else -> "This is a spot/landmark."
         }
 
-        val prompt = """
+        val promptText = """
             You are an assistant that finds the most relevant, official Wikipedia page URL or official artist/creator website URL for a given subject.
             
             We are looking for a Wikipedia page or official website related to the following spot:
@@ -224,14 +222,54 @@ class AndroidAiRecognitionService(
             }
             If no page is found, set "url" to null.
         """.trimIndent()
-
-        val response = model.generateContent(prompt)
-        val responseText = response.text ?: ""
-        if (responseText.isEmpty()) {
+        
+        val requestBody = buildJsonObject {
+            put("contents", buildJsonArray {
+                add(buildJsonObject {
+                    put("parts", buildJsonArray {
+                        add(buildJsonObject {
+                            put("text", promptText)
+                        })
+                    })
+                })
+            })
+            put("generationConfig", buildJsonObject {
+                put("responseMimeType", "application/json")
+                put("responseSchema", buildJsonObject {
+                    put("type", "OBJECT")
+                    put("properties", buildJsonObject {
+                        put("url", buildJsonObject {
+                            put("type", "STRING")
+                            put("nullable", true)
+                        })
+                    })
+                    put("required", buildJsonArray {
+                        add("url")
+                    })
+                })
+            })
+        }
+        
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+        
+        val response = httpClient.post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(requestBody)
+        }
+        
+        if (!response.status.isSuccess()) {
+            throw IllegalStateException("API call failed: ${response.status}")
+        }
+        
+        val jsonResponse = response.body<JsonObject>()
+        val candidates = jsonResponse["candidates"]?.jsonArray
+        val text = candidates?.firstOrNull()?.jsonObject?.get("content")?.jsonObject?.get("parts")?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: ""
+        
+        if (text.isEmpty()) {
             throw IllegalStateException("Empty response from AI model.")
         }
-
-        val suggestion = Json.decodeFromString<WikiSuggestion>(responseText.trim())
+        
+        val suggestion = Json.decodeFromString<WikiSuggestion>(text.trim())
         return suggestion.url
     }
 }

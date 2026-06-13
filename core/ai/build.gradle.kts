@@ -1,37 +1,44 @@
+@OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
 plugins {
-    alias(libs.plugins.android.library)
+    kotlin("multiplatform")
+    alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.serialization)
 }
 
-android {
-    namespace = "net.maiatoday.tagspotter.core.ai"
-    compileSdk = 37
-
-    defaultConfig {
+kotlin {
+    android {
+        namespace = "net.maiatoday.tagspotter.core.ai"
+        compileSdk = 37
         minSdk = 29
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+    
+    jvm()
+    
+    iosArm64()
+    iosSimulatorArm64()
+    
+    wasmJs {
+        browser()
     }
-    
-    testFixtures {
-        enable = true
-    }
-}
 
-dependencies {
-    implementation(project(":core:model"))
-    implementation(project(":core:photo"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.google.generativeai)
-    
-    // Koin
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    
-    // Test Fixtures
-    testFixturesImplementation(project(":core:model"))
+    sourceSets {
+        commonMain.dependencies {
+            implementation(project(":core:model"))
+            implementation(project(":core:photo"))
+            implementation(libs.kotlinx.serialization.json)
+            
+            // Ktor Client for API requests
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            
+            // Koin
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.ktor.client.mock)
+        }
+    }
 }
