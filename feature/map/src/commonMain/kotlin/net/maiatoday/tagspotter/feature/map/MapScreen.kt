@@ -35,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,25 +44,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.model.LocationUtils
+import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.ui.OsmMapView
 import net.maiatoday.tagspotter.core.ui.OsmMarker
-import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.FilterBottomSheet
-import org.koin.androidx.compose.koinViewModel
-import org.osmdroid.util.BoundingBox
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import java.io.File
+import net.maiatoday.tagspotter.feature.map.res.R
+import net.maiatoday.tagspotter.feature.map.res.stringResource
+import net.maiatoday.tagspotter.feature.map.res.formatImageModel
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -88,34 +84,6 @@ fun MapScreen(
     val useDarkMap = isSystemDark && darkMapEnabled
 
     var showFilterBottomSheet by remember { mutableStateOf(false) }
-    var mapViewInstance: MapView? by remember { mutableStateOf(null) }
-
-    // Trigger map camera update when activeFilterCenter or activeRadiusMeters changes
-    LaunchedEffect(activeFilterCenter, activeRadiusMeters) {
-        val center = activeFilterCenter
-        val map = mapViewInstance
-        if (map != null) {
-            if (center != null) {
-                map.controller.animateTo(GeoPoint(center.latitude, center.longitude))
-                val zoom = when {
-                    activeRadiusMeters <= 500.0 -> 16.0
-                    activeRadiusMeters <= 1000.0 -> 15.0
-                    activeRadiusMeters <= 2000.0 -> 14.0
-                    activeRadiusMeters <= 5000.0 -> 13.0
-                    activeRadiusMeters <= 10000.0 -> 12.0
-                    activeRadiusMeters <= 20000.0 -> 11.0
-                    else -> 10.0
-                }
-                map.controller.setZoom(zoom)
-            } else {
-                if (spots.isNotEmpty()) {
-                    val points = spots.map { GeoPoint(it.spot.latitude, it.spot.longitude) }
-                    val bbox = BoundingBox.fromGeoPoints(points)
-                    map.zoomToBoundingBox(bbox, true, 80)
-                }
-            }
-        }
-    }
 
     // Map spots to OsmMarkers
     val markers = spots.map { spotDetails ->
@@ -129,9 +97,6 @@ fun MapScreen(
             isStarred = spotDetails.spot.isStarred,
             onClick = {
                 viewModel.selectSpot(spotDetails)
-                mapViewInstance?.controller?.animateTo(
-                    GeoPoint(spotDetails.spot.latitude, spotDetails.spot.longitude)
-                )
             }
         )
     }
@@ -479,13 +444,7 @@ fun MapScreen(
                         ) {
                             if (latestImage != null) {
                                 val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath) {
-                                    if (latestImage.thumbnailPath.isNotEmpty()) {
-                                        File(latestImage.thumbnailPath)
-                                    } else if (latestImage.imagePath.startsWith("content://")) {
-                                        latestImage.imagePath.toUri()
-                                    } else {
-                                        File(latestImage.imagePath)
-                                    }
+                                    formatImageModel(latestImage.imagePath, latestImage.thumbnailPath)
                                 }
                                 AsyncImage(
                                     model = imageModel,
@@ -520,7 +479,7 @@ fun MapScreen(
                                     }
                                     if (isErased) {
                                         Text(
-                                            text = "(${spot.spot.category.getCategoryInactiveStatusLabel()})",
+                                            text = "(${stringResource(spot.spot.category.getCategoryInactiveStatusLabel())})",
                                             color = MaterialTheme.colorScheme.error,
                                             style = MaterialTheme.typography.labelSmall
                                         )

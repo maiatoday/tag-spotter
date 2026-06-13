@@ -18,7 +18,6 @@ import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.settings.FilterManager
 import net.maiatoday.tagspotter.feature.gallery.EmojiSearchMap
-import org.osmdroid.util.GeoPoint
 import kotlin.math.roundToInt
 
 class MapViewModel(
@@ -157,14 +156,14 @@ class MapViewModel(
         filterManager.clearLocationFilter()
     }
 
-    private fun resolveCityCoordinate(homeCityName: String): GeoPoint {
+    private fun resolveCityCoordinate(homeCityName: String): MapPoint {
         if (homeCityName.startsWith("Custom:")) {
             try {
                 val coords = homeCityName.removePrefix("Custom:").trim().split(",")
                 if (coords.size == 2) {
                     val lat = coords[0].trim().toDouble()
                     val lng = coords[1].trim().toDouble()
-                    return GeoPoint(lat, lng)
+                    return MapPoint(lat, lng)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -173,7 +172,7 @@ class MapViewModel(
         return CITIES[homeCityName] ?: CITIES["Milan"]!!
     }
 
-    val initialMapCenter: StateFlow<GeoPoint?> = repository.getAllSpots()
+    val initialMapCenter: StateFlow<MapPoint?> = repository.getAllSpots()
         .combine(settingsRepository.homeCity) { allSpots, homeCityName ->
             if (allSpots.isNotEmpty()) {
                 val groups = allSpots.groupBy { spotDetails ->
@@ -186,7 +185,7 @@ class MapViewModel(
                 if (mostPopulatedGroup != null) {
                     val avgLat = mostPopulatedGroup.value.map { it.spot.latitude }.average()
                     val avgLng = mostPopulatedGroup.value.map { it.spot.longitude }.average()
-                    GeoPoint(avgLat, avgLng)
+                    MapPoint(avgLat, avgLng)
                 } else {
                     resolveCityCoordinate(homeCityName)
                 }
@@ -202,7 +201,7 @@ class MapViewModel(
 
     companion object {
         val CITIES = LocationUtils.CITIES.mapValues { (_, coords) ->
-            GeoPoint(coords.first, coords.second)
+            MapPoint(coords.first, coords.second)
         }
     }
 }

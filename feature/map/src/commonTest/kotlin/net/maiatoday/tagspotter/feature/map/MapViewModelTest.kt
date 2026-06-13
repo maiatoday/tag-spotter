@@ -1,27 +1,38 @@
 package net.maiatoday.tagspotter.feature.map
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import net.maiatoday.tagspotter.MainDispatcherExtension
+import kotlinx.coroutines.test.setMain
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
 import net.maiatoday.tagspotter.core.settings.FilterManager
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.RegisterExtension
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelTest {
 
-    @JvmField
-    @RegisterExtension
-    val mainDispatcherExtension = MainDispatcherExtension()
+    private val testDispatcher = UnconfinedTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     private val repository = FakeSpotRepository()
     private val settingsRepository = FakeSettingsRepository()
@@ -56,10 +67,9 @@ class MapViewModelTest {
         val viewModel = MapViewModel(repository, filterManager, settingsRepository)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
         }
-        testScheduler.runCurrent()
 
         assertEquals(2, viewModel.spots.value.size)
 
@@ -88,21 +98,21 @@ class MapViewModelTest {
         val viewModel = MapViewModel(repository, filterManager, settingsRepo)
 
         // Collect initialMapCenter to trigger StateFlow updates
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+        backgroundScope.launch(testDispatcher) {
             viewModel.initialMapCenter.collect {}
         }
 
         // Milan coords: (45.4642, 9.1900)
         val milanCenter = viewModel.initialMapCenter.value
         assertNotNull(milanCenter)
-        assertEquals(45.4642, milanCenter!!.latitude, 0.0001)
+        assertEquals(45.4642, milanCenter.latitude, 0.0001)
         assertEquals(9.1900, milanCenter.longitude, 0.0001)
 
         // 2. Change home city to "London" with no spots
         settingsRepo.updateHomeCity("London")
         val londonCenter = viewModel.initialMapCenter.value
         assertNotNull(londonCenter)
-        assertEquals(51.5074, londonCenter!!.latitude, 0.0001)
+        assertEquals(51.5074, londonCenter.latitude, 0.0001)
         assertEquals(-0.1278, londonCenter.longitude, 0.0001)
 
         // 3. Add spots in Paris (48.8566, 2.3522) and San Francisco (37.7749, -122.4194)
@@ -152,7 +162,7 @@ class MapViewModelTest {
 
         val parisClusterCenter = viewModel.initialMapCenter.value
         assertNotNull(parisClusterCenter)
-        assertEquals(avgParisLat, parisClusterCenter!!.latitude, 0.0001)
+        assertEquals(avgParisLat, parisClusterCenter.latitude, 0.0001)
         assertEquals(avgParisLng, parisClusterCenter.longitude, 0.0001)
 
         // 4. Clear spots and check Berlin
@@ -160,21 +170,21 @@ class MapViewModelTest {
         settingsRepo.updateHomeCity("Berlin")
         val berlinCenter = viewModel.initialMapCenter.value
         assertNotNull(berlinCenter)
-        assertEquals(52.5200, berlinCenter!!.latitude, 0.0001)
+        assertEquals(52.5200, berlinCenter.latitude, 0.0001)
         assertEquals(13.4050, berlinCenter.longitude, 0.0001)
 
         // 5. Check Custom Coordinates
         settingsRepo.updateHomeCity("Custom: 12.3456, -78.9012")
         val customCenter = viewModel.initialMapCenter.value
         assertNotNull(customCenter)
-        assertEquals(12.3456, customCenter!!.latitude, 0.0001)
+        assertEquals(12.3456, customCenter.latitude, 0.0001)
         assertEquals(-78.9012, customCenter.longitude, 0.0001)
 
         // 6. Check bad Custom Coordinates fallback (should default to Milan)
         settingsRepo.updateHomeCity("Custom: invalid, coordinates")
         val fallbackCenter = viewModel.initialMapCenter.value
         assertNotNull(fallbackCenter)
-        assertEquals(45.4642, fallbackCenter!!.latitude, 0.0001)
+        assertEquals(45.4642, fallbackCenter.latitude, 0.0001)
         assertEquals(9.1900, fallbackCenter.longitude, 0.0001)
     }
 }
