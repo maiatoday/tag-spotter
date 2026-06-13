@@ -42,29 +42,19 @@ val DarkMatterTileSource = XYTileSource(
     "Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
 )
 
-data class OsmMarker(
-    val id: Long,
-    val latitude: Double,
-    val longitude: Double,
-    val category: String,
-    val status: String,
-    val title: String,
-    val isStarred: Boolean = false,
-    val onClick: () -> Unit
-)
-
 @Composable
-fun OsmMapView(
+actual fun OsmMapView(
     latitude: Double,
     longitude: Double,
     zoomLevel: Double,
     markers: List<OsmMarker>,
     useDarkMap: Boolean,
-    modifier: Modifier = Modifier,
-    radiusCircleCenter: GeoPoint? = null,
-    radiusCircleMeters: Double = 0.0,
-    onMapClick: ((GeoPoint) -> Unit)? = null,
-    onMapReady: ((MapView) -> Unit)? = null
+    modifier: Modifier,
+    radiusCircleCenterLatitude: Double?,
+    radiusCircleCenterLongitude: Double?,
+    radiusCircleMeters: Double,
+    onMapClick: ((Double, Double) -> Unit)?,
+    onMapReady: (() -> Unit)?
 ) {
     val context = LocalContext.current
     val categoryColors = MaterialTheme.categoryColors
@@ -100,7 +90,7 @@ fun OsmMapView(
                     val receiver = object : MapEventsReceiver {
                         override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
                             if (p != null) {
-                                onMapClick(p)
+                                onMapClick(p.latitude, p.longitude)
                             }
                             return true
                         }
@@ -109,7 +99,7 @@ fun OsmMapView(
                     overlays.add(MapEventsOverlay(receiver))
                 }
                 
-                onMapReady?.invoke(this)
+                onMapReady?.invoke()
             }
         },
         update = { map ->
@@ -125,10 +115,10 @@ fun OsmMapView(
             map.overlays.filterIsInstance<Polygon>().forEach { map.overlays.remove(it) }
 
             // Add circle overlay if active
-            if (radiusCircleCenter != null && radiusCircleMeters > 0.0) {
+            if (radiusCircleCenterLatitude != null && radiusCircleCenterLongitude != null && radiusCircleMeters > 0.0) {
                 val circleColor = Color(0xFF00FFCC) // Neon Cyan
                 val circle = Polygon(map).apply {
-                    points = Polygon.pointsAsCircle(radiusCircleCenter, radiusCircleMeters)
+                    points = Polygon.pointsAsCircle(GeoPoint(radiusCircleCenterLatitude, radiusCircleCenterLongitude), radiusCircleMeters)
                     fillPaint.color = circleColor.copy(alpha = 0.12f).toArgb()
                     outlinePaint.color = circleColor.toArgb()
                     outlinePaint.strokeWidth = 2.0f * map.context.resources.displayMetrics.density

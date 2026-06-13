@@ -1,7 +1,9 @@
 package net.maiatoday.tagspotter.core.ui
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
+import net.maiatoday.tagspotter.core.ui.res.R
+
+import kotlin.test.assertEquals
+import kotlin.test.Test
 
 class CategoryExtensionsTest {
 

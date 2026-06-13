@@ -4,52 +4,13 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
-import net.maiatoday.tagspotter.core.ui.R
 
-// Set up the Google Fonts provider
-val fontProvider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
-)
+expect val SpaceGroteskFontFamily: FontFamily
+expect val HankenGroteskFontFamily: FontFamily
+expect val InterFontFamily: FontFamily
+expect val JetBrainsMonoFontFamily: FontFamily
 
-// Font Families
-val SpaceGroteskFont = GoogleFont("Space Grotesk")
-val SpaceGroteskFontFamily = FontFamily(
-    Font(googleFont = SpaceGroteskFont, fontProvider = fontProvider, weight = FontWeight.Normal),
-    Font(googleFont = SpaceGroteskFont, fontProvider = fontProvider, weight = FontWeight.Medium),
-    Font(googleFont = SpaceGroteskFont, fontProvider = fontProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = SpaceGroteskFont, fontProvider = fontProvider, weight = FontWeight.Bold)
-)
-
-val HankenGroteskFont = GoogleFont("Hanken Grotesk")
-val HankenGroteskFontFamily = FontFamily(
-    Font(googleFont = HankenGroteskFont, fontProvider = fontProvider, weight = FontWeight.Normal),
-    Font(googleFont = HankenGroteskFont, fontProvider = fontProvider, weight = FontWeight.Medium),
-    Font(googleFont = HankenGroteskFont, fontProvider = fontProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = HankenGroteskFont, fontProvider = fontProvider, weight = FontWeight.Bold)
-)
-
-val InterFont = GoogleFont("Inter")
-val InterFontFamily = FontFamily(
-    Font(googleFont = InterFont, fontProvider = fontProvider, weight = FontWeight.Normal),
-    Font(googleFont = InterFont, fontProvider = fontProvider, weight = FontWeight.Medium),
-    Font(googleFont = InterFont, fontProvider = fontProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = InterFont, fontProvider = fontProvider, weight = FontWeight.Bold)
-)
-
-val JetBrainsMonoFont = GoogleFont("JetBrains Mono")
-val JetBrainsMonoFontFamily = FontFamily(
-    Font(googleFont = JetBrainsMonoFont, fontProvider = fontProvider, weight = FontWeight.Normal),
-    Font(googleFont = JetBrainsMonoFont, fontProvider = fontProvider, weight = FontWeight.Medium),
-    Font(googleFont = JetBrainsMonoFont, fontProvider = fontProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = JetBrainsMonoFont, fontProvider = fontProvider, weight = FontWeight.Bold)
-)
-
-// Define typography mapping Stitch design tokens to Material 3
 val Typography = Typography(
     displayLarge = TextStyle(
         fontFamily = SpaceGroteskFontFamily,

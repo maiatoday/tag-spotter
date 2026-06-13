@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.core.ui
 
-import androidx.annotation.StringRes
+import net.maiatoday.tagspotter.core.ui.res.R
+import net.maiatoday.tagspotter.core.ui.res.StringRes
 
 @StringRes
 fun String.getCategoryCreatorLabel(): Int = when (this) {

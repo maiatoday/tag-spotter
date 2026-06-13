@@ -1,59 +1,79 @@
 plugins {
-    alias(libs.plugins.android.library)
+    kotlin("multiplatform")
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.compose.compiler)
 }
 
-android {
-    namespace = "net.maiatoday.tagspotter.core.ui"
-    compileSdk = 37
-
-    defaultConfig {
+kotlin {
+    androidLibrary {
+        namespace = "net.maiatoday.tagspotter.core.ui"
+        compileSdk = 37
         minSdk = 29
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-    
-    buildFeatures {
-        compose = true
-    }
-
-    testOptions {
-        unitTests {
-            all {
-                it.useJUnitPlatform()
-            }
+        
+        androidResources {
+            enable = true
         }
     }
-}
+    jvm()
+    iosSimulatorArm64()
+    iosArm64()
+    wasmJs {
+        browser()
+    }
 
-dependencies {
-    implementation(project(":core:model"))
-    
-    implementation(libs.androidx.core.ktx)
-    
-    // Compose
-    val composeBom = platform(libs.androidx.compose.bom)
-    implementation(composeBom)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.text.google.fonts)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.core)
-    implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-
-    // OpenStreetMap
-    implementation(libs.osmdroid.android)
-    
-    // Koin
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    implementation(libs.koin.androidx.compose)
-
-    // Testing
-    testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.platform.launcher)
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation(project(":core:model"))
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.components.resources)
+                implementation(compose.components.uiToolingPreview)
+                
+                // Lifecycle
+                implementation(libs.androidx.lifecycle.runtime.compose)
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+        
+        val nonAndroidMain by creating {
+            dependsOn(commonMain.get())
+        }
+        
+        androidMain {
+            dependencies {
+                implementation(libs.androidx.core.ktx)
+                implementation(libs.androidx.compose.ui.text.google.fonts)
+                
+                // OpenStreetMap
+                implementation(libs.osmdroid.android)
+            }
+        }
+        
+        jvmMain {
+            dependsOn(nonAndroidMain)
+        }
+        
+        iosMain {
+            dependsOn(nonAndroidMain)
+        }
+        
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain.get())
+        }
+        
+        val iosArm64Main by getting {
+            dependsOn(iosMain.get())
+        }
+        
+        wasmJsMain {
+            dependsOn(nonAndroidMain)
+        }
+    }
 }

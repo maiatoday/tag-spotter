@@ -1054,9 +1054,9 @@ fun DetailScreen(
                             markers = listOf(mapMarker),
                             useDarkMap = useDarkMap,
                             modifier = Modifier.fillMaxSize(),
-                            onMapClick = { gp ->
-                                tempLat = gp.latitude
-                                tempLng = gp.longitude
+                            onMapClick = { lat, lng ->
+                                tempLat = lat
+                                tempLng = lng
                             }
                         )
                     }

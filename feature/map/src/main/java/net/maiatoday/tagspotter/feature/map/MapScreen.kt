@@ -151,13 +151,14 @@ fun MapScreen(
                 markers = markers,
                 useDarkMap = useDarkMap,
                 modifier = Modifier.fillMaxSize(),
-                radiusCircleCenter = activeFilterCenter?.let { GeoPoint(it.latitude, it.longitude) },
+                radiusCircleCenterLatitude = activeFilterCenter?.latitude,
+                radiusCircleCenterLongitude = activeFilterCenter?.longitude,
                 radiusCircleMeters = activeRadiusMeters,
-                onMapClick = {
+                onMapClick = { lat, lng ->
                     viewModel.selectSpot(null)
                 },
-                onMapReady = { map ->
-                    mapViewInstance = map
+                onMapReady = {
+                    // map is ready
                 }
             )
         }
