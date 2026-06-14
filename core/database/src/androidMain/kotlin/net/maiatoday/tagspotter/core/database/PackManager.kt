@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
+import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
 import net.maiatoday.tagspotter.core.photo.ImageOptimizer
 import java.io.File
 import java.io.FileNotFoundException
@@ -141,13 +142,16 @@ object PackManager {
             tempFile.outputStream().use { fos ->
                 inputStream.copyTo(fos)
             }
+            val photoProcessor = AndroidPhotoProcessor(context)
             return MultiplatformPackImporter.importPack(
                 repository = repository,
-                photoProcessor = net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor(context),
                 packFilePath = tempFile.absolutePath,
                 filesDir = context.filesDir.absolutePath,
                 cacheDir = context.cacheDir.absolutePath,
-                currentPhotographerName = currentPhotographerName
+                currentPhotographerName = currentPhotographerName,
+                createThumbnail = { path ->
+                    photoProcessor.createThumbnailFromFile(path)
+                }
             )
         } finally {
             try {

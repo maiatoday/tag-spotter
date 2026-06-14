@@ -20,3 +20,6 @@ interface PhotoProcessor {
     fun deleteFile(filePath: String): Boolean
     suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray?
 }
+
+expect fun resolveLocalPath(path: String): String
+

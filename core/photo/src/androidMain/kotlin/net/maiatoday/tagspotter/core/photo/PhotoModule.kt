@@ -6,3 +6,6 @@ import org.koin.dsl.module
 actual val photoModule = module {
     single<PhotoProcessor> { AndroidPhotoProcessor(androidContext()) }
 }
+
+actual fun resolveLocalPath(path: String): String = path
+

@@ -33,6 +33,7 @@ kotlin {
                 implementation(project(":core:database"))
                 implementation(project(":core:settings"))
                 implementation(project(":core:ui"))
+                implementation(project(":core:photo"))
                 implementation(project(":feature:gallery"))
                 
                 implementation(compose.runtime)
