@@ -20,7 +20,7 @@ fun MainNavigation(
     initialSpotId: Long? = null,
     onNavigateToSpotHandled: () -> Unit = {},
     onTriggerCamera: () -> Unit,
-    onTriggerFiles: () -> Unit,
+    onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
     versionName: String,
     showToast: (String) -> Unit
 ) {

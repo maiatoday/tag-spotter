@@ -217,7 +217,7 @@ fun MainActivityContent(
         }
     }
 
-    val triggerFiles = {
+    val triggerFiles = { _: (String) -> Unit ->
         val permission = Manifest.permission.ACCESS_MEDIA_LOCATION
         val isGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
         if (isGranted) {

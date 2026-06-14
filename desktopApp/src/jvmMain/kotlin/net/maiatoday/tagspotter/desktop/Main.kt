@@ -43,7 +43,7 @@ fun main() = application {
                 initialSpotId = null,
                 onNavigateToSpotHandled = {},
                 onTriggerCamera = {},
-                onTriggerFiles = {
+                onTriggerFiles = { onPhotoPicked ->
                     val fileDialog = java.awt.FileDialog(null as java.awt.Frame?, "Select Photo", java.awt.FileDialog.LOAD)
                     fileDialog.setFilenameFilter { _, name ->
                         val lower = name.lowercase()
@@ -55,8 +55,7 @@ fun main() = application {
                     if (directory != null && file != null) {
                         val selectedFile = java.io.File(directory, file)
                         val uriString = selectedFile.toURI().toString()
-                        val viewModel = org.koin.core.context.GlobalContext.get().get<net.maiatoday.tagspotter.feature.main.MainViewModel>()
-                        viewModel.handlePhotoPicked(uriString)
+                        onPhotoPicked(uriString)
                     }
                 },
                 versionName = "1.0.0-desktop",

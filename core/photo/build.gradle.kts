@@ -25,6 +25,8 @@ kotlin {
             implementation(project(":core:model"))
             implementation(libs.ashampoo.kim)
             implementation(libs.koin.core)
+            implementation("com.squareup.okio:okio:3.9.0")
+            implementation(libs.kotlinx.coroutines.core)
         }
         
         commonTest.dependencies {
@@ -42,11 +44,11 @@ kotlin {
         }
         
         jvmMain {
-            dependsOn(nonAndroidMain)
+            dependsOn(commonMain.get())
         }
         
         val iosMain by creating {
-            dependsOn(nonAndroidMain)
+            dependsOn(commonMain.get())
         }
         
         val iosSimulatorArm64Main by getting {

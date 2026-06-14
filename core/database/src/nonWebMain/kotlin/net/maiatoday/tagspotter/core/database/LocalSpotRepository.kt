@@ -142,8 +142,8 @@ class LocalSpotRepository(
         val image1 = SpotImage(
             id = 9001L,
             spotId = 9001L,
-            imagePath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
-            thumbnailPath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            imagePath = "https://picsum.photos/id/402/800/600",
+            thumbnailPath = "https://picsum.photos/id/402/800/600",
             timestamp = now - 86400000 * 2
         )
 
@@ -162,8 +162,8 @@ class LocalSpotRepository(
         val image2 = SpotImage(
             id = 9002L,
             spotId = 9002L,
-            imagePath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
-            thumbnailPath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            imagePath = "https://picsum.photos/id/445/800/600",
+            thumbnailPath = "https://picsum.photos/id/445/800/600",
             timestamp = now - 86400000 * 1
         )
 
@@ -182,8 +182,8 @@ class LocalSpotRepository(
         val image3 = SpotImage(
             id = 9003L,
             spotId = 9003L,
-            imagePath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
-            thumbnailPath = "android.resource://net.maiatoday.tagspotter/drawable/ic_launcher_foreground",
+            imagePath = "https://picsum.photos/id/507/800/600",
+            thumbnailPath = "https://picsum.photos/id/507/800/600",
             timestamp = now
         )
 

@@ -72,7 +72,7 @@ fun MainContainer(
     onPhotoCaptured: (String, String, Double, Double, Boolean, String, Long?) -> Unit,
     onNavigateToSettings: () -> Unit,
     onTriggerCamera: () -> Unit,
-    onTriggerFiles: () -> Unit,
+    onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
     versionName: String,
     showToast: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -294,7 +294,7 @@ fun MainContainer(
                         )
                         NavigationRailItem(
                             selected = false,
-                            onClick = { onTriggerFiles() },
+                            onClick = { onTriggerFiles { uriString -> viewModel.handlePhotoPicked(uriString) } },
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.Folder,
@@ -425,7 +425,7 @@ fun MainContainer(
                             )
                             NavigationBarItem(
                                 selected = false,
-                                onClick = { onTriggerFiles() },
+                                onClick = { onTriggerFiles { uriString -> viewModel.handlePhotoPicked(uriString) } },
                                 icon = {
                                     Icon(
                                         imageVector = Icons.Default.Folder,

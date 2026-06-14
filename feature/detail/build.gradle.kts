@@ -47,7 +47,8 @@ kotlin {
                 implementation(libs.androidx.lifecycle.runtime.compose)
                 
                 // Coil (Image Loading) - Coil 3
-                implementation("io.coil-kt.coil3:coil-compose:3.0.0")
+                implementation(libs.coil.compose)
+                implementation(libs.coil.network)
                 
                 // Koin
                 implementation(libs.koin.core)
