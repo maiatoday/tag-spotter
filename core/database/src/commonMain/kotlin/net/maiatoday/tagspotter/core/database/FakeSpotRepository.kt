@@ -238,6 +238,16 @@ class FakeSpotRepository : SpotRepository {
         updateFlow()
     }
 
+    override suspend fun importPack(
+        packFilePath: String,
+        filesDir: String,
+        cacheDir: String,
+        currentPhotographerName: String,
+        createThumbnail: suspend (String) -> String?
+    ): Int {
+        return 0
+    }
+
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         var importedCount = 0
         spots.forEach { importedDetail ->

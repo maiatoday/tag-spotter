@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import net.maiatoday.tagspotter.core.model.SpotDetails
 
-class NonAndroidGalleryPlatformHelper : GalleryPlatformHelper {
+class WasmJsGalleryPlatformHelper : GalleryPlatformHelper {
     override fun showToast(message: String) {
         println("Toast: $message")
     }
@@ -13,11 +13,7 @@ class NonAndroidGalleryPlatformHelper : GalleryPlatformHelper {
     override fun rememberLauncher(
         onExportReady: (uriString: String) -> Unit
     ): () -> Unit {
-        return remember {
-            {
-                onExportReady("dummy_uri")
-            }
-        }
+        return remember { { onExportReady("dummy") } }
     }
 
     override fun exportPack(
@@ -27,20 +23,25 @@ class NonAndroidGalleryPlatformHelper : GalleryPlatformHelper {
         onSuccess: () -> Unit,
         onError: (Throwable) -> Unit
     ) {
-        println("Exporting pack on non-Android platform. Spot count: ${spots.size}")
         onSuccess()
     }
 
-    override fun getRoute(spots: List<SpotDetails>) {
-        println("Routing on non-Android platform. Spot count: ${spots.size}")
+    override fun getRoute(spots: List<SpotDetails>) {}
+
+    override fun shareKml(spots: List<SpotDetails>) {}
+
+    @Composable
+    override fun rememberImportLauncher(
+        onPackPicked: (pathString: String) -> Unit
+    ): () -> Unit {
+        return remember { {} }
     }
 
-    override fun shareKml(spots: List<SpotDetails>) {
-        println("Sharing KML on non-Android platform. Spot count: ${spots.size}")
-    }
+    override fun getFilesDir(): String = ""
+    override fun getCacheDir(): String = ""
 }
 
 @Composable
 actual fun rememberGalleryPlatformHelper(): GalleryPlatformHelper {
-    return remember { NonAndroidGalleryPlatformHelper() }
+    return remember { WasmJsGalleryPlatformHelper() }
 }

@@ -148,6 +148,16 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value - 9001L - 9002L - 9003L
     }
 
+    override suspend fun importPack(
+        packFilePath: String,
+        filesDir: String,
+        cacheDir: String,
+        currentPhotographerName: String,
+        createThumbnail: suspend (String) -> String?
+    ): Int {
+        return 0
+    }
+
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         var count = 0
         spots.forEach { detail ->

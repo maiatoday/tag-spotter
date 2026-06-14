@@ -31,6 +31,7 @@ kotlin {
             dependencies {
                 implementation(project(":core:model"))
                 implementation(project(":core:database"))
+                implementation(project(":core:photo"))
                 implementation(project(":core:settings"))
                 implementation(project(":core:location"))
                 implementation(project(":core:ui"))

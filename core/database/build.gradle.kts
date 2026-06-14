@@ -43,6 +43,7 @@ kotlin {
             dependencies {
                 implementation(project(":core:photo"))
                 implementation(project(":core:location"))
+                implementation("com.squareup.okio:okio:3.9.0")
                 
                 // Room
                 implementation(libs.room.runtime)

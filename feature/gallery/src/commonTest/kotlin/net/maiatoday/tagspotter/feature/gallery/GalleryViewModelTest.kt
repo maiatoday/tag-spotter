@@ -14,6 +14,7 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
 import net.maiatoday.tagspotter.core.settings.FilterManager
+import net.maiatoday.tagspotter.core.photo.FakePhotoProcessor
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -39,6 +40,7 @@ class GalleryViewModelTest {
     private val settingsRepository = FakeSettingsRepository()
     private val filterManager = FilterManager()
     private val locationProvider = FakeLocationProvider()
+    private val photoProcessor = FakePhotoProcessor()
 
     @Test
     fun spotsFilteredByCategoryCorrectly() = runTest {
@@ -68,7 +70,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
         backgroundScope.launch(testDispatcher) {
@@ -118,7 +120,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -180,7 +182,7 @@ class GalleryViewModelTest {
             )
         )
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -231,7 +233,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
 
         // Collect spots StateFlow in backgroundScope
         backgroundScope.launch(testDispatcher) {
@@ -329,7 +331,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -367,7 +369,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}

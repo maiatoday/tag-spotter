@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import net.maiatoday.tagspotter.core.database.PackManager
+import net.maiatoday.tagspotter.core.database.generateUuid
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.feature.gallery.KmlExporter
 import java.io.File
@@ -110,6 +111,36 @@ class AndroidGalleryPlatformHelper(
             }
         }
     }
+
+    @Composable
+    override fun rememberImportLauncher(
+        onPackPicked: (pathString: String) -> Unit
+    ): () -> Unit {
+        val launcher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            if (uri != null) {
+                try {
+                    val tempFile = File(context.cacheDir, "import_select_${generateUuid()}.ts_pack")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        tempFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    onPackPicked(tempFile.absolutePath)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    showToast("Failed to read selected file")
+                }
+            }
+        }
+        return remember(launcher) {
+            { launcher.launch(arrayOf("*/*")) }
+        }
+    }
+
+    override fun getFilesDir(): String = context.filesDir.absolutePath
+    override fun getCacheDir(): String = context.cacheDir.absolutePath
 }
 
 @Composable

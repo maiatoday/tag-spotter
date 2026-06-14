@@ -136,188 +136,22 @@ object PackManager {
         inputStream: InputStream,
         currentPhotographerName: String
     ): Int {
-        val tempDir = File(context.cacheDir, "import_temp_${UUID.randomUUID()}")
-        if (!tempDir.exists()) {
-            tempDir.mkdirs()
-        }
-
+        val tempFile = File(context.cacheDir, "import_temp_legacy_${generateUuid()}.ts_pack")
         try {
-            // 1. Extract all ZIP entries to tempDir
-            ZipInputStream(inputStream.buffered()).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory) {
-                        val outFile = File(tempDir, entry.name)
-                        outFile.parentFile?.mkdirs()
-                        outFile.outputStream().use { output ->
-                            zis.copyTo(output)
-                        }
-                    }
-                    entry = zis.nextEntry
-                }
+            tempFile.outputStream().use { fos ->
+                inputStream.copyTo(fos)
             }
-
-            // 2. Read spots.json
-            val jsonFile = File(tempDir, "spots.json")
-            if (!jsonFile.exists()) {
-                throw FileNotFoundException("Pack does not contain spots.json")
-            }
-
-            val jsonText = jsonFile.readText()
-            val spots = Json.decodeFromString<List<SpotDetails>>(jsonText)
-
-            var importedCount = 0
-
-            // Ensure destination directories exist
-            val thumbnailsDestDir = File(context.filesDir, "thumbnails").apply { mkdirs() }
-            val imagesDestDir = File(context.filesDir, "images").apply { mkdirs() }
-
-            val existingSpots = repository.getAllSpots().first()
-
-            // 3. Process each spot
-            spots.forEach { importedDetail ->
-                val importedSpot = importedDetail.spot
-                val isDuplicate = existingSpots.any { existingDetail ->
-                    val e = existingDetail.spot
-                    e.createdAt == importedSpot.createdAt &&
-                            e.latitude == importedSpot.latitude &&
-                            e.longitude == importedSpot.longitude
-                }
-
-                if (!isDuplicate) {
-                    val isOwnSpot = currentPhotographerName.isNotEmpty() &&
-                            importedSpot.photographer.trim().equals(currentPhotographerName.trim(), ignoreCase = true)
-                    val markImported = !isOwnSpot
-
-                    var isFirstImage = true
-                    var firstImageNewPath = ""
-                    var firstImageNewThumbnailPath = ""
-                    var firstImageRating = 0
-                    var firstImageIsMain = false
-                    val extraImages = mutableListOf<SpotImage>()
-
-                    importedDetail.images.forEach { image ->
-                        var newImagePath = image.imagePath
-                        var newThumbnailPath = image.thumbnailPath
-
-                        // Copy original image from temp if it's local/content URI
-                        if (image.imagePath.isNotEmpty() &&
-                            !image.imagePath.startsWith("android.resource://") &&
-                            !image.imagePath.startsWith("http")
-                        ) {
-                            val filename = getImageFileName(context, image)
-                            val tempImageFile = File(tempDir, "images/$filename")
-                            if (tempImageFile.exists() && tempImageFile.isFile) {
-                                val destImageFile =
-                                    File(imagesDestDir, "img_${UUID.randomUUID()}.jpg")
-                                try {
-                                    tempImageFile.inputStream().use { input ->
-                                        destImageFile.outputStream().use { output ->
-                                            input.copyTo(output)
-                                        }
-                                    }
-                                    newImagePath = destImageFile.absolutePath
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-                        }
-
-                        // Copy thumbnail from temp if it exists
-                        if (image.thumbnailPath.isNotEmpty() &&
-                            !image.thumbnailPath.startsWith("android.resource://") &&
-                            !image.thumbnailPath.startsWith("http")
-                        ) {
-                            val filename = getThumbnailFileName(image)
-                            val tempThumbFile = File(tempDir, "thumbnails/$filename")
-                            if (tempThumbFile.exists() && tempThumbFile.isFile) {
-                                val destThumbFile =
-                                    File(thumbnailsDestDir, "thumb_${UUID.randomUUID()}.jpg")
-                                try {
-                                    tempThumbFile.inputStream().use { input ->
-                                        destThumbFile.outputStream().use { output ->
-                                            input.copyTo(output)
-                                        }
-                                    }
-                                    newThumbnailPath = destThumbFile.absolutePath
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            } else {
-                                // If thumbnail is missing in ZIP but original image was successfully imported,
-                                // regenerate the thumbnail locally!
-                                if (newImagePath.isNotEmpty() && !newImagePath.startsWith("android.resource://")) {
-                                    val localImageFile = File(newImagePath)
-                                    if (localImageFile.exists()) {
-                                        val generatedThumbPath = ImageOptimizer.createThumbnail(context, localImageFile)
-                                        if (generatedThumbPath != null) {
-                                            newThumbnailPath = generatedThumbPath
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (isFirstImage) {
-                            firstImageNewPath = newImagePath
-                            firstImageNewThumbnailPath = newThumbnailPath
-                            firstImageRating = image.rating
-                            firstImageIsMain = image.isMain
-                            isFirstImage = false
-                        } else {
-                            extraImages.add(
-                                SpotImage(
-                                    spotId = 0L,
-                                    imagePath = newImagePath,
-                                    thumbnailPath = newThumbnailPath,
-                                    timestamp = image.timestamp,
-                                    rating = image.rating,
-                                    isMain = image.isMain
-                                )
-                            )
-                        }
-                    }
-
-                    // Insert Spot
-                    val newSpotId = repository.saveSpot(
-                        spot = importedSpot.copy(id = 0L, isImported = markImported),
-                        imagePath = firstImageNewPath,
-                        thumbnailPath = firstImageNewThumbnailPath,
-                        rating = firstImageRating,
-                        isMain = firstImageIsMain
-                    )
-
-                    // Insert extra images (if any)
-                    extraImages.forEach { extraImage ->
-                        repository.addImageToSpot(
-                            spotId = newSpotId,
-                            imagePath = extraImage.imagePath,
-                            thumbnailPath = extraImage.thumbnailPath,
-                            timestamp = extraImage.timestamp,
-                            rating = extraImage.rating,
-                            isMain = extraImage.isMain
-                        )
-                    }
-
-                    // Insert notes
-                    importedDetail.notes.forEach { note ->
-                        repository.addNoteToSpot(
-                            spotId = newSpotId,
-                            noteText = note.noteText,
-                            timestamp = note.timestamp
-                        )
-                    }
-
-                    importedCount++
-                }
-            }
-
-            return importedCount
-
+            return MultiplatformPackImporter.importPack(
+                repository = repository,
+                photoProcessor = net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor(context),
+                packFilePath = tempFile.absolutePath,
+                filesDir = context.filesDir.absolutePath,
+                cacheDir = context.cacheDir.absolutePath,
+                currentPhotographerName = currentPhotographerName
+            )
         } finally {
-            // Clean up temporary files
             try {
-                tempDir.deleteRecursively()
+                tempFile.delete()
             } catch (e: Exception) {
                 e.printStackTrace()
             }

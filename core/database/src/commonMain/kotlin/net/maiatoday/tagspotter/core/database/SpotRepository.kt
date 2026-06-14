@@ -25,6 +25,13 @@ interface SpotRepository {
     suspend fun loadTestData()
     suspend fun unloadTestData()
     suspend fun importSpots(spots: List<SpotDetails>): Int
+    suspend fun importPack(
+        packFilePath: String,
+        filesDir: String,
+        cacheDir: String,
+        currentPhotographerName: String,
+        createThumbnail: suspend (String) -> String?
+    ): Int
     suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean)
     suspend fun getStarredSpots(): List<Spot>
     suspend fun getStarredSpotsCount(): Int

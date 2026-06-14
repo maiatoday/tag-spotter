@@ -26,6 +26,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "SharedApp"
             isStatic = true
+            export(project(":core:database"))
         }
     }
     
@@ -38,7 +39,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(project(":core:model"))
-                implementation(project(":core:database"))
+                api(project(":core:database"))
                 implementation(project(":core:settings"))
                 implementation(project(":core:location"))
                 implementation(project(":core:photo"))

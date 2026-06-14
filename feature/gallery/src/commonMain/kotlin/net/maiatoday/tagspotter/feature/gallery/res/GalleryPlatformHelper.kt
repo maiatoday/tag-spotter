@@ -21,6 +21,14 @@ interface GalleryPlatformHelper {
     fun getRoute(spots: List<SpotDetails>)
     
     fun shareKml(spots: List<SpotDetails>)
+
+    @Composable
+    fun rememberImportLauncher(
+        onPackPicked: (pathString: String) -> Unit
+    ): () -> Unit
+
+    fun getFilesDir(): String
+    fun getCacheDir(): String
 }
 
 @Composable

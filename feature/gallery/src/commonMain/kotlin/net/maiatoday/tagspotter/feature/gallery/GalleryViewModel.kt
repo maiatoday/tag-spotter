@@ -19,12 +19,15 @@ import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.settings.FilterManager
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
+import kotlinx.coroutines.flow.first
 
 class GalleryViewModel(
     private val repository: SpotRepository,
     private val filterManager: FilterManager,
-    settingsRepository: SettingsRepository,
-    private val locationProvider: LocationProvider
+    private val settingsRepository: SettingsRepository,
+    private val locationProvider: LocationProvider,
+    private val photoProcessor: PhotoProcessor
 ) : ViewModel() {
 
     val homeCity: StateFlow<String> = settingsRepository.homeCity
@@ -197,6 +200,32 @@ class GalleryViewModel(
                 repository.updateSpotStarred(id, isStarred)
             }
             onCompleted()
+        }
+    }
+
+    fun importPack(
+        packFilePath: String,
+        filesDir: String,
+        cacheDir: String,
+        onSuccess: (Int) -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentPhotographer = settingsRepository.photographerName.first()
+                val importedCount = repository.importPack(
+                    packFilePath = packFilePath,
+                    filesDir = filesDir,
+                    cacheDir = cacheDir,
+                    currentPhotographerName = currentPhotographer,
+                    createThumbnail = { imagePath ->
+                        photoProcessor.createThumbnailFromFile(imagePath)
+                    }
+                )
+                onSuccess(importedCount)
+            } catch (e: Throwable) {
+                onError(e)
+            }
         }
     }
 }

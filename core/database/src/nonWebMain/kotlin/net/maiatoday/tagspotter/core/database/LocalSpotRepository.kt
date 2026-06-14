@@ -201,6 +201,23 @@ class LocalSpotRepository(
         }
     }
 
+    override suspend fun importPack(
+        packFilePath: String,
+        filesDir: String,
+        cacheDir: String,
+        currentPhotographerName: String,
+        createThumbnail: suspend (String) -> String?
+    ): Int {
+        return MultiplatformPackImporter.importPack(
+            repository = this,
+            packFilePath = packFilePath,
+            filesDir = filesDir,
+            cacheDir = cacheDir,
+            currentPhotographerName = currentPhotographerName,
+            createThumbnail = createThumbnail
+        )
+    }
+
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         val existingSpots = spotDao.getAllSpotsDetails().first()
         var importedCount = 0
