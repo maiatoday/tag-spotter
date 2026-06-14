@@ -1,0 +1,117 @@
+<resources>
+    <!-- Field Notes Section -->
+    <string name="field_notes_header">FIELD NOTES</string>
+    <string name="content_desc_wiki_ai_search">Search for links using AI</string>
+    <string name="no_notes_written">No notes written at this spot yet.</string>
+    <string name="write_note_label">Write a note…</string>
+    <string name="write_note_placeholder">e.g. Tag faded, style details…</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="recognizer_prompt">Speak now…</string>
+    <string name="content_desc_voice_input">Voice input</string>
+    <string name="content_desc_send_note">Send note</string>
+    <string name="speech_recognition_unsupported">Speech recognition is not supported on this device.</string>
+    <string name="content_desc_edit_note">Edit note</string>
+    <string name="content_desc_delete_note">Delete note</string>
+
+    <!-- Metadata Card Section -->
+    <string name="new_spot">NEW SPOT</string>
+    <string name="mark_active">Mark Active</string>
+    <string name="title_header">TITLE</string>
+    <string name="content_desc_save_title">Save title</string>
+    <string name="content_desc_cancel_edit">Cancel edit</string>
+    <string name="title_label">Title</string>
+    <string name="title_placeholder">e.g. Neon face stencil near Duomo</string>
+    <string name="content_desc_edit_title">Edit title</string>
+    <string name="no_title_logged">No title logged.</string>
+    <string name="content_desc_search_lens">Search artist with Lens</string>
+    <string name="content_desc_identify_ai">Identify artist with AI</string>
+    <string name="content_desc_save_artists">Save artists</string>
+    <string name="content_desc_add_artist">Add artist</string>
+    <string name="content_desc_remove_artist">Remove artist</string>
+    <string name="content_desc_edit_artists">Edit artists</string>
+    <string name="photographer_header">PHOTOGRAPHER</string>
+    <string name="content_desc_save_photographer">Save photographer</string>
+    <string name="photographer_label">Photographer</string>
+    <string name="photographer_placeholder_name">Enter name</string>
+    <string name="content_desc_edit_photographer">Edit photographer</string>
+    <string name="not_set">Not set</string>
+    <string name="content_desc_save_artwork_date">Save artwork date</string>
+    <string name="content_desc_edit_artwork_date">Edit artwork date</string>
+    <string name="date_unknown">Unknown</string>
+    <string name="btn_navigate">NAVIGATE</string>
+    <string name="btn_refine">REFINE</string>
+    <string name="btn_map_it">MAP IT</string>
+
+    <!-- Photo Timeline Section -->
+    <string name="photo_timeline_header">PHOTO TIMELINE</string>
+    <string name="content_desc_add_image">Add image</string>
+    <string name="content_desc_delete_image">Delete image</string>
+    <string name="content_desc_main_thumbnail">Main thumbnail</string>
+    <string name="content_desc_star_timeline">Star %1$d</string>
+
+    <!-- Tags Card Section -->
+    <string name="tags_header">TAGS</string>
+    <string name="content_desc_edit_tags">Edit tags</string>
+    <string name="content_desc_save_tags">Save tags</string>
+    <string name="quick_select_tags">Quick Select Tags</string>
+    <string name="recent_custom_tags">Recent Custom Tags</string>
+    <string name="add_custom_tag_label">Add Custom Tag</string>
+    <string name="add_custom_tag_placeholder">e.g. pasteup</string>
+    <string name="content_desc_add_custom_tag">Add custom tag</string>
+    <string name="no_tags_added">No tags added.</string>
+
+    <!-- AI Suggestion Dialog -->
+    <string name="ai_suggestions_title">AI Recognition Suggestions</string>
+    <string name="ai_suggestions_intro">Gemini identified the following details from your photo. Select which ones to apply:</string>
+    <string name="suggested_title">Suggested Title</string>
+    <string name="suggested_tags">Suggested Tags</string>
+    <string name="content_desc_deselect">Deselect</string>
+    <string name="apply_selected">Apply Selected</string>
+
+    <!-- AI Error Alerts -->
+    <string name="err_key_missing_title">Gemini API Key Missing</string>
+    <string name="err_key_missing_msg">A Gemini API Key is required for in-app recognition. Please configure it in Settings.</string>
+    <string name="err_key_invalid_title">Invalid API Key</string>
+    <string name="err_key_invalid_msg">The configured Gemini API Key is invalid or unauthorized. Please verify it in Settings.</string>
+    <string name="err_quota_exceeded_title">API Quota Exceeded</string>
+    <string name="err_quota_exceeded_msg">You have exceeded your Gemini API limit. Please wait a while before trying again.</string>
+    <string name="err_safety_blocked_title">Safety Blocked</string>
+    <string name="err_safety_blocked_msg">The image was flagged by Gemini\u2019s safety filters and could not be analyzed.</string>
+    <string name="err_generic_recognition_title">Recognition Error</string>
+    <string name="ok">OK</string>
+
+    <!-- Wiki AI Dialogs -->
+    <string name="wiki_searching_title">Searching for Links…</string>
+    <string name="wiki_add_link_title">Add Link</string>
+    <string name="wiki_success_msg">Found relevant Wikipedia page for \u201c%1$s\u201d:\n\n%2$s\n\nWould you like to add this to the field notes?</string>
+    <string name="wiki_btn_add">Add</string>
+    <string name="wiki_not_found_toast">No relevant Wikipedia page found.</string>
+
+    <!-- General alerts & toasts -->
+    <string name="delete_photo_title">Delete Photo?</string>
+    <string name="delete_photo_msg">Are you sure you want to delete this photo from the timeline? This action cannot be undone.</string>
+    <string name="delete_btn">Delete</string>
+    <string name="delete_note_title">Delete Note?</string>
+    <string name="delete_note_msg">Are you sure you want to delete this note? This action cannot be undone.</string>
+    <string name="save_spot">Save Spot</string>
+    <string name="gps_weak">GPS Signal Weak</string>
+    <string name="gps_verified">Verified GPS</string>
+
+    <!-- Map Coordinate updates -->
+    <string name="update_coords_title">Update Coordinates</string>
+    <string name="update_coords_msg">Tap on the map to move the tag pin.</string>
+    <string name="spot_location_marker">Spot Location</string>
+    <string name="location_updated_toast">Location Updated!</string>
+    <string name="confirm_location_btn">Confirm Location</string>
+
+    <!-- Limit Exceeded Dialog -->
+    <string name="starred_limit_title">Starred Limit Reached</string>
+    <string name="starred_limit_msg">You can only star up to 100 spots due to geofencing limits. Please unstar some spots first.</string>
+
+    <!-- Share image toasts -->
+    <string name="toast_img_file_not_found">Image file not found.</string>
+    <string name="toast_failed_share_img">Failed to share image: %1$s</string>
+    <string name="toast_no_img_search">No image available to search.</string>
+    <string name="toast_no_img_analyze">No image available to analyze.</string>
+</resources>

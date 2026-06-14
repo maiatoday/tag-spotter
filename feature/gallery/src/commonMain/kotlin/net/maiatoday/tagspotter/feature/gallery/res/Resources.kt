@@ -1,56 +1,65 @@
 package net.maiatoday.tagspotter.feature.gallery.res
 
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.StringResource
+import tagspotter.feature.gallery.generated.resources.Res
+import tagspotter.feature.gallery.generated.resources.*
 
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.FIELD, AnnotationTarget.LOCAL_VARIABLE)
-@Retention(AnnotationRetention.BINARY)
-expect annotation class StringRes()
+annotation class StringRes
 
-expect object GalleryStrings {
-    val delete_selected_spots_title: Int
-    val delete_selected_spots_confirm: Int
-    val delete: Int
-    val cancel: Int
-    val export_pack: Int
-    val get_route_google_maps: Int
-    val share_kml: Int
-    val search_placeholder: Int
-    val search_label: Int
-    val starred_only: Int
-    val starred_limit_reached_title: Int
-    val starred_limit_reached_message: Int
-    val ok: Int
-    val export_pack_options_title: Int
-    val export: Int
-    val show_all_spots: Int
-    val deleted_successfully: Int
-    val spots_starred: Int
-    val spots_unstarred: Int
-    val no_app_available_route: Int
-    val content_desc_toggle_star: Int
-    val content_desc_export: Int
-    val export_min_rating_help: Int
-    val min_rating_label: Int
-    val rating_all_photos: Int
-    val rating_1_and_above: Int
-    val rating_2_and_above: Int
-    val rating_3_and_above: Int
-    val rating_4_and_above: Int
-    val rating_5_only: Int
-    val content_desc_star_rating: Int
-    val no_spots_found: Int
-    val no_spots_range: Int
-    val no_starred_spots: Int
-    val no_spots_match_query: Int
-    val first_spot_instruction: Int
-    val empty_category_instruction: Int
+object GalleryRes {
+    val string = GalleryStrings
+}
+
+object GalleryStrings {
+    val delete_selected_spots_title: StringResource = Res.string.delete_selected_spots_title
+    val delete_selected_spots_confirm: StringResource = Res.string.delete_selected_spots_confirm
+    val delete: StringResource = Res.string.delete
+    val cancel: StringResource = Res.string.cancel
+    val export_pack: StringResource = Res.string.export_pack
+    val get_route_google_maps: StringResource = Res.string.get_route_google_maps
+    val share_kml: StringResource = Res.string.share_kml
+    val search_placeholder: StringResource = Res.string.search_placeholder
+    val search_label: StringResource = Res.string.search_label
+    val starred_only: StringResource = Res.string.starred_only
+    val starred_limit_reached_title: StringResource = Res.string.starred_limit_reached_title
+    val starred_limit_reached_message: StringResource = Res.string.starred_limit_reached_message
+    val ok: StringResource = Res.string.ok
+    val export_pack_options_title: StringResource = Res.string.export_pack_options_title
+    val export: StringResource = Res.string.export
+    val show_all_spots: StringResource = Res.string.show_all_spots
+    val deleted_successfully: StringResource = Res.string.deleted_successfully
+    val spots_starred: StringResource = Res.string.spots_starred
+    val spots_unstarred: StringResource = Res.string.spots_unstarred
+    val no_app_available_route: StringResource = Res.string.no_app_available_route
+    val content_desc_toggle_star: StringResource = Res.string.content_desc_toggle_star
+    val content_desc_export: StringResource = Res.string.content_desc_export
+    val export_min_rating_help: StringResource = Res.string.export_min_rating_help
+    val min_rating_label: StringResource = Res.string.min_rating_label
+    val rating_all_photos: StringResource = Res.string.rating_all_photos
+    val rating_1_and_above: StringResource = Res.string.rating_1_and_above
+    val rating_2_and_above: StringResource = Res.string.rating_2_and_above
+    val rating_3_and_above: StringResource = Res.string.rating_3_and_above
+    val rating_4_and_above: StringResource = Res.string.rating_4_and_above
+    val rating_5_only: StringResource = Res.string.rating_5_only
+    val content_desc_star_rating: StringResource = Res.string.content_desc_star_rating
+    val no_spots_found: StringResource = Res.string.no_spots_found
+    val no_spots_range: StringResource = Res.string.no_spots_range
+    val no_starred_spots: StringResource = Res.string.no_starred_spots
+    val no_spots_match_query: StringResource = Res.string.no_spots_match_query
+    val first_spot_instruction: StringResource = Res.string.first_spot_instruction
+    val empty_category_instruction: StringResource = Res.string.empty_category_instruction
 }
 
 @Composable
-expect fun stringResource(id: Int): String
+fun stringResource(id: StringResource): String {
+    return org.jetbrains.compose.resources.stringResource(id)
+}
 
 @Composable
-expect fun stringResource(id: Int, vararg formatArgs: Any): String
+fun stringResource(id: StringResource, vararg formatArgs: Any): String {
+    return org.jetbrains.compose.resources.stringResource(id, *formatArgs)
+}
 
 interface ToastLauncher {
     fun showToast(message: String)

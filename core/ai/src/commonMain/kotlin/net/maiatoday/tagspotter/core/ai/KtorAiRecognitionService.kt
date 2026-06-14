@@ -158,7 +158,7 @@ class KtorAiRecognitionService(
             })
         }
         
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
         
         val response = httpClient.post(url) {
             contentType(ContentType.Application.Json)
@@ -244,7 +244,7 @@ class KtorAiRecognitionService(
             })
         }
         
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
         
         val response = httpClient.post(url) {
             contentType(ContentType.Application.Json)

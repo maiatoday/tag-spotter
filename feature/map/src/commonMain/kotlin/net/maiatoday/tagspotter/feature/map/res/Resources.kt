@@ -1,36 +1,41 @@
 package net.maiatoday.tagspotter.feature.map.res
 
 import androidx.compose.runtime.Composable
+import org.jetbrains.compose.resources.StringResource
+import tagspotter.feature.map.generated.resources.Res
+import tagspotter.feature.map.generated.resources.*
 
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER, AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.FIELD, AnnotationTarget.LOCAL_VARIABLE)
-@Retention(AnnotationRetention.BINARY)
-expect annotation class StringRes()
+annotation class StringRes
 
-expect object MapRes {
-    val string: MapStrings
+object MapRes {
+    val string = MapStrings
 }
 
-expect object MapStrings {
-    val filter_all: Int
-    val content_desc_clear_category_filter: Int
-    val search_query_chip_label: Int
-    val content_desc_clear_search_query: Int
-    val content_desc_clear_source_filter: Int
-    val content_desc_clear_location_filter: Int
-    val starred_only_filter_label: Int
-    val content_desc_clear_starred_filter: Int
-    val clear_all_filters: Int
-    val add_filters_btn: Int
-    val content_desc_starred_marker: Int
-    val no_description_added: Int
-    val view_history_notes: Int
-    val content_desc_close_details_overlay: Int
+object MapStrings {
+    val filter_all: StringResource = Res.string.filter_all
+    val content_desc_clear_category_filter: StringResource = Res.string.content_desc_clear_category_filter
+    val search_query_chip_label: StringResource = Res.string.search_query_chip_label
+    val content_desc_clear_search_query: StringResource = Res.string.content_desc_clear_search_query
+    val content_desc_clear_source_filter: StringResource = Res.string.content_desc_clear_source_filter
+    val content_desc_clear_location_filter: StringResource = Res.string.content_desc_clear_location_filter
+    val starred_only_filter_label: StringResource = Res.string.starred_only_filter_label
+    val content_desc_clear_starred_filter: StringResource = Res.string.content_desc_clear_starred_filter
+    val clear_all_filters: StringResource = Res.string.clear_all_filters
+    val add_filters_btn: StringResource = Res.string.add_filters_btn
+    val content_desc_starred_marker: StringResource = Res.string.content_desc_starred_marker
+    val no_description_added: StringResource = Res.string.no_description_added
+    val view_history_notes: StringResource = Res.string.view_history_notes
+    val content_desc_close_details_overlay: StringResource = Res.string.content_desc_close_details_overlay
 }
 
 @Composable
-expect fun stringResource(id: Int): String
+fun stringResource(id: StringResource): String {
+    return org.jetbrains.compose.resources.stringResource(id)
+}
 
 @Composable
-expect fun stringResource(id: Int, vararg formatArgs: Any): String
+fun stringResource(id: StringResource, vararg formatArgs: Any): String {
+    return org.jetbrains.compose.resources.stringResource(id, *formatArgs)
+}
 
 expect fun formatImageModel(imagePath: String, thumbnailPath: String): Any

@@ -37,8 +37,31 @@ kotlin {
             implementation(libs.androidx.exifinterface)
         }
         
-        wasmJsMain.dependencies {
-            implementation(npm("pako", "2.1.0"))
+        val nonAndroidMain by creating {
+            dependsOn(commonMain.get())
+        }
+        
+        jvmMain {
+            dependsOn(nonAndroidMain)
+        }
+        
+        val iosMain by creating {
+            dependsOn(nonAndroidMain)
+        }
+        
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain)
+        }
+        
+        val iosArm64Main by getting {
+            dependsOn(iosMain)
+        }
+        
+        wasmJsMain {
+            dependsOn(nonAndroidMain)
+            dependencies {
+                implementation(npm("pako", "2.1.0"))
+            }
         }
     }
 }

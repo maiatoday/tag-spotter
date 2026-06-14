@@ -1,0 +1,19 @@
+<resources>
+    <!-- Map Filters -->
+    <string name="filter_all">All</string>
+    <string name="content_desc_clear_category_filter">Clear category filter</string>
+    <string name="search_query_chip_label">Search: \u201c%1$s\u201d</string>
+    <string name="content_desc_clear_search_query">Clear search query</string>
+    <string name="content_desc_clear_source_filter">Clear source filter</string>
+    <string name="content_desc_clear_location_filter">Clear location filter</string>
+    <string name="starred_only_filter_label">Starred Only</string>
+    <string name="content_desc_clear_starred_filter">Clear starred filter</string>
+    <string name="clear_all_filters">Clear All</string>
+    <string name="add_filters_btn">+ Add Filters</string>
+
+    <!-- Map Detail Overlay -->
+    <string name="content_desc_starred_marker">Starred</string>
+    <string name="no_description_added">No description added.</string>
+    <string name="view_history_notes">View History &amp; Notes</string>
+    <string name="content_desc_close_details_overlay">Close details overlay</string>
+</resources>

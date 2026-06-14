@@ -18,7 +18,7 @@ plugins {
 }
 
 rootProject.name = "TagSpotter"
-include(":app")
+include(":androidApp")
 include(":core:model")
 include(":core:photo")
 include(":core:location")
@@ -30,4 +30,6 @@ include(":feature:gallery")
 include(":feature:map")
 include(":feature:detail")
 include(":feature:settings")
+include(":feature:main")
 include(":wear")
+include(":desktopApp")

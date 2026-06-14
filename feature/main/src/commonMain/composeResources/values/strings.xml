@@ -1,0 +1,16 @@
+<resources>
+    <string name="toast_failed_camera_launch">Failed to launch device camera.</string>
+    <string name="drawer_settings_label">Settings</string>
+    <string name="content_desc_settings">Settings</string>
+    <string name="drawer_mock_data_label">Load Mock Test Data</string>
+    <string name="drawer_version_format">Version %1$s</string>
+    <string name="tab_gallery_label">Gallery</string>
+    <string name="tab_maps_label">Maps</string>
+    <string name="tab_camera_label">Camera</string>
+    <string name="tab_files_label">Files</string>
+    <string name="content_desc_gallery_tab">Gallery</string>
+    <string name="content_desc_maps_tab">Maps</string>
+    <string name="content_desc_camera_tab">Camera</string>
+    <string name="content_desc_files_tab">Files</string>
+    <string name="loading_processing_image">Processing image…</string>
+</resources>
