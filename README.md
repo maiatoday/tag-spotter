@@ -62,14 +62,62 @@ An Android application designed for city walkers to capture, tag, and geolocate 
 
 ### Build & Run
 
-To build the debug APK, run:
+### Android
 
+To build the debug APK:
 ```bash
-./gradlew assembleDebug
+./gradlew :androidApp:assembleDebug
 ```
 
-To run the unit tests:
+To install and run the Android app on a connected device/emulator:
+```bash
+./gradlew :androidApp:installDebug
+adb shell am start -n net.maiatoday.tagspotter/net.maiatoday.tagspotter.feature.main.MainActivity
+```
 
+To run Android unit tests:
+```bash
+./gradlew :androidApp:testDebugUnitTest
+```
+
+### iOS
+
+To build and run the iOS app on an iOS Simulator:
+
+1. **Start the Simulator**:
+   ```bash
+   open -a Simulator
+   ```
+   If needed, boot a specific simulator (e.g. iPhone 17):
+   ```bash
+   xcrun simctl boot "iPhone 17"
+   ```
+
+2. **Build the App**:
+   Specify `ONLY_ACTIVE_ARCH=YES ARCHS=arm64` to match the simulator architecture and align with the KMP Gradle project target configurations:
+   ```bash
+   xcodebuild -project iosApp/iosApp.xcodeproj \
+              -scheme iosApp \
+              -configuration Debug \
+              -sdk iphonesimulator \
+              -derivedDataPath build/ios \
+              ONLY_ACTIVE_ARCH=YES \
+              ARCHS=arm64 \
+              build
+   ```
+
+3. **Install the App**:
+   ```bash
+   xcrun simctl install booted build/ios/Build/Products/Debug-iphonesimulator/iosApp.app
+   ```
+
+4. **Launch the App**:
+   ```bash
+   xcrun simctl launch booted net.maiatoday.iosApp
+   ```
+
+### Unit Tests
+To run all unit tests across the multiplatform modules:
 ```bash
 ./gradlew test
 ```
