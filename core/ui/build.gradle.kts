@@ -6,7 +6,8 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    applyDefaultHierarchyTemplate()
+    android {
         namespace = "net.maiatoday.tagspotter.core.ui"
         compileSdk = 37
         minSdk = 29
@@ -14,6 +15,7 @@ kotlin {
         androidResources {
             enable = true
         }
+        withHostTest { }
     }
     jvm()
     iosSimulatorArm64()
@@ -64,13 +66,7 @@ kotlin {
             dependsOn(nonAndroidMain)
         }
         
-        val iosSimulatorArm64Main by getting {
-            dependsOn(iosMain.get())
-        }
-        
-        val iosArm64Main by getting {
-            dependsOn(iosMain.get())
-        }
+
         
         wasmJsMain {
             dependsOn(nonAndroidMain)

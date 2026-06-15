@@ -49,3 +49,6 @@ actual fun zip(sourceDirPath: String, zipFilePath: String) {
         }
     }
 }
+
+actual val fileSystem: okio.FileSystem = okio.FileSystem.SYSTEM
+

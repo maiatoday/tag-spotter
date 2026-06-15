@@ -6,12 +6,12 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "net.maiatoday.tagspotter.core.database"
         compileSdk = 37
         minSdk = 29
         
-        withHostTestBuilder { }
+        withHostTest { }
     }
     
     jvm()
@@ -77,7 +77,6 @@ kotlin {
         val iosArm64Main by getting {
             dependsOn(iosMain.get())
         }
-        
         wasmJsMain {
             dependencies {
                 // No Room dependencies here

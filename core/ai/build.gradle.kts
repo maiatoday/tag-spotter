@@ -6,10 +6,12 @@ plugins {
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
     android {
         namespace = "net.maiatoday.tagspotter.core.ai"
         compileSdk = 37
         minSdk = 29
+        withHostTest { }
     }
     
     jvm()
@@ -17,6 +19,7 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
     
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
         browser()
     }
@@ -49,15 +52,10 @@ kotlin {
             }
         }
         
-        val iosMain by creating {
-            dependsOn(commonMain.get())
+        iosMain {
             dependencies {
                 implementation("io.ktor:ktor-client-darwin:3.0.3")
             }
-        }
-        
-        val iosArm64Main by getting {
-            dependsOn(iosMain)
         }
         
         val wasmJsMain by getting {
@@ -68,10 +66,21 @@ kotlin {
 
         
 
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.ktor.client.okhttp)
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(libs.ktor.client.okhttp)
+            }
+        }
+
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.ktor.client.mock)
-            implementation(libs.ktor.client.okhttp)
         }
     }
 }

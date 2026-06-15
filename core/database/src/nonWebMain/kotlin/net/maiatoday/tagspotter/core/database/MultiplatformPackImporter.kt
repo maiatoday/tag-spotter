@@ -31,7 +31,7 @@ object MultiplatformPackImporter {
         val tempDir = "$cacheDir/import_temp_${generateUuid()}".toPath()
 
         // Ensure tempDir does not exist, then create it
-        FileSystem.SYSTEM.createDirectories(tempDir)
+        fileSystem.createDirectories(tempDir)
 
         try {
             // 1. Extract all ZIP entries using our platform-agnostic unzip helper
@@ -39,11 +39,11 @@ object MultiplatformPackImporter {
 
             // 2. Read spots.json
             val jsonFile = tempDir / "spots.json"
-            if (!FileSystem.SYSTEM.exists(jsonFile)) {
+            if (!fileSystem.exists(jsonFile)) {
                 throw Exception("Pack does not contain spots.json")
             }
 
-            val jsonText = FileSystem.SYSTEM.read(jsonFile) { readUtf8() }
+            val jsonText = fileSystem.read(jsonFile) { readUtf8() }
             val spots = Json.decodeFromString<List<SpotDetails>>(jsonText)
 
             var importedCount = 0
@@ -51,8 +51,8 @@ object MultiplatformPackImporter {
             // Ensure destination directories exist
             val thumbnailsDestDir = "$filesDir/thumbnails".toPath()
             val imagesDestDir = "$filesDir/images".toPath()
-            FileSystem.SYSTEM.createDirectories(thumbnailsDestDir)
-            FileSystem.SYSTEM.createDirectories(imagesDestDir)
+            fileSystem.createDirectories(thumbnailsDestDir)
+            fileSystem.createDirectories(imagesDestDir)
 
             val existingSpots = repository.getAllSpots().first()
 
@@ -89,11 +89,11 @@ object MultiplatformPackImporter {
                         ) {
                             val filename = getImageFileName(image.imagePath)
                             val tempImageFile = tempDir / "images" / filename
-                            if (FileSystem.SYSTEM.exists(tempImageFile)) {
+                            if (fileSystem.exists(tempImageFile)) {
                                 val destImageFile = imagesDestDir / "img_${generateUuid()}.jpg"
                                 try {
-                                    FileSystem.SYSTEM.write(destImageFile) {
-                                        writeAll(FileSystem.SYSTEM.source(tempImageFile))
+                                    fileSystem.write(destImageFile) {
+                                        writeAll(fileSystem.source(tempImageFile))
                                     }
                                     newImagePath = destImageFile.toString()
                                 } catch (e: Exception) {
@@ -109,11 +109,11 @@ object MultiplatformPackImporter {
                         ) {
                             val filename = getThumbnailFileName(image.thumbnailPath)
                             val tempThumbFile = tempDir / "thumbnails" / filename
-                            if (FileSystem.SYSTEM.exists(tempThumbFile)) {
+                            if (fileSystem.exists(tempThumbFile)) {
                                 val destThumbFile = thumbnailsDestDir / "thumb_${generateUuid()}.jpg"
                                 try {
-                                    FileSystem.SYSTEM.write(destThumbFile) {
-                                        writeAll(FileSystem.SYSTEM.source(tempThumbFile))
+                                    fileSystem.write(destThumbFile) {
+                                        writeAll(fileSystem.source(tempThumbFile))
                                     }
                                     newThumbnailPath = destThumbFile.toString()
                                 } catch (e: Exception) {
@@ -189,7 +189,7 @@ object MultiplatformPackImporter {
         } finally {
             // Clean up temporary files
             try {
-                FileSystem.SYSTEM.deleteRecursively(tempDir)
+                fileSystem.deleteRecursively(tempDir)
             } catch (e: Exception) {
                 println("Error deleting temp dir: ${e.message}")
             }

@@ -7,10 +7,12 @@ plugins {
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
     android {
         namespace = "net.maiatoday.tagspotter.core.location"
         compileSdk = 37
         minSdk = 29
+        withHostTest { }
     }
     
     jvm()

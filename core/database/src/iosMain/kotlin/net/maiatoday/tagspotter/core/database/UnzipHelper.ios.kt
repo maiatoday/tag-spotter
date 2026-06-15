@@ -18,3 +18,6 @@ actual fun zip(sourceDirPath: String, zipFilePath: String) {
         throw Exception("Zip archiving failed or zipCallback not registered on iOS")
     }
 }
+
+actual val fileSystem: okio.FileSystem = okio.FileSystem.SYSTEM
+

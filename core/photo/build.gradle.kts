@@ -4,10 +4,12 @@ plugins {
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
     android {
         namespace = "net.maiatoday.tagspotter.core.photo"
         compileSdk = 37
         minSdk = 29
+        withHostTest { }
     }
     
     jvm()
@@ -41,22 +43,6 @@ kotlin {
         
         val nonAndroidMain by creating {
             dependsOn(commonMain.get())
-        }
-        
-        jvmMain {
-            dependsOn(commonMain.get())
-        }
-        
-        val iosMain by creating {
-            dependsOn(commonMain.get())
-        }
-        
-        val iosSimulatorArm64Main by getting {
-            dependsOn(iosMain)
-        }
-        
-        val iosArm64Main by getting {
-            dependsOn(iosMain)
         }
         
         wasmJsMain {

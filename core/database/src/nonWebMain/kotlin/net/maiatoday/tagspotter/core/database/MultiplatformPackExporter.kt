@@ -22,7 +22,7 @@ object MultiplatformPackExporter {
         minRating: Int = 0
     ) {
         val tempDir = "$cacheDir/export_temp_${generateUuid()}".toPath()
-        FileSystem.SYSTEM.createDirectories(tempDir)
+        fileSystem.createDirectories(tempDir)
 
         try {
             // 1. Filter spots by minRating, preserving the main image
@@ -35,15 +35,15 @@ object MultiplatformPackExporter {
             // 2. Write spots.json
             val jsonFile = tempDir / "spots.json"
             val jsonString = Json.encodeToString(filteredSpots)
-            FileSystem.SYSTEM.write(jsonFile) {
+            fileSystem.write(jsonFile) {
                 writeUtf8(jsonString)
             }
 
             // Create images and thumbnails directories in temp
             val tempImagesDir = tempDir / "images"
             val tempThumbnailsDir = tempDir / "thumbnails"
-            FileSystem.SYSTEM.createDirectories(tempImagesDir)
-            FileSystem.SYSTEM.createDirectories(tempThumbnailsDir)
+            fileSystem.createDirectories(tempImagesDir)
+            fileSystem.createDirectories(tempThumbnailsDir)
 
             // 3. Copy files to temp directory
             filteredSpots.forEach { spotDetails ->
@@ -51,11 +51,11 @@ object MultiplatformPackExporter {
                     // Copy thumbnail
                     if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
                         val srcFile = image.thumbnailPath.toPath()
-                        if (FileSystem.SYSTEM.exists(srcFile)) {
+                        if (fileSystem.exists(srcFile)) {
                             val destFile = tempThumbnailsDir / getThumbnailFileName(image.thumbnailPath)
                             try {
-                                FileSystem.SYSTEM.write(destFile) {
-                                    writeAll(FileSystem.SYSTEM.source(srcFile))
+                                fileSystem.write(destFile) {
+                                    writeAll(fileSystem.source(srcFile))
                                 }
                             } catch (e: Exception) {
                                 println("Error exporting thumbnail: ${e.message}")
@@ -66,11 +66,11 @@ object MultiplatformPackExporter {
                     // Copy original image
                     if (image.imagePath.isNotEmpty() && !image.imagePath.startsWith("http")) {
                         val srcFile = image.imagePath.toPath()
-                        if (FileSystem.SYSTEM.exists(srcFile)) {
+                        if (fileSystem.exists(srcFile)) {
                             val destFile = tempImagesDir / getImageFileName(image.imagePath)
                             try {
-                                FileSystem.SYSTEM.write(destFile) {
-                                    writeAll(FileSystem.SYSTEM.source(srcFile))
+                                fileSystem.write(destFile) {
+                                    writeAll(fileSystem.source(srcFile))
                                 }
                             } catch (e: Exception) {
                                 println("Error exporting image: ${e.message}")
@@ -83,11 +83,11 @@ object MultiplatformPackExporter {
             // 4. Zip the temp directory to the destination ZIP file
             val destZipFile = destZipFilePath.toPath()
             // Ensure parent directory for destination exists
-            destZipFile.parent?.let { FileSystem.SYSTEM.createDirectories(it) }
+            destZipFile.parent?.let { fileSystem.createDirectories(it) }
             
             // Delete destination file if it already exists
-            if (FileSystem.SYSTEM.exists(destZipFile)) {
-                FileSystem.SYSTEM.delete(destZipFile)
+            if (fileSystem.exists(destZipFile)) {
+                fileSystem.delete(destZipFile)
             }
 
             zip(tempDir.toString(), destZipFilePath)
@@ -95,7 +95,7 @@ object MultiplatformPackExporter {
         } finally {
             // Clean up temporary files
             try {
-                FileSystem.SYSTEM.deleteRecursively(tempDir)
+                fileSystem.deleteRecursively(tempDir)
             } catch (e: Exception) {
                 println("Error deleting export temp dir: ${e.message}")
             }
