@@ -49,4 +49,8 @@ class FakePhotoProcessor : PhotoProcessor {
     override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? {
         return decodeScaledBitmapResult
     }
+
+    override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean {
+        return true
+    }
 }

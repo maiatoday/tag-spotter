@@ -7,9 +7,28 @@ import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 class RealPhotoProcessor : PhotoProcessor {
-    override suspend fun saveImageToPublicGallery(filePath: String): String? {
-        // Desktop / iOS don't require saving imported pictures to a custom app gallery folder
-        return filePath
+    override suspend fun saveImageToPublicGallery(filePath: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val userHome = System.getProperty("user.home")
+            val picturesDir = "$userHome/Pictures/TagSpotter"
+            val cleanPath = cleanUriPath(filePath)
+            val sourcePath = cleanPath.toPath()
+            if (FileSystem.SYSTEM.exists(sourcePath)) {
+                val destDir = picturesDir.toPath()
+                if (!FileSystem.SYSTEM.exists(destDir)) {
+                    FileSystem.SYSTEM.createDirectories(destDir)
+                }
+                val fileName = sourcePath.name
+                val destPath = destDir / fileName
+                FileSystem.SYSTEM.copy(sourcePath, destPath)
+                destPath.toString()
+            } else {
+                filePath
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            filePath
+        }
     }
 
     override suspend fun createThumbnailFromFile(filePath: String): String? {
@@ -87,6 +106,19 @@ class RealPhotoProcessor : PhotoProcessor {
             uriString.removePrefix("file:")
         } else {
             uriString
+        }
+    }
+
+    override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val path = cleanUriPath(filePath).toPath()
+            FileSystem.SYSTEM.write(path) {
+                write(bytes)
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 }

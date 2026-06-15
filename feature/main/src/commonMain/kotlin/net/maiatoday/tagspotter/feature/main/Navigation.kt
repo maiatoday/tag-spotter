@@ -19,7 +19,6 @@ import kotlinx.serialization.modules.subclass
 fun MainNavigation(
     initialSpotId: Long? = null,
     onNavigateToSpotHandled: () -> Unit = {},
-    onTriggerCamera: () -> Unit,
     onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
     versionName: String,
     showToast: (String) -> Unit
@@ -66,7 +65,6 @@ fun MainNavigation(
                         backStack.add(TaggingKey(imagePath, thumbnailPath, lat, lng, isFallback, defaultCategory, captureTime))
                     },
                     onNavigateToSettings = { backStack.add(SettingsKey) },
-                    onTriggerCamera = onTriggerCamera,
                     onTriggerFiles = onTriggerFiles,
                     versionName = versionName,
                     showToast = showToast

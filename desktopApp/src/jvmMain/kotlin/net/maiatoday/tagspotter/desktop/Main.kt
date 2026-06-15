@@ -42,7 +42,6 @@ fun main() = application {
             MainNavigation(
                 initialSpotId = null,
                 onNavigateToSpotHandled = {},
-                onTriggerCamera = {},
                 onTriggerFiles = { onPhotoPicked ->
                     val fileDialog = java.awt.FileDialog(null as java.awt.Frame?, "Select Photo", java.awt.FileDialog.LOAD)
                     fileDialog.setFilenameFilter { _, name ->

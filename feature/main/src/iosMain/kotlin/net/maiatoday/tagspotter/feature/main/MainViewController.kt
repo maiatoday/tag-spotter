@@ -11,7 +11,6 @@ fun createMainViewController(
         MainNavigation(
             initialSpotId = null,
             onNavigateToSpotHandled = {},
-            onTriggerCamera = {},
             onTriggerFiles = onTriggerFiles,
             versionName = "1.0.0-ios",
             showToast = { println("Toast: $it") }

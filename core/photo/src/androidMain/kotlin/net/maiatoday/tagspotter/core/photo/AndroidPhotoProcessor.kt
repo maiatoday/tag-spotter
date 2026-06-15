@@ -91,6 +91,16 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
         stream.toByteArray()
     }
 
+    override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            java.io.File(filePath).writeBytes(bytes)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     private fun decodeScaledBitmapToAndroidBitmap(imagePath: String, maxDimension: Int): Bitmap? {
         try {
             if (imagePath.startsWith("content://") || imagePath.startsWith("file://") || imagePath.startsWith("android.resource://")) {

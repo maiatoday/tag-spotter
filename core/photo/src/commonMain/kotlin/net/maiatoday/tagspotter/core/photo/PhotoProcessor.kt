@@ -19,6 +19,7 @@ interface PhotoProcessor {
     fun createTempCameraFile(): TempFileDetails
     fun deleteFile(filePath: String): Boolean
     suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray?
+    suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean
 }
 
 expect fun resolveLocalPath(path: String): String

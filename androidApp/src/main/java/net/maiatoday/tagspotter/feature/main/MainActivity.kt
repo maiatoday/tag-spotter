@@ -172,15 +172,6 @@ fun MainActivityContent(
         viewModel.updateLocationPermission(granted)
     }
 
-    // Take Picture Launcher (Native Camera Intent)
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            viewModel.handleCameraCaptureSuccess()
-        }
-    }
-
     // Photo Gallery Picker Launcher (Native Visual Media Contract)
     val pickMedia = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -195,26 +186,6 @@ fun MainActivityContent(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ ->
         pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-    }
-
-    val triggerCamera = {
-        if (!uiState.hasLocationPermission) {
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        }
-        val uriStr = viewModel.prepareCameraCapture()
-        if (uriStr != null) {
-            try {
-                takePictureLauncher.launch(uriStr.toUri())
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(context, context.getString(R.string.toast_failed_camera_launch), Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     val triggerFiles = { _: (String) -> Unit ->
@@ -236,7 +207,6 @@ fun MainActivityContent(
     MainNavigation(
         initialSpotId = initialSpotId,
         onNavigateToSpotHandled = onNavigateToSpotHandled,
-        onTriggerCamera = triggerCamera,
         onTriggerFiles = triggerFiles,
         versionName = versionName,
         showToast = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }

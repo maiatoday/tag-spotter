@@ -84,6 +84,10 @@ class MainViewModel(
         }
     }
 
+    suspend fun writePhotoBytes(bytes: ByteArray, filePath: String): Boolean {
+        return photoProcessor.writeBytesToFile(bytes, filePath)
+    }
+
     fun handleCameraCaptureSuccess() {
         val tempPath = _uiState.value.tempPhotoFilePath ?: return
 

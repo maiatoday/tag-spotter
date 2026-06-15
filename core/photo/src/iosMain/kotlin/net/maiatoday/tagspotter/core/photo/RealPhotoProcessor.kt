@@ -1,3 +1,4 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 package net.maiatoday.tagspotter.core.photo
 
 import okio.FileSystem
@@ -5,11 +6,53 @@ import okio.Path.Companion.toPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSUserDomainMask
+import platform.UIKit.UIImage
+import platform.UIKit.UIImageWriteToSavedPhotosAlbum
 
 class RealPhotoProcessor : PhotoProcessor {
-    override suspend fun saveImageToPublicGallery(filePath: String): String? {
-        // Desktop / iOS don't require saving imported pictures to a custom app gallery folder
-        return filePath
+    override suspend fun saveImageToPublicGallery(filePath: String): String? = withContext(Dispatchers.Default) {
+        try {
+            val cleanPath = cleanUriPath(filePath)
+            val sourcePath = cleanPath.toPath()
+            if (FileSystem.SYSTEM.exists(sourcePath)) {
+                // 1. Save to iOS Camera Roll (native gallery)
+                val image = UIImage.imageWithContentsOfFile(cleanPath)
+                if (image != null) {
+                    UIImageWriteToSavedPhotosAlbum(image, null, null, null)
+                }
+
+                // 2. Save to app's persistent Documents directory so it can be loaded by Coil/app
+                val nsFileManager = NSFileManager.defaultManager
+                val docUrl = nsFileManager.URLForDirectory(
+                    NSDocumentDirectory,
+                    NSUserDomainMask,
+                    null,
+                    true,
+                    null
+                )
+                val docPath = docUrl?.path
+                if (docPath != null) {
+                    val destDir = "$docPath/images".toPath()
+                    if (!FileSystem.SYSTEM.exists(destDir)) {
+                        FileSystem.SYSTEM.createDirectories(destDir)
+                    }
+                    val fileName = sourcePath.name
+                    val destPath = destDir / fileName
+                    FileSystem.SYSTEM.copy(sourcePath, destPath)
+                    destPath.toString()
+                } else {
+                    filePath
+                }
+            } else {
+                filePath
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            filePath
+        }
     }
 
     override suspend fun createThumbnailFromFile(filePath: String): String? {
@@ -87,6 +130,19 @@ class RealPhotoProcessor : PhotoProcessor {
             uriString.removePrefix("file:")
         } else {
             uriString
+        }
+    }
+
+    override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean = withContext(Dispatchers.Default) {
+        try {
+            val path = cleanUriPath(filePath).toPath()
+            FileSystem.SYSTEM.write(path) {
+                write(bytes)
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 }

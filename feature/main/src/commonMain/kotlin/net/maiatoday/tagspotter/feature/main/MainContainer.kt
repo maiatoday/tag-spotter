@@ -60,6 +60,9 @@ import net.maiatoday.tagspotter.feature.main.res.stringResource
 import net.maiatoday.tagspotter.feature.gallery.GalleryScreen
 import net.maiatoday.tagspotter.feature.map.MapScreen
 import org.koin.compose.viewmodel.koinViewModel
+import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
+import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
+import io.github.ismoy.imagepickerkmp.domain.extensions.loadBytes
 
 enum class Tab {
     Gallery,
@@ -71,7 +74,6 @@ fun MainContainer(
     onSpotClick: (Long) -> Unit,
     onPhotoCaptured: (String, String, Double, Double, Boolean, String, Long?) -> Unit,
     onNavigateToSettings: () -> Unit,
-    onTriggerCamera: () -> Unit,
     onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
     versionName: String,
     showToast: (String) -> Unit,
@@ -83,6 +85,39 @@ fun MainContainer(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    val picker = rememberImagePickerKMP()
+
+    LaunchedEffect(picker.result) {
+        val result = picker.result
+        if (result is ImagePickerResult.Success) {
+            val photo = result.photos.firstOrNull()
+            if (photo != null) {
+                scope.launch {
+                    try {
+                        val bytes = photo.loadBytes()
+                        val tempUri = viewModel.prepareCameraCapture()
+                        if (tempUri != null) {
+                            val tempPath = viewModel.uiState.value.tempPhotoFilePath
+                            if (tempPath != null) {
+                                val written = viewModel.writePhotoBytes(bytes, tempPath)
+                                if (written) {
+                                    viewModel.handleCameraCaptureSuccess()
+                                } else {
+                                    showToast("Failed to write captured image to file.")
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        showToast("Failed to load captured image bytes: ${e.message}")
+                    }
+                }
+            }
+        } else if (result is ImagePickerResult.Error) {
+            showToast("Camera error: ${result.exception.message}")
+        }
+    }
 
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { event ->
@@ -275,23 +310,25 @@ fun MainContainer(
                                 indicatorColor = Color.Transparent
                             )
                         )
-                        NavigationRailItem(
-                            selected = false,
-                            onClick = { onTriggerCamera() },
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Default.CameraAlt,
-                                    contentDescription = stringResource(MainRes.string.content_desc_camera_tab),
-                                    tint = Color.Gray
+                        if (isCameraSupported) {
+                            NavigationRailItem(
+                                selected = false,
+                                onClick = { picker.launchCamera() },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = stringResource(MainRes.string.content_desc_camera_tab),
+                                        tint = Color.Gray
+                                    )
+                                },
+                                label = { Text(stringResource(MainRes.string.tab_camera_label)) },
+                                colors = NavigationRailItemDefaults.colors(
+                                    unselectedIconColor = Color.Gray,
+                                    unselectedTextColor = Color.Gray,
+                                    indicatorColor = Color.Transparent
                                 )
-                            },
-                            label = { Text(stringResource(MainRes.string.tab_camera_label)) },
-                            colors = NavigationRailItemDefaults.colors(
-                                unselectedIconColor = Color.Gray,
-                                unselectedTextColor = Color.Gray,
-                                indicatorColor = Color.Transparent
                             )
-                        )
+                        }
                         NavigationRailItem(
                             selected = false,
                             onClick = { onTriggerFiles { uriString -> viewModel.handlePhotoPicked(uriString) } },
@@ -406,23 +443,25 @@ fun MainContainer(
                                     indicatorColor = Color.Transparent
                                 )
                             )
-                            NavigationBarItem(
-                                selected = false,
-                                onClick = { onTriggerCamera() },
-                                icon = {
-                                    Icon(
-                                        imageVector = Icons.Default.CameraAlt,
-                                        contentDescription = stringResource(MainRes.string.content_desc_camera_tab),
-                                        tint = Color.Gray
+                            if (isCameraSupported) {
+                                NavigationBarItem(
+                                    selected = false,
+                                    onClick = { picker.launchCamera() },
+                                    icon = {
+                                        Icon(
+                                            imageVector = Icons.Default.CameraAlt,
+                                            contentDescription = stringResource(MainRes.string.content_desc_camera_tab),
+                                            tint = Color.Gray
+                                        )
+                                    },
+                                    label = { Text(stringResource(MainRes.string.tab_camera_label)) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        unselectedIconColor = Color.Gray,
+                                        unselectedTextColor = Color.Gray,
+                                        indicatorColor = Color.Transparent
                                     )
-                                },
-                                label = { Text(stringResource(MainRes.string.tab_camera_label)) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    unselectedIconColor = Color.Gray,
-                                    unselectedTextColor = Color.Gray,
-                                    indicatorColor = Color.Transparent
                                 )
-                            )
+                            }
                             NavigationBarItem(
                                 selected = false,
                                 onClick = { onTriggerFiles { uriString -> viewModel.handlePhotoPicked(uriString) } },
