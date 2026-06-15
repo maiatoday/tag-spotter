@@ -116,7 +116,6 @@ fun GalleryScreen(
 
     var showLimitExceededDialog by remember { mutableStateOf(false) }
     var isSearchExpanded by remember { mutableStateOf(false) }
-    var isImportMenuExpanded by remember { mutableStateOf(false) }
     var exportMinRatingThreshold by remember { mutableIntStateOf(0) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
 
@@ -147,19 +146,7 @@ fun GalleryScreen(
         )
     }
 
-    val importLauncher = platformHelper.rememberImportLauncher { pathString ->
-        viewModel.importPack(
-            packFilePath = pathString,
-            filesDir = platformHelper.getFilesDir(),
-            cacheDir = platformHelper.getCacheDir(),
-            onSuccess = { count ->
-                platformHelper.showToast("Imported $count spots successfully!")
-            },
-            onError = { error ->
-                platformHelper.showToast("Failed to import pack: ${error.message}")
-            }
-        )
-    }
+
 
     val categories = listOf("All") + Spot.CATEGORIES
 
@@ -492,28 +479,6 @@ fun GalleryScreen(
                         contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onBackground
                     )
-                }
-
-                Box {
-                    IconButton(onClick = { isImportMenuExpanded = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More Options",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = isImportMenuExpanded,
-                        onDismissRequest = { isImportMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Import Pack") },
-                            onClick = {
-                                isImportMenuExpanded = false
-                                importLauncher()
-                            }
-                        )
-                    }
                 }
             }
         }

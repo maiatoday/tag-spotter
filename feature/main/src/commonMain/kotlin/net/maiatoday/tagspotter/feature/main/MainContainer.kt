@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -58,11 +59,9 @@ import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.feature.main.res.MainRes
 import net.maiatoday.tagspotter.feature.main.res.stringResource
 import net.maiatoday.tagspotter.feature.gallery.GalleryScreen
+import net.maiatoday.tagspotter.feature.gallery.res.rememberGalleryPlatformHelper
 import net.maiatoday.tagspotter.feature.map.MapScreen
 import org.koin.compose.viewmodel.koinViewModel
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.domain.extensions.loadBytes
 
 enum class Tab {
     Gallery,
@@ -86,38 +85,47 @@ fun MainContainer(
     val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    val picker = rememberImagePickerKMP()
+    val platformHelper = rememberGalleryPlatformHelper()
+    val importLauncher = platformHelper.rememberImportLauncher { pathString ->
+        viewModel.importPack(
+            packFilePath = pathString,
+            filesDir = platformHelper.getFilesDir(),
+            cacheDir = platformHelper.getCacheDir(),
+            onSuccess = { count ->
+                platformHelper.showToast("Imported $count spots successfully!")
+            },
+            onError = { error ->
+                platformHelper.showToast("Failed to import pack: ${error.message}")
+            }
+        )
+    }
 
-    LaunchedEffect(picker.result) {
-        val result = picker.result
-        if (result is ImagePickerResult.Success) {
-            val photo = result.photos.firstOrNull()
-            if (photo != null) {
-                scope.launch {
-                    try {
-                        val bytes = photo.loadBytes()
-                        val tempUri = viewModel.prepareCameraCapture()
-                        if (tempUri != null) {
-                            val tempPath = viewModel.uiState.value.tempPhotoFilePath
-                            if (tempPath != null) {
-                                val written = viewModel.writePhotoBytes(bytes, tempPath)
-                                if (written) {
-                                    viewModel.handleCameraCaptureSuccess()
-                                } else {
-                                    showToast("Failed to write captured image to file.")
-                                }
+    val launchCamera = rememberCameraLauncher(
+        onPhotoCaptured = { bytes ->
+            scope.launch {
+                try {
+                    val tempUri = viewModel.prepareCameraCapture()
+                    if (tempUri != null) {
+                        val tempPath = viewModel.uiState.value.tempPhotoFilePath
+                        if (tempPath != null) {
+                            val written = viewModel.writePhotoBytes(bytes, tempPath)
+                            if (written) {
+                                viewModel.handleCameraCaptureSuccess()
+                            } else {
+                                showToast("Failed to write captured image to file.")
                             }
                         }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        showToast("Failed to load captured image bytes: ${e.message}")
                     }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    showToast("Failed to process captured photo: ${e.message}")
                 }
             }
-        } else if (result is ImagePickerResult.Error) {
-            showToast("Camera error: ${result.exception.message}")
+        },
+        onError = { errorMessage ->
+            showToast(errorMessage)
         }
-    }
+    )
 
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { event ->
@@ -183,6 +191,27 @@ fun MainContainer(
                                 Icon(
                                     imageVector = Icons.Default.Settings,
                                     contentDescription = stringResource(MainRes.string.content_desc_settings),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent
+                            )
+                        )
+                        
+                        NavigationDrawerItem(
+                            label = { Text("Import Pack", fontWeight = FontWeight.Bold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                }
+                                importLauncher()
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = "Import Pack",
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             },
@@ -313,7 +342,7 @@ fun MainContainer(
                         if (isCameraSupported) {
                             NavigationRailItem(
                                 selected = false,
-                                onClick = { picker.launchCamera() },
+                                onClick = { launchCamera() },
                                 icon = {
                                     Icon(
                                         imageVector = Icons.Default.CameraAlt,
@@ -446,7 +475,7 @@ fun MainContainer(
                             if (isCameraSupported) {
                                 NavigationBarItem(
                                     selected = false,
-                                    onClick = { picker.launchCamera() },
+                                    onClick = { launchCamera() },
                                     icon = {
                                         Icon(
                                             imageVector = Icons.Default.CameraAlt,

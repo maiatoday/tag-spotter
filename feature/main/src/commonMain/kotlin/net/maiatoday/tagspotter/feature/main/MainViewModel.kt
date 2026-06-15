@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
@@ -222,6 +223,32 @@ class MainViewModel(
                 spotRepository.loadTestData()
             } else {
                 spotRepository.unloadTestData()
+            }
+        }
+    }
+
+    fun importPack(
+        packFilePath: String,
+        filesDir: String,
+        cacheDir: String,
+        onSuccess: (Int) -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentPhotographer = settingsRepository.photographerName.first()
+                val importedCount = spotRepository.importPack(
+                    packFilePath = packFilePath,
+                    filesDir = filesDir,
+                    cacheDir = cacheDir,
+                    currentPhotographerName = currentPhotographer,
+                    createThumbnail = { imagePath ->
+                        photoProcessor.createThumbnailFromFile(imagePath)
+                    }
+                )
+                onSuccess(importedCount)
+            } catch (e: Throwable) {
+                onError(e)
             }
         }
     }
