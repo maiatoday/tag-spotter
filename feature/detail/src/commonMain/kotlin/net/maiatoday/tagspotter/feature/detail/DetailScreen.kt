@@ -136,7 +136,7 @@ fun DetailScreen(
     val recentCustomTags by viewModel.recentCustomTags.collectAsStateWithLifecycle()
 
     val aiState by viewModel.aiState.collectAsStateWithLifecycle()
-    val isArtistRecognitionEnabled by viewModel.isArtistRecognitionEnabled.collectAsStateWithLifecycle()
+    val isArtistRecognitionEnabled by viewModel.isAiAugmentationAvailable.collectAsStateWithLifecycle()
     val wikiSearchState by viewModel.wikiSearchState.collectAsStateWithLifecycle()
     val darkMapEnabled by viewModel.darkMapEnabled.collectAsStateWithLifecycle()
     val isSystemDark = isSystemInDarkTheme()

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.model.Spot
@@ -90,6 +91,17 @@ class DetailViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = true
         )
+
+    val isAiAugmentationAvailable: StateFlow<Boolean> = combine(
+        settingsRepository.artistRecognitionEnabled,
+        settingsRepository.geminiApiKey
+    ) { enabled, userKey ->
+        enabled && (secretsProvider.getGeminiApiKey().isNotEmpty() || userKey.isNotEmpty())
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 
     val darkMapEnabled: StateFlow<Boolean> = settingsRepository.darkMapEnabled
         .stateIn(

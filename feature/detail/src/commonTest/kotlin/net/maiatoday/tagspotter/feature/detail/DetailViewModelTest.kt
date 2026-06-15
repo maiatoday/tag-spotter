@@ -315,6 +315,45 @@ class DetailViewModelTest {
     }
 
     @Test
+    fun aiAugmentationAvailabilityPropagatedCorrectly() = runTest {
+        // 1. Clean/Reset shared mock states BEFORE instantiating DetailViewModel
+        settingsRepository.updateArtistRecognitionEnabled(true)
+        secretsProvider.apiKey = ""
+        settingsRepository.updateGeminiApiKey("")
+
+        val viewModel = DetailViewModel(
+            -1L,
+            repository,
+            settingsRepository,
+            aiRecognitionService,
+            secretsProvider,
+            wearSyncManager
+        )
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.isAiAugmentationAvailable.collect {}
+        }
+
+        // 2. Verified initially false (both keys empty)
+        assertEquals(false, viewModel.isAiAugmentationAvailable.value)
+
+        // 3. Enable secrets provider key and trigger emission
+        secretsProvider.apiKey = "secret_123"
+        settingsRepository.updateArtistRecognitionEnabled(false)
+        settingsRepository.updateArtistRecognitionEnabled(true)
+        assertEquals(true, viewModel.isAiAugmentationAvailable.value)
+
+        // 4. Verify user key fallback
+        secretsProvider.apiKey = ""
+        settingsRepository.updateGeminiApiKey("user_key_456")
+        assertEquals(true, viewModel.isAiAugmentationAvailable.value)
+
+        // 5. Verify setting toggle disable overrides keys
+        settingsRepository.updateArtistRecognitionEnabled(false)
+        assertEquals(false, viewModel.isAiAugmentationAvailable.value)
+    }
+
+    @Test
     fun identifyArtistFailsWhenApiKeyIsMissing() = runTest {
         settingsRepository.updateGeminiApiKey("")
         secretsProvider.apiKey = ""
