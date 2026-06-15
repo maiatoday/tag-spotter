@@ -52,8 +52,8 @@ import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.model.Spot
-import net.maiatoday.tagspotter.core.ui.OsmMapView
-import net.maiatoday.tagspotter.core.ui.OsmMarker
+import net.maiatoday.tagspotter.core.ui.SpotMapView
+import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.FilterBottomSheet
 import net.maiatoday.tagspotter.feature.map.res.MapRes
@@ -85,9 +85,9 @@ fun MapScreen(
 
     var showFilterBottomSheet by remember { mutableStateOf(false) }
 
-    // Map spots to OsmMarkers
+    // Map spots to MapMarkers
     val markers = spots.map { spotDetails ->
-        OsmMarker(
+        MapMarker(
             id = spotDetails.spot.id,
             latitude = spotDetails.spot.latitude,
             longitude = spotDetails.spot.longitude,
@@ -109,7 +109,7 @@ fun MapScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (initialCenterState != null) {
-            OsmMapView(
+            SpotMapView(
                 latitude = initialCenterState.latitude,
                 longitude = initialCenterState.longitude,
                 zoomLevel = 14.0,

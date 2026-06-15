@@ -87,8 +87,8 @@ import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
 
-import net.maiatoday.tagspotter.core.ui.OsmMapView
-import net.maiatoday.tagspotter.core.ui.OsmMarker
+import net.maiatoday.tagspotter.core.ui.SpotMapView
+import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -994,7 +994,7 @@ fun DetailScreen(
                             .clip(RoundedCornerShape(8.dp))
                             .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                     ) {
-                        val mapMarker = OsmMarker(
+                        val mapMarker = MapMarker(
                             id = 0L,
                             latitude = tempLat,
                             longitude = tempLng,
@@ -1004,7 +1004,7 @@ fun DetailScreen(
                             onClick = {}
                         )
 
-                        OsmMapView(
+                        SpotMapView(
                             latitude = tempLat,
                             longitude = tempLng,
                             zoomLevel = 17.0,

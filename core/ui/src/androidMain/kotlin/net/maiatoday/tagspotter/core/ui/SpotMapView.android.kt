@@ -43,11 +43,11 @@ val DarkMatterTileSource = XYTileSource(
 )
 
 @Composable
-actual fun OsmMapView(
+actual fun SpotMapView(
     latitude: Double,
     longitude: Double,
     zoomLevel: Double,
-    markers: List<OsmMarker>,
+    markers: List<MapMarker>,
     useDarkMap: Boolean,
     modifier: Modifier,
     radiusCircleCenterLatitude: Double?,
@@ -127,20 +127,20 @@ actual fun OsmMapView(
             }
 
             // Add pins
-            markers.forEach { osmMarker ->
-                val markerColor = if (osmMarker.status == "erased") {
+            markers.forEach { mapMarker ->
+                val markerColor = if (mapMarker.status == "erased") {
                     Color.Gray.toArgb()
                 } else {
-                    categoryColors.getColorForCategory(osmMarker.category).toArgb()
+                    categoryColors.getColorForCategory(mapMarker.category).toArgb()
                 }
                 val marker = Marker(map).apply {
-                    position = GeoPoint(osmMarker.latitude, osmMarker.longitude)
-                    icon = createPinDrawable(map.context, markerColor, osmMarker.isStarred)
+                    position = GeoPoint(mapMarker.latitude, mapMarker.longitude)
+                    icon = createPinDrawable(map.context, markerColor, mapMarker.isStarred)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    title = osmMarker.title
+                    title = mapMarker.title
                     
                     setOnMarkerClickListener { _, _ ->
-                        osmMarker.onClick()
+                        mapMarker.onClick()
                         true
                     }
                 }

@@ -3,7 +3,7 @@ package net.maiatoday.tagspotter.core.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
-data class OsmMarker(
+data class MapMarker(
     val id: Long,
     val latitude: Double,
     val longitude: Double,
@@ -15,11 +15,11 @@ data class OsmMarker(
 )
 
 @Composable
-expect fun OsmMapView(
+expect fun SpotMapView(
     latitude: Double,
     longitude: Double,
     zoomLevel: Double,
-    markers: List<OsmMarker>,
+    markers: List<MapMarker>,
     useDarkMap: Boolean,
     modifier: Modifier = Modifier,
     radiusCircleCenterLatitude: Double? = null,

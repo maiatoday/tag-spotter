@@ -10,5 +10,7 @@
 	<string>This app requires access to the photo library to pick photos of spots.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>This app requires permission to save captured photos to your photo library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires location access to find and display spots near you.</string>
 </dict>
 </plist>

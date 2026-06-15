@@ -12,8 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import net.maiatoday.tagspotter.core.ui.OsmMapView
-import net.maiatoday.tagspotter.core.ui.OsmMarker
+import net.maiatoday.tagspotter.core.ui.SpotMapView
+import net.maiatoday.tagspotter.core.ui.MapMarker
 
 @Composable
 fun DetailMiniMapCard(
@@ -32,7 +32,7 @@ fun DetailMiniMapCard(
             containerColor = Color.Black
         )
     ) {
-        val mapMarker = OsmMarker(
+        val mapMarker = MapMarker(
             id = 0L,
             latitude = latitude,
             longitude = longitude,
@@ -42,7 +42,7 @@ fun DetailMiniMapCard(
             onClick = {}
         )
 
-        OsmMapView(
+        SpotMapView(
             latitude = latitude,
             longitude = longitude,
             zoomLevel = 17.0,

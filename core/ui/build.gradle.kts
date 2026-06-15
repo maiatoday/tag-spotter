@@ -34,6 +34,9 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
                 
+                // Coil
+                implementation(libs.coil.compose)
+                
                 // Lifecycle
                 implementation(libs.androidx.lifecycle.runtime.compose)
             }
@@ -60,6 +63,23 @@ kotlin {
         
         jvmMain {
             dependsOn(nonAndroidMain)
+            dependencies {
+                val osName = System.getProperty("os.name")
+                val osArch = System.getProperty("os.arch")
+                val javaFxPlatform = when {
+                    osName.contains("Windows", ignoreCase = true) -> "win"
+                    osName.contains("Mac", ignoreCase = true) -> if (osArch == "aarch64") "mac-aarch64" else "mac"
+                    osName.contains("Linux", ignoreCase = true) -> if (osArch == "aarch64") "linux-aarch64" else "linux"
+                    else -> "mac-aarch64"
+                }
+                
+                implementation("org.openjfx:javafx-base:21.0.1:$javaFxPlatform")
+                implementation("org.openjfx:javafx-graphics:21.0.1:$javaFxPlatform")
+                implementation("org.openjfx:javafx-controls:21.0.1:$javaFxPlatform")
+                implementation("org.openjfx:javafx-swing:21.0.1:$javaFxPlatform")
+                implementation("org.openjfx:javafx-web:21.0.1:$javaFxPlatform")
+                implementation("org.openjfx:javafx-media:21.0.1:$javaFxPlatform")
+            }
         }
         
         iosMain {
