@@ -31,3 +31,37 @@ xcuserdata/
 **/xcuserdata/
 *.moved-aside
 
+# --- Desktop Target (JVM/Compose Desktop) ---
+# JVM crash logs, heap dumps, and performance profiles
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+*.log
+
+# Native package/installer outputs (if built or copied outside of Gradle build/)
+*.dmg
+*.pkg
+*.app
+*.exe
+*.msi
+*.deb
+*.rpm
+
+# --- Web Target (Kotlin JS/Wasm & Web Apps) ---
+# Node / NPM packages & yarn
+node_modules/
+.npm/
+.yarn/
+
+# Static production build exports
+dist/
+out/
+
+# Environment files & local secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+
