@@ -21,3 +21,13 @@ local.properties
 
 # Kotlin JS/Wasm
 kotlin-js-store/
+
+# Xcode & iOS Simulator
+.orange-book/
+DerivedData/
+*.xcuserstate
+*.simruntime
+xcuserdata/
+**/xcuserdata/
+*.moved-aside
+
