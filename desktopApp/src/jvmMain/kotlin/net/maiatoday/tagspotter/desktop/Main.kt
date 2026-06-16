@@ -1,5 +1,10 @@
 package net.maiatoday.tagspotter.desktop
 
+import java.awt.Taskbar
+import javax.imageio.ImageIO
+import androidx.compose.ui.res.useResource
+import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
@@ -34,9 +39,24 @@ fun main() = application {
     // Initialize DI
     initKoin(listOf(desktopSecretsModule))
 
+    // Set macOS Dock Icon / AWT Taskbar icon if supported
+    try {
+        val taskbar = Taskbar.getTaskbar()
+        val resource = Thread.currentThread().contextClassLoader.getResourceAsStream("icon.png")
+        if (resource != null) {
+            val image = ImageIO.read(resource)
+            taskbar.setIconImage(image)
+        }
+    } catch (e: Exception) {
+        // Taskbar not supported or failed to set icon
+    }
+
+    val icon = useResource("icon.png") { loadImageBitmap(it) }
+
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Tag Spotter"
+        title = "Tag Spotter",
+        icon = BitmapPainter(icon)
     ) {
         MyApplicationTheme {
             MainNavigation(
