@@ -111,7 +111,8 @@ fun GalleryScreen(
 
     var isMultiSelectMode by remember { mutableStateOf(false) }
     val selectedSpotIds = remember { mutableStateListOf<Long>() }
-    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var spotsToDelete by remember { mutableStateOf<List<Long>>(emptyList()) }
+    var spotsToExport by remember { mutableStateOf<List<SpotDetails>>(emptyList()) }
     var isShareMenuExpanded by remember { mutableStateOf(false) }
 
     var showLimitExceededDialog by remember { mutableStateOf(false) }
@@ -130,15 +131,17 @@ fun GalleryScreen(
     }
 
     val createDocumentLauncher = platformHelper.rememberLauncher { uriString ->
-        val selectedSpots = spots.filter { it.spot.id in selectedSpotIds }
         platformHelper.exportPack(
             uriString = uriString,
-            spots = selectedSpots,
+            spots = spotsToExport,
             minRating = exportMinRatingThreshold,
             onSuccess = {
                 platformHelper.showToast("Saved successfully!")
-                selectedSpotIds.clear()
-                isMultiSelectMode = false
+                if (isMultiSelectMode) {
+                    selectedSpotIds.clear()
+                    isMultiSelectMode = false
+                }
+                spotsToExport = emptyList()
             },
             onError = { e ->
                 platformHelper.showToast("Failed to save: ${e.message}")
@@ -146,22 +149,38 @@ fun GalleryScreen(
         )
     }
 
-
-
     val categories = listOf("All") + Spot.CATEGORIES
 
-    if (showDeleteConfirmDialog) {
+    if (spotsToDelete.isNotEmpty()) {
+        val isBulk = spotsToDelete.size == spots.size && !isMultiSelectMode
         AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text(stringResource(GalleryStrings.delete_selected_spots_title)) },
-            text = { Text(stringResource(GalleryStrings.delete_selected_spots_confirm, selectedSpotIds.size)) },
+            onDismissRequest = { spotsToDelete = emptyList() },
+            title = {
+                Text(
+                    stringResource(
+                        if (isBulk) GalleryStrings.delete_filtered_spots_title
+                        else GalleryStrings.delete_selected_spots_title
+                    )
+                )
+            },
+            text = {
+                Text(
+                    if (isBulk) {
+                        stringResource(GalleryStrings.delete_filtered_spots_confirm, spotsToDelete.size)
+                    } else {
+                        stringResource(GalleryStrings.delete_selected_spots_confirm, spotsToDelete.size)
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteSpots(selectedSpotIds.toList()) {
-                            selectedSpotIds.clear()
-                            isMultiSelectMode = false
-                            showDeleteConfirmDialog = false
+                        viewModel.deleteSpots(spotsToDelete) {
+                            if (isMultiSelectMode) {
+                                selectedSpotIds.clear()
+                                isMultiSelectMode = false
+                            }
+                            spotsToDelete = emptyList()
                             platformHelper.showToast(deletedSuccessfullyText)
                         }
                     }
@@ -170,7 +189,7 @@ fun GalleryScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                TextButton(onClick = { spotsToDelete = emptyList() }) {
                     Text(stringResource(GalleryStrings.cancel))
                 }
             }
@@ -207,6 +226,29 @@ fun GalleryScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    val allVisibleIds = spots.map { it.spot.id }
+                    val isAllSelected = selectedSpotIds.size == allVisibleIds.size
+
+                    TextButton(
+                        onClick = {
+                            if (isAllSelected) {
+                                selectedSpotIds.clear()
+                            } else {
+                                selectedSpotIds.clear()
+                                selectedSpotIds.addAll(allVisibleIds)
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = stringResource(if (isAllSelected) GalleryStrings.deselect_all else GalleryStrings.select_all),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
 
                 Row(
@@ -276,6 +318,7 @@ fun GalleryScreen(
                                 text = { Text(stringResource(GalleryStrings.export_pack)) },
                                 onClick = {
                                     isShareMenuExpanded = false
+                                    spotsToExport = spots.filter { it.spot.id in selectedSpotIds }
                                     showExportOptionsDialog = true
                                 }
                             )
@@ -305,7 +348,7 @@ fun GalleryScreen(
                     }
 
                     IconButton(
-                        onClick = { showDeleteConfirmDialog = true },
+                        onClick = { spotsToDelete = selectedSpotIds.toList() },
                         enabled = selectedSpotIds.isNotEmpty()
                     ) {
                         Icon(
@@ -835,7 +878,6 @@ fun GalleryScreen(
         )
     }
 }
-
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SpotGridCard(

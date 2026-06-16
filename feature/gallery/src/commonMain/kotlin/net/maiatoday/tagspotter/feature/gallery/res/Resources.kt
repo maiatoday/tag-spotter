@@ -49,6 +49,15 @@ object GalleryStrings {
     val no_spots_match_query: StringResource = Res.string.no_spots_match_query
     val first_spot_instruction: StringResource = Res.string.first_spot_instruction
     val empty_category_instruction: StringResource = Res.string.empty_category_instruction
+    val select_all: StringResource = Res.string.select_all
+    val deselect_all: StringResource = Res.string.deselect_all
+    val bulk_actions: StringResource = Res.string.bulk_actions
+    val star_all_filtered: StringResource = Res.string.star_all_filtered
+    val unstar_all_filtered: StringResource = Res.string.unstar_all_filtered
+    val export_all_filtered: StringResource = Res.string.export_all_filtered
+    val delete_all_filtered: StringResource = Res.string.delete_all_filtered
+    val delete_filtered_spots_title: StringResource = Res.string.delete_filtered_spots_title
+    val delete_filtered_spots_confirm: StringResource = Res.string.delete_filtered_spots_confirm
 }
 
 @Composable

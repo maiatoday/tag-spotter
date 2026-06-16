@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.web
 
-import androidx.compose.ui.window.CanvasBasedWindow
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.window.ComposeViewport
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
 import net.maiatoday.tagspotter.feature.main.MainNavigation
 import net.maiatoday.tagspotter.feature.main.initKoin
@@ -18,17 +19,14 @@ class WebSecretsProvider : SecretsProvider {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     initKoin(listOf(webSecretsModule))
-    CanvasBasedWindow(
-        title = "Tag Spotter",
-        canvasElementId = "compose-canvas"
-    ) {
+    ComposeViewport(viewportContainerId = "compose-canvas") {
         MyApplicationTheme {
             MainNavigation(
                 initialSpotId = null,
                 onNavigateToSpotHandled = {},
-                onTriggerCamera = {},
                 onTriggerFiles = { onPhotoPicked ->
                     // Web fallback: log the request; actual implementation would use a file input dialog
                     println("Photo picker requested: $onPhotoPicked")

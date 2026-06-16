@@ -44,4 +44,13 @@
     <string name="no_spots_match_query">No spots match \u2018%1$s\u2019.</string>
     <string name="first_spot_instruction">Document your city walks! Tap the \u2018Capture\u2019 tab below to photograph your first spot.</string>
     <string name="empty_category_instruction">You haven\u2019t tagged any items in the \u2018%1$s\u2019 category yet.</string>
+    <string name="select_all">Select All</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="bulk_actions">Bulk Actions</string>
+    <string name="star_all_filtered">Star All Filtered</string>
+    <string name="unstar_all_filtered">Unstar All Filtered</string>
+    <string name="export_all_filtered">Export All Filtered</string>
+    <string name="delete_all_filtered">Delete All Filtered</string>
+    <string name="delete_filtered_spots_title">Delete Filtered Spots</string>
+    <string name="delete_filtered_spots_confirm">Are you sure you want to delete all %1$d filtered spots? This action cannot be undone and will delete all associated images and notes.</string>
 </resources>
