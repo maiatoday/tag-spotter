@@ -24,6 +24,7 @@ interface SpotRepository {
     fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>>
     suspend fun loadTestData()
     suspend fun unloadTestData()
+    suspend fun saveSpotDetails(spotDetails: SpotDetails): Long
     suspend fun importSpots(spots: List<SpotDetails>): Int
     suspend fun importPack(
         packFilePath: String,

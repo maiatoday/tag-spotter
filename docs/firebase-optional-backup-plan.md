@@ -18,6 +18,7 @@ During our interactive alignment sessions, we finalized the following core behav
 6.  **Web (Wasm) Storage Relationship**: On the Web (Wasm) target, we will employ a **Local-First Cache** approach. We will keep using browser `localStorage` and `IndexedDB` as the primary datastores for instant UI rendering (0ms latency), syncing changes with Firestore in the background.
 7.  **Synchronization Scheduling & Frequency**: We will implement a **Reactive & Real-time** sync schedule. Local changes are synced instantly to Firebase as soon as they are saved, and the app utilizes Firestore's real-time snapshot listeners to download cloud changes instantly.
 8.  **Active Edit Conflict Priority**: If the user is actively editing a spot on the `DetailScreen` (keyboard focused or text selection is active) and a real-time cloud update for that spot is received, the app will **pause cloud overrides for that specific spot** until the user leaves the screen or saves. This avoids jarring text updates, cursor jumps, or lost edits.
+9.  **Standardized Multiplatform UUIDs**: To ensure robust, platform-agnostic identification of all local entities that map seamlessly 1:1 to Firestore's text-based document identifiers, we utilize Kotlin's standard library `kotlin.uuid.Uuid.random().toString()` in common code instead of custom platform-specific wrappers. In Room SQLite migration `MIGRATION_10_11`, we backfill legacy non-UUID records using high-performance RFC4122 v4-compliant SQLite queries.
 
 ---
 

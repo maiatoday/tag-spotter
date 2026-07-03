@@ -248,6 +248,16 @@ class FakeSpotRepository : SpotRepository {
         return 0
     }
 
+    override suspend fun saveSpotDetails(spotDetails: SpotDetails): Long {
+        val nextId = (spotsMap.keys.maxOrNull() ?: 0L) + 1L
+        val spotCopy = spotDetails.spot.copy(id = nextId)
+        val imagesCopy = spotDetails.images.mapIndexed { idx, img -> img.copy(id = idx + 1L, spotId = nextId) }
+        val notesCopy = spotDetails.notes.mapIndexed { idx, note -> note.copy(id = idx + 1L, spotId = nextId) }
+        spotsMap[nextId] = SpotDetails(spotCopy, imagesCopy, notesCopy)
+        updateFlow()
+        return nextId
+    }
+
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         var importedCount = 0
         spots.forEach { importedDetail ->

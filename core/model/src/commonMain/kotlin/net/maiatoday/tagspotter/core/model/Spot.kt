@@ -56,3 +56,9 @@ data class SpotDetails(
     val images: List<SpotImage>,
     val notes: List<SpotNote>
 )
+
+@Serializable
+data class BackupWrapper(
+    val backupVersion: Int = 2,
+    val spots: List<SpotDetails>
+)

@@ -237,6 +237,17 @@ class LocalSpotRepository(
         )
     }
 
+    override suspend fun saveSpotDetails(spotDetails: SpotDetails): Long {
+        val spotId = spotDao.insertSpot(spotDetails.spot.toEntity())
+        spotDetails.images.forEach { image ->
+            spotDao.insertImage(image.copy(id = 0L, spotId = spotId).toEntity())
+        }
+        spotDetails.notes.forEach { note ->
+            spotDao.insertNote(note.copy(id = 0L, spotId = spotId).toEntity())
+        }
+        return spotId
+    }
+
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         val existingSpots = spotDao.getAllSpotsDetails().first()
         var importedCount = 0

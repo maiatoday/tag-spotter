@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.core.database
 
 import kotlinx.serialization.json.Json
+import net.maiatoday.tagspotter.core.model.BackupWrapper
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -34,7 +35,8 @@ object MultiplatformPackExporter {
 
             // 2. Write spots.json
             val jsonFile = tempDir / "spots.json"
-            val jsonString = Json.encodeToString(filteredSpots)
+            val backupWrapper = BackupWrapper(backupVersion = 2, spots = filteredSpots)
+            val jsonString = Json.encodeToString(backupWrapper)
             fileSystem.write(jsonFile) {
                 writeUtf8(jsonString)
             }

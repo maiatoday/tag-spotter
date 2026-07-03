@@ -219,6 +219,20 @@ class WasmSpotRepository : SpotRepository {
         return 0
     }
 
+    override suspend fun saveSpotDetails(spotDetails: SpotDetails): Long {
+        val spotId = if (spotDetails.spot.id == 0L) nextSpotId++ else spotDetails.spot.id
+        val updatedSpot = spotDetails.spot.copy(id = spotId)
+        val updatedImages = spotDetails.images.map { image ->
+            image.copy(id = if (image.id == 0L) nextImageId++ else image.id, spotId = spotId)
+        }
+        val updatedNotes = spotDetails.notes.map { note ->
+            note.copy(id = if (note.id == 0L) nextNoteId++ else note.id, spotId = spotId)
+        }
+        val finalDetails = SpotDetails(updatedSpot, updatedImages, updatedNotes)
+        spotsFlow.value = spotsFlow.value + (spotId to finalDetails)
+        return spotId
+    }
+
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         var count = 0
         spots.forEach { detail ->
