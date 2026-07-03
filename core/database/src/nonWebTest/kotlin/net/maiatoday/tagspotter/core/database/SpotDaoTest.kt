@@ -45,10 +45,12 @@ class SpotDaoTest : BaseDaoTest() {
         dao.insertSpot(spot)
 
         val updatedArtists = listOf("Artist A", "Artist B")
-        dao.updateSpotArtists(1L, updatedArtists)
+        dao.updateSpotArtists(1L, updatedArtists, 987654321L)
 
         val details = dao.getSpotDetails(1L).first()
         assertEquals(updatedArtists, details?.spot?.artists)
+        assertEquals(987654321L, details?.spot?.lastEditedAt)
+        assertEquals(false, details?.spot?.isSynced)
     }
 
     @Test

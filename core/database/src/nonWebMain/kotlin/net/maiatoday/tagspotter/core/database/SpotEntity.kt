@@ -11,7 +11,10 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
 
-@Entity(tableName = "spots")
+@Entity(
+    tableName = "spots",
+    indices = [Index(value = ["uuid"])]
+)
 data class SpotEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val latitude: Double,
@@ -25,7 +28,11 @@ data class SpotEntity(
     val photographer: String = "",
     val isImported: Boolean = false,
     val isStarred: Boolean = false,
-    val artworkDate: String = ""
+    val artworkDate: String = "",
+    val uuid: String = "",
+    val photographerUuid: String = "",
+    val lastEditedAt: Long = createdAt,
+    val isSynced: Boolean = false
 )
 
 @Entity(
@@ -38,7 +45,7 @@ data class SpotEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["spotId"])]
+    indices = [Index(value = ["spotId"]), Index(value = ["uuid"])]
 )
 data class SpotImageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -47,7 +54,9 @@ data class SpotImageEntity(
     val timestamp: Long,
     val thumbnailPath: String = "",
     val isMain: Boolean = false,
-    val rating: Int = 0
+    val rating: Int = 0,
+    val uuid: String = "",
+    val lastEditedAt: Long = timestamp
 )
 
 @Entity(
@@ -60,13 +69,15 @@ data class SpotImageEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["spotId"])]
+    indices = [Index(value = ["spotId"]), Index(value = ["uuid"])]
 )
 data class SpotNoteEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val spotId: Long,
     val noteText: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val uuid: String = "",
+    val lastEditedAt: Long = timestamp
 )
 
 data class SpotDetailsEntity(
@@ -98,7 +109,11 @@ fun SpotEntity.toDomain(): Spot = Spot(
     photographer = photographer,
     isImported = isImported,
     isStarred = isStarred,
-    artworkDate = artworkDate
+    artworkDate = artworkDate,
+    uuid = uuid,
+    photographerUuid = photographerUuid,
+    lastEditedAt = lastEditedAt,
+    isSynced = isSynced
 )
 
 fun Spot.toEntity(): SpotEntity = SpotEntity(
@@ -114,7 +129,11 @@ fun Spot.toEntity(): SpotEntity = SpotEntity(
     photographer = photographer,
     isImported = isImported,
     isStarred = isStarred,
-    artworkDate = artworkDate
+    artworkDate = artworkDate,
+    uuid = uuid,
+    photographerUuid = photographerUuid,
+    lastEditedAt = lastEditedAt,
+    isSynced = isSynced
 )
 
 fun SpotImageEntity.toDomain(): SpotImage = SpotImage(
@@ -124,7 +143,9 @@ fun SpotImageEntity.toDomain(): SpotImage = SpotImage(
     timestamp = timestamp,
     thumbnailPath = thumbnailPath,
     isMain = isMain,
-    rating = rating
+    rating = rating,
+    uuid = uuid,
+    lastEditedAt = lastEditedAt
 )
 
 fun SpotImage.toEntity(): SpotImageEntity = SpotImageEntity(
@@ -134,21 +155,27 @@ fun SpotImage.toEntity(): SpotImageEntity = SpotImageEntity(
     timestamp = timestamp,
     thumbnailPath = thumbnailPath,
     isMain = isMain,
-    rating = rating
+    rating = rating,
+    uuid = uuid,
+    lastEditedAt = lastEditedAt
 )
 
 fun SpotNoteEntity.toDomain(): SpotNote = SpotNote(
     id = id,
     spotId = spotId,
     noteText = noteText,
-    timestamp = timestamp
+    timestamp = timestamp,
+    uuid = uuid,
+    lastEditedAt = lastEditedAt
 )
 
 fun SpotNote.toEntity(): SpotNoteEntity = SpotNoteEntity(
     id = id,
     spotId = spotId,
     noteText = noteText,
-    timestamp = timestamp
+    timestamp = timestamp,
+    uuid = uuid,
+    lastEditedAt = lastEditedAt
 )
 
 fun SpotDetailsEntity.toDomain(): SpotDetails = SpotDetails(

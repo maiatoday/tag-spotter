@@ -7,6 +7,7 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
+import net.maiatoday.tagspotter.core.model.generateUuid
 
 class WasmSpotRepository : SpotRepository {
     private val spotsFlow: MutableStateFlow<Map<Long, SpotDetails>> = MutableStateFlow(emptyMap<Long, SpotDetails>())
@@ -29,10 +30,28 @@ class WasmSpotRepository : SpotRepository {
     }
 
     override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int, isMain: Boolean): Long {
+        val now = epochMillis()
         val spotId = if (spot.id == 0L) nextSpotId++ else spot.id
-        val newSpot = spot.copy(id = spotId)
+        val newSpot = spot.copy(
+            id = spotId,
+            uuid = if (spot.uuid.isEmpty()) generateUuid() else spot.uuid,
+            lastEditedAt = now,
+            isSynced = false
+        )
         val images = if (imagePath.isNotEmpty()) {
-            listOf(SpotImage(id = nextImageId++, spotId = spotId, imagePath = imagePath, thumbnailPath = thumbnailPath, timestamp = spot.createdAt, rating = rating, isMain = isMain))
+            listOf(
+                SpotImage(
+                    id = nextImageId++,
+                    spotId = spotId,
+                    imagePath = imagePath,
+                    thumbnailPath = thumbnailPath,
+                    timestamp = spot.createdAt,
+                    rating = rating,
+                    isMain = isMain,
+                    uuid = generateUuid(),
+                    lastEditedAt = now
+                )
+            )
         } else {
             emptyList()
         }
@@ -44,54 +63,96 @@ class WasmSpotRepository : SpotRepository {
     override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int, isMain: Boolean): Long {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return 0L
         val imgId = nextImageId++
-        val newImage = SpotImage(id = imgId, spotId = spotId, imagePath = imagePath, thumbnailPath = thumbnailPath, timestamp = timestamp, rating = rating, isMain = isMain)
+        val now = epochMillis()
+        val newImage = SpotImage(
+            id = imgId,
+            spotId = spotId,
+            imagePath = imagePath,
+            thumbnailPath = thumbnailPath,
+            timestamp = timestamp,
+            rating = rating,
+            isMain = isMain,
+            uuid = generateUuid(),
+            lastEditedAt = now
+        )
         val updatedImages = current.images + newImage
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(images = updatedImages))
+        val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = updatedSpot, images = updatedImages))
         return imgId
     }
 
     override suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return 0L
         val noteId = nextNoteId++
-        val newNote = SpotNote(id = noteId, spotId = spotId, noteText = noteText, timestamp = timestamp)
+        val now = epochMillis()
+        val newNote = SpotNote(
+            id = noteId,
+            spotId = spotId,
+            noteText = noteText,
+            timestamp = timestamp,
+            uuid = generateUuid(),
+            lastEditedAt = now
+        )
         val updatedNotes = current.notes + newNote
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(notes = updatedNotes))
+        val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = updatedSpot, notes = updatedNotes))
         return noteId
     }
 
     override suspend fun updateSpotStatus(spotId: Long, status: String) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(status = status)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(status = status, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun updateSpotCategory(spotId: Long, category: String) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(category = category)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(category = category, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun updateSpotArtists(spotId: Long, artists: List<String>) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(artists = artists)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(artists = artists, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun updateSpotPhotographer(spotId: Long, photographer: String) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(photographer = photographer)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(photographer = photographer, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun updateSpotTags(spotId: Long, tags: List<String>) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(tags = tags)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(tags = tags, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(latitude = latitude, longitude = longitude)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(latitude = latitude, longitude = longitude, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun updateSpotDescription(spotId: Long, description: String) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(description = description)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(description = description, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
@@ -169,7 +230,10 @@ class WasmSpotRepository : SpotRepository {
 
     override suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(isStarred = isStarred)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(isStarred = isStarred, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun getStarredSpots(): List<Spot> {
@@ -182,39 +246,79 @@ class WasmSpotRepository : SpotRepository {
 
     override suspend fun setMainImage(spotId: Long, imageId: Long) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
+        val now = epochMillis()
         val updatedImages = current.images.map { it.copy(isMain = it.id == imageId) }
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(images = updatedImages))
+        val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = updatedSpot, images = updatedImages))
     }
 
     override suspend fun deleteImage(image: SpotImage) {
         val current: SpotDetails = spotsFlow.value[image.spotId] ?: return
+        val now = epochMillis()
         val updatedImages = current.images.filter { it.id != image.id }
-        spotsFlow.value = spotsFlow.value + (image.spotId to current.copy(images = updatedImages))
+        val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
+        spotsFlow.value = spotsFlow.value + (image.spotId to current.copy(spot = updatedSpot, images = updatedImages))
     }
 
     override suspend fun updateImageRating(imageId: Long, rating: Int) {
-        spotsFlow.value = spotsFlow.value.mapValues<Long, SpotDetails, SpotDetails> { entry ->
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value.mapValues { entry ->
             val details = entry.value
-            details.copy(images = details.images.map { if (it.id == imageId) it.copy(rating = rating) else it })
+            var ratingChanged = false
+            val updatedImages = details.images.map {
+                if (it.id == imageId) {
+                    ratingChanged = true
+                    it.copy(rating = rating, lastEditedAt = now)
+                } else it
+            }
+            if (ratingChanged) {
+                details.copy(spot = details.spot.copy(lastEditedAt = now, isSynced = false), images = updatedImages)
+            } else {
+                details
+            }
         }
     }
 
     override suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String) {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return
-        spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = current.spot.copy(artworkDate = artworkDate)))
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(artworkDate = artworkDate, lastEditedAt = now, isSynced = false)
+        ))
     }
 
     override suspend fun deleteNote(noteId: Long) {
-        spotsFlow.value = spotsFlow.value.mapValues<Long, SpotDetails, SpotDetails> { entry ->
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value.mapValues { entry ->
             val details = entry.value
-            details.copy(notes = details.notes.filter { it.id != noteId })
+            val hasNote = details.notes.any { it.id == noteId }
+            if (hasNote) {
+                details.copy(
+                    spot = details.spot.copy(lastEditedAt = now, isSynced = false),
+                    notes = details.notes.filter { it.id != noteId }
+                )
+            } else {
+                details
+            }
         }
     }
 
     override suspend fun updateNote(noteId: Long, noteText: String) {
-        spotsFlow.value = spotsFlow.value.mapValues<Long, SpotDetails, SpotDetails> { entry ->
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value.mapValues { entry ->
             val details = entry.value
-            details.copy(notes = details.notes.map { if (it.id == noteId) it.copy(noteText = noteText) else it })
+            var noteChanged = false
+            val updatedNotes = details.notes.map {
+                if (it.id == noteId) {
+                    noteChanged = true
+                    it.copy(noteText = noteText, lastEditedAt = now)
+                } else it
+            }
+            if (noteChanged) {
+                details.copy(spot = details.spot.copy(lastEditedAt = now, isSynced = false), notes = updatedNotes)
+            } else {
+                details
+            }
         }
     }
 }

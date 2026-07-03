@@ -16,7 +16,11 @@ data class Spot(
     val photographer: String = "",
     val isImported: Boolean = false,
     val isStarred: Boolean = false,
-    val artworkDate: String = ""
+    val artworkDate: String = "",
+    val uuid: String = generateUuid(),
+    val photographerUuid: String = "",
+    val lastEditedAt: Long = createdAt,
+    val isSynced: Boolean = false
 ) {
     companion object {
         val CATEGORIES = listOf("graffiti", "sculpture", "nature", "architecture", "public_place", "food")
@@ -31,7 +35,9 @@ data class SpotImage(
     val timestamp: Long,
     val thumbnailPath: String = "",
     val isMain: Boolean = false,
-    val rating: Int = 0
+    val rating: Int = 0,
+    val uuid: String = generateUuid(),
+    val lastEditedAt: Long = timestamp
 )
 
 @Serializable
@@ -39,7 +45,9 @@ data class SpotNote(
     val id: Long = 0,
     val spotId: Long,
     val noteText: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val uuid: String = generateUuid(),
+    val lastEditedAt: Long = timestamp
 )
 
 @Serializable

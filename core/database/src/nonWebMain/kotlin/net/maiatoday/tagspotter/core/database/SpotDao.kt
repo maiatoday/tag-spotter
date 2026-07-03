@@ -30,26 +30,29 @@ interface SpotDao {
     @Query("DELETE FROM spots WHERE id = :spotId")
     suspend fun deleteSpotById(spotId: Long)
 
-    @Query("UPDATE spots SET status = :status WHERE id = :spotId")
-    suspend fun updateSpotStatus(spotId: Long, status: String)
+    @Query("UPDATE spots SET lastEditedAt = :lastEdited, isSynced = 0 WHERE id = :spotId")
+    suspend fun touchSpot(spotId: Long, lastEdited: Long)
 
-    @Query("UPDATE spots SET category = :category WHERE id = :spotId")
-    suspend fun updateSpotCategory(spotId: Long, category: String)
+    @Query("UPDATE spots SET status = :status, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotStatus(spotId: Long, status: String, lastEditedAt: Long)
 
-    @Query("UPDATE spots SET artists = :artists WHERE id = :spotId")
-    suspend fun updateSpotArtists(spotId: Long, artists: List<String>)
+    @Query("UPDATE spots SET category = :category, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotCategory(spotId: Long, category: String, lastEditedAt: Long)
 
-    @Query("UPDATE spots SET photographer = :photographer WHERE id = :spotId")
-    suspend fun updateSpotPhotographer(spotId: Long, photographer: String)
+    @Query("UPDATE spots SET artists = :artists, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotArtists(spotId: Long, artists: List<String>, lastEditedAt: Long)
 
-    @Query("UPDATE spots SET tags = :tags WHERE id = :spotId")
-    suspend fun updateSpotTags(spotId: Long, tags: List<String>)
+    @Query("UPDATE spots SET photographer = :photographer, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotPhotographer(spotId: Long, photographer: String, lastEditedAt: Long)
 
-    @Query("UPDATE spots SET latitude = :latitude, longitude = :longitude WHERE id = :spotId")
-    suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double)
+    @Query("UPDATE spots SET tags = :tags, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotTags(spotId: Long, tags: List<String>, lastEditedAt: Long)
 
-    @Query("UPDATE spots SET description = :description WHERE id = :spotId")
-    suspend fun updateSpotDescription(spotId: Long, description: String)
+    @Query("UPDATE spots SET latitude = :latitude, longitude = :longitude, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double, lastEditedAt: Long)
+
+    @Query("UPDATE spots SET description = :description, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotDescription(spotId: Long, description: String, lastEditedAt: Long)
 
     @Transaction
     @Query("SELECT * FROM spots WHERE id = :id")
@@ -66,8 +69,8 @@ interface SpotDao {
     @Query("SELECT DISTINCT tags FROM spots")
     fun getAllUsedTags(): Flow<List<String>>
 
-    @Query("UPDATE spots SET isStarred = :isStarred WHERE id = :spotId")
-    suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean)
+    @Query("UPDATE spots SET isStarred = :isStarred, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean, lastEditedAt: Long)
 
     @Query("SELECT * FROM spots WHERE isStarred = 1")
     suspend fun getStarredSpots(): List<SpotEntity>
@@ -93,15 +96,15 @@ interface SpotDao {
     @Query("SELECT * FROM spot_images WHERE spotId = :spotId ORDER BY timestamp ASC")
     suspend fun getImagesForSpot(spotId: Long): List<SpotImageEntity>
 
-    @Query("UPDATE spot_images SET rating = :rating WHERE id = :imageId")
-    suspend fun updateImageRating(imageId: Long, rating: Int)
+    @Query("UPDATE spot_images SET rating = :rating, lastEditedAt = :lastEditedAt WHERE id = :imageId")
+    suspend fun updateImageRating(imageId: Long, rating: Int, lastEditedAt: Long)
 
-    @Query("UPDATE spots SET artworkDate = :artworkDate WHERE id = :spotId")
-    suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String)
+    @Query("UPDATE spots SET artworkDate = :artworkDate, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String, lastEditedAt: Long)
 
     @Query("DELETE FROM spot_notes WHERE id = :noteId")
     suspend fun deleteNoteById(noteId: Long)
 
-    @Query("UPDATE spot_notes SET noteText = :noteText WHERE id = :noteId")
-    suspend fun updateNoteText(noteId: Long, noteText: String)
+    @Query("UPDATE spot_notes SET noteText = :noteText, lastEditedAt = :lastEditedAt WHERE id = :noteId")
+    suspend fun updateNoteText(noteId: Long, noteText: String, lastEditedAt: Long)
 }

@@ -21,6 +21,7 @@ actual val platformDatabaseModule: Module = module {
     single {
         getDatabaseBuilder(androidContext())
             .setDriver(BundledSQLiteDriver())
+            .configureSpotDatabase()
             .fallbackToDestructiveMigration(true)
             .build()
     }

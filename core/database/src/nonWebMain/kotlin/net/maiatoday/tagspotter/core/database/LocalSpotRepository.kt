@@ -45,7 +45,9 @@ class LocalSpotRepository(
                     thumbnailPath = thumbnailPath,
                     timestamp = spot.createdAt,
                     rating = rating,
-                    isMain = isMain
+                    isMain = isMain,
+                    uuid = net.maiatoday.tagspotter.core.model.generateUuid(),
+                    lastEditedAt = spot.createdAt
                 )
             )
         }
@@ -53,54 +55,71 @@ class LocalSpotRepository(
     }
 
     override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int, isMain: Boolean): Long {
-        return spotDao.insertImage(
+        val now = epochMillis()
+        val imgId = spotDao.insertImage(
             SpotImageEntity(
                 spotId = spotId,
                 imagePath = imagePath,
                 thumbnailPath = thumbnailPath,
                 timestamp = timestamp,
                 rating = rating,
-                isMain = isMain
+                isMain = isMain,
+                uuid = net.maiatoday.tagspotter.core.model.generateUuid(),
+                lastEditedAt = now
             )
         )
+        spotDao.touchSpot(spotId, now)
+        return imgId
     }
 
     override suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long {
-        return spotDao.insertNote(
+        val now = epochMillis()
+        val noteId = spotDao.insertNote(
             SpotNoteEntity(
                 spotId = spotId,
                 noteText = noteText,
-                timestamp = timestamp
+                timestamp = timestamp,
+                uuid = net.maiatoday.tagspotter.core.model.generateUuid(),
+                lastEditedAt = now
             )
         )
+        spotDao.touchSpot(spotId, now)
+        return noteId
     }
 
     override suspend fun updateSpotStatus(spotId: Long, status: String) {
-        spotDao.updateSpotStatus(spotId, status)
+        val now = epochMillis()
+        spotDao.updateSpotStatus(spotId, status, now)
     }
 
     override suspend fun updateSpotCategory(spotId: Long, category: String) {
-        spotDao.updateSpotCategory(spotId, category)
+        val now = epochMillis()
+        spotDao.updateSpotCategory(spotId, category, now)
     }
 
     override suspend fun updateSpotArtists(spotId: Long, artists: List<String>) {
-        spotDao.updateSpotArtists(spotId, artists)
+        val now = epochMillis()
+        spotDao.updateSpotArtists(spotId, artists, now)
     }
 
     override suspend fun updateSpotPhotographer(spotId: Long, photographer: String) {
-        spotDao.updateSpotPhotographer(spotId, photographer)
+        val now = epochMillis()
+        spotDao.updateSpotPhotographer(spotId, photographer, now)
     }
 
     override suspend fun updateSpotTags(spotId: Long, tags: List<String>) {
-        spotDao.updateSpotTags(spotId, tags)
+        val now = epochMillis()
+        spotDao.updateSpotTags(spotId, tags, now)
     }
 
     override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {
-        spotDao.updateSpotLocation(spotId, latitude, longitude)
+        val now = epochMillis()
+        spotDao.updateSpotLocation(spotId, latitude, longitude, now)
     }
 
     override suspend fun updateSpotDescription(spotId: Long, description: String) {
-        spotDao.updateSpotDescription(spotId, description)
+        val now = epochMillis()
+        spotDao.updateSpotDescription(spotId, description, now)
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
@@ -244,7 +263,8 @@ class LocalSpotRepository(
     }
 
     override suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean) {
-        spotDao.updateSpotStarred(spotId, isStarred)
+        val now = epochMillis()
+        spotDao.updateSpotStarred(spotId, isStarred, now)
     }
 
     override suspend fun getStarredSpots(): List<Spot> {
@@ -256,7 +276,9 @@ class LocalSpotRepository(
     }
 
     override suspend fun setMainImage(spotId: Long, imageId: Long) {
+        val now = epochMillis()
         spotDao.setMainImage(spotId, imageId)
+        spotDao.touchSpot(spotId, now)
     }
 
     override suspend fun deleteImage(image: SpotImage) {
@@ -264,6 +286,9 @@ class LocalSpotRepository(
         photoProcessor.deleteFile(image.imagePath)
 
         spotDao.deleteImageById(image.id)
+
+        val now = epochMillis()
+        spotDao.touchSpot(image.spotId, now)
 
         if (image.isMain) {
             val remainingImages = spotDao.getImagesForSpot(image.spotId)
@@ -275,19 +300,39 @@ class LocalSpotRepository(
     }
 
     override suspend fun updateImageRating(imageId: Long, rating: Int) {
-        spotDao.updateImageRating(imageId, rating)
+        val now = epochMillis()
+        spotDao.updateImageRating(imageId, rating, now)
+        // Retrieve spotId for image to touch the parent spot
+        val images = spotDao.getAllSpotsDetails().first().flatMap { it.images }
+        val matchingImage = images.find { it.id == imageId }
+        if (matchingImage != null) {
+            spotDao.touchSpot(matchingImage.spotId, now)
+        }
     }
 
     override suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String) {
-        spotDao.updateSpotArtworkDate(spotId, artworkDate)
+        val now = epochMillis()
+        spotDao.updateSpotArtworkDate(spotId, artworkDate, now)
     }
 
     override suspend fun deleteNote(noteId: Long) {
+        val notes = spotDao.getAllSpotsDetails().first().flatMap { it.notes }
+        val matchingNote = notes.find { it.id == noteId }
         spotDao.deleteNoteById(noteId)
+        if (matchingNote != null) {
+            val now = epochMillis()
+            spotDao.touchSpot(matchingNote.spotId, now)
+        }
     }
 
     override suspend fun updateNote(noteId: Long, noteText: String) {
-        spotDao.updateNoteText(noteId, noteText)
+        val now = epochMillis()
+        spotDao.updateNoteText(noteId, noteText, now)
+        val notes = spotDao.getAllSpotsDetails().first().flatMap { it.notes }
+        val matchingNote = notes.find { it.id == noteId }
+        if (matchingNote != null) {
+            spotDao.touchSpot(matchingNote.spotId, now)
+        }
     }
 
     companion object {
