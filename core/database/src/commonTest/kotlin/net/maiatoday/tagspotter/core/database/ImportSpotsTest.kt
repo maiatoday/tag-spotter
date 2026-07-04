@@ -38,7 +38,7 @@ class ImportSpotsTest {
             id = 9999L, // different ID, but coordinates and time match
             latitude = 45.4642,
             longitude = 9.1899,
-            createdAt = mockSpot1Details!!.spot.createdAt,
+            createdAt = mockSpot1Details.spot.createdAt,
             description = "Stunning street art stencil near the Duomo in Milan.",
             tags = listOf("milan"),
             category = "graffiti",
@@ -79,7 +79,7 @@ class ImportSpotsTest {
         val importedSpotDetails: SpotDetails? =
             allSpots.find { it.spot.description == "New unique imported spot" }
         assertNotNull(importedSpotDetails)
-        assertNotEquals(8888L, importedSpotDetails!!.spot.id)
+        assertNotEquals(8888L, importedSpotDetails.spot.id)
         assertEquals("imgB", importedSpotDetails.images.first().imagePath)
         assertEquals(importedSpotDetails.spot.id, importedSpotDetails.images.first().spotId)
         assertEquals("Note B", importedSpotDetails.notes.first().noteText)

@@ -1,19 +1,17 @@
 package net.maiatoday.tagspotter.feature.main
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import net.maiatoday.tagspotter.feature.detail.DetailScreen
-import net.maiatoday.tagspotter.feature.settings.SettingsScreen
-
-import androidx.compose.runtime.LaunchedEffect
 import androidx.savedstate.serialization.SavedStateConfiguration
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
+import net.maiatoday.tagspotter.feature.detail.DetailScreen
+import net.maiatoday.tagspotter.feature.settings.SettingsScreen
 
 @Composable
 fun MainNavigation(

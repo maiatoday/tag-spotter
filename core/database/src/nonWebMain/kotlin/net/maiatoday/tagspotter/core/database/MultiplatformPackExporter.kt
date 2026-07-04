@@ -3,7 +3,6 @@ package net.maiatoday.tagspotter.core.database
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.BackupWrapper
 import net.maiatoday.tagspotter.core.model.SpotDetails
-import okio.FileSystem
 import okio.Path.Companion.toPath
 
 object MultiplatformPackExporter {

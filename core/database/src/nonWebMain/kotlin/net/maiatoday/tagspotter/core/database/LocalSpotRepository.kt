@@ -6,9 +6,8 @@ import kotlinx.coroutines.flow.map
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.model.SpotNote
-import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.model.generateUuid
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 
 class LocalSpotRepository(
     private val spotDao: SpotDao,

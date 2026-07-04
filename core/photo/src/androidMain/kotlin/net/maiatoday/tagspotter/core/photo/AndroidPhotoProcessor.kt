@@ -93,7 +93,7 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
 
     override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            java.io.File(filePath).writeBytes(bytes)
+            File(filePath).writeBytes(bytes)
             true
         } catch (e: Exception) {
             e.printStackTrace()

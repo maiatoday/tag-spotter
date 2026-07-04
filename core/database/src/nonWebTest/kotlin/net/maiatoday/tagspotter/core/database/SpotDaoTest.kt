@@ -1,7 +1,5 @@
 package net.maiatoday.tagspotter.core.database
 
-import androidx.room.RoomDatabase
-
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest

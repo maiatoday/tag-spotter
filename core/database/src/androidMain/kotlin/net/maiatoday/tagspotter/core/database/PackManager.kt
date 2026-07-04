@@ -3,19 +3,14 @@ package net.maiatoday.tagspotter.core.database
 import android.content.Context
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
-import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
-import net.maiatoday.tagspotter.core.photo.ImageOptimizer
 import java.io.File
-import java.io.FileNotFoundException
 import java.io.InputStream
 import java.io.OutputStream
-import java.util.UUID
 import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 object PackManager {

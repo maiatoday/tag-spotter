@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.Flow
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.model.SpotNote
 
 interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>

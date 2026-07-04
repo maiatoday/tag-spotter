@@ -1,13 +1,12 @@
 package net.maiatoday.tagspotter.core.database
 
-import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import java.io.File
 import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 
 object PackManager {
 

@@ -1,16 +1,5 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import net.maiatoday.tagspotter.core.database.epochMillis
-
-import net.maiatoday.tagspotter.feature.detail.res.DetailRes
-import net.maiatoday.tagspotter.core.ui.res.TagRes
-
-
-
-
-
-
-
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -74,29 +63,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-
-
-import net.maiatoday.tagspotter.feature.detail.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
-
-import net.maiatoday.tagspotter.core.ui.SpotMapView
 import net.maiatoday.tagspotter.core.ui.MapMarker
+import net.maiatoday.tagspotter.core.ui.SpotMapView
 import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.parameter.parametersOf
-
-
+import net.maiatoday.tagspotter.core.ui.res.TagRes
+import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 import net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper
 import net.maiatoday.tagspotter.feature.detail.res.rememberToastLauncher
+import net.maiatoday.tagspotter.feature.detail.res.stringResource
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

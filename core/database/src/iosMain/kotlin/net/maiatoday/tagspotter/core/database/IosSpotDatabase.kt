@@ -9,7 +9,6 @@ import org.koin.dsl.module
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
-import platform.Foundation.NSDate
 
 actual fun getDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<SpotDatabase> {
     val documentDirectory = NSFileManager.defaultManager.URLForDirectory(
