@@ -21,6 +21,7 @@ kotlin {
             dependencies {
                 implementation(project(":feature:main"))
                 implementation(project(":core:database"))
+                implementation(project(":core:sync"))
                 implementation(project(":core:settings"))
                 implementation(project(":core:location"))
                 implementation(project(":core:photo"))

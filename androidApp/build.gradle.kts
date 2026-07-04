@@ -4,6 +4,7 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.google.services)
 }
 
 android {
@@ -88,6 +89,7 @@ dependencies {
   implementation(project(":core:photo"))
   implementation(project(":core:location"))
   implementation(project(":core:database"))
+  implementation(project(":core:sync"))
   implementation(project(":core:settings"))
   implementation(project(":core:ai"))
   implementation(project(":core:ui"))

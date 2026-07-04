@@ -41,6 +41,9 @@ composePlugin = "1.11.1"
 ktor = "3.0.3"
 imagepickerkmp = "1.0.41"
 javafx = "21.0.1"
+firebase-kotlin-sdk = "2.1.0"
+google-services = "4.4.2"
+firebase-bom = "33.1.0"
 
 [libraries]
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
@@ -119,6 +122,10 @@ ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref =
 imagepickerkmp = { module = "io.github.ismoy:imagepickerkmp", version.ref = "imagepickerkmp" }
 javafx-swing = { module = "org.openjfx:javafx-swing", version.ref = "javafx" }
 javafx-web = { module = "org.openjfx:javafx-web", version.ref = "javafx" }
+firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "firebase-kotlin-sdk" }
+firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "firebase-kotlin-sdk" }
+firebase-storage = { module = "dev.gitlive:firebase-storage", version.ref = "firebase-kotlin-sdk" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
@@ -129,3 +136,4 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "androidGradlePlugin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "composePlugin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }
