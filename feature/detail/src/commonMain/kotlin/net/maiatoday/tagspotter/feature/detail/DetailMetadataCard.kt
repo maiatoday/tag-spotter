@@ -91,7 +91,8 @@ fun DetailMetadataCard(
     onUpdatePhotographer: (String) -> Unit,
     onUpdateDescription: (String) -> Unit,
     onUpdateArtworkDate: (String) -> Unit,
-    onMapPickerClick: () -> Unit
+    onMapPickerClick: () -> Unit,
+    onSetEditing: (Boolean) -> Unit = {}
 ) {
     val platformHelper = net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper()
     var isEditingArtists by remember { mutableStateOf(isCreationMode) }
@@ -106,6 +107,11 @@ fun DetailMetadataCard(
 
     var isEditingArtworkDate by remember { mutableStateOf(isCreationMode) }
     var artworkDateEditInput by remember { mutableStateOf(details.spot.artworkDate) }
+
+    val anyEditing = isEditingArtists || isEditingPhotographer || isEditingDescription || isEditingArtworkDate
+    LaunchedEffect(anyEditing) {
+        onSetEditing(anyEditing)
+    }
 
     LaunchedEffect(isEditingArtists, details.spot.artists) {
         if (isEditingArtists) {

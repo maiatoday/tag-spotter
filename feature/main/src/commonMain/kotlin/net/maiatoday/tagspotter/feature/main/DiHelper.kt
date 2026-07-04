@@ -5,6 +5,7 @@ import net.maiatoday.tagspotter.core.database.databaseModule
 import net.maiatoday.tagspotter.core.location.locationModule
 import net.maiatoday.tagspotter.core.photo.photoModule
 import net.maiatoday.tagspotter.core.settings.coreSettingsModule
+import net.maiatoday.tagspotter.core.sync.syncModule
 import net.maiatoday.tagspotter.feature.detail.detailModule
 import net.maiatoday.tagspotter.feature.gallery.galleryModule
 import net.maiatoday.tagspotter.feature.map.mapModule
@@ -20,6 +21,7 @@ fun initKoin(platformModules: List<Module> = emptyList()) = startKoin {
             locationModule,
             photoModule,
             aiModule,
+            syncModule,
             mainModule,
             galleryModule,
             mapModule,

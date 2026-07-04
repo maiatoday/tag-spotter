@@ -1,10 +1,13 @@
 import SwiftUI
 import SharedApp
 import ZIPFoundation
+import FirebaseCore
 
 @main
 struct iosAppApp: App {
     init() {
+        FirebaseApp.configure()
+        
         DiHelperKt.doInitKoin(platformModules: [
             IosSecretsModuleKt.createIosSecretsModule()
         ])

@@ -419,3 +419,129 @@ service firebase.storage {
 3.  **Cross-Device Live Updating**:
     *   Sign in on an Android device and a Web tab using the same account.
     *   Create a spot on the web tab; verify it renders on the Android device's gallery in real-time.
+
+---
+
+## Phase 6: Missing Setup & Multiplatform Native SDK Integration
+
+This phase details how to fix the iOS initialization crash and properly configure the platform SDKs for **Android** and **iOS** to support both authentication and native Google Sign-In.
+
+### 1. Fixing iOS Firebase Initializer Crash
+The iOS application crash (`The default FirebaseApp instance must be configured before the default Auth instance can be initialized`) occurs because Kotlin DI (Koin) is initialized *before* Firebase is configured on the iOS host. Since Koin instantly instantiates our `NonWebAuthService` (which references `Firebase.auth`), it triggers a crash.
+
+#### Solution
+We must import `FirebaseCore` and invoke `FirebaseApp.configure()` as the very first line in the SwiftUI App initialization inside [iosAppApp.swift](file:///Users/maia/workspace/maiatoday/tag-spotter/iosApp/iosApp/iosAppApp.swift).
+
+```swift
+import SwiftUI
+import SharedApp
+import ZIPFoundation
+import FirebaseCore // [NEW] Import Firebase Core
+
+@main
+struct iosAppApp: App {
+    init() {
+        // [NEW] Configure Firebase before initializing Koin DI
+        FirebaseApp.configure()
+        
+        DiHelperKt.doInitKoin(platformModules: [
+            IosSecretsModuleKt.createIosSecretsModule()
+        ])
+        
+        // ... Zip callbacks remain unchanged ...
+    }
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+```
+
+---
+
+### 2. Fixing Desktop JVM Firebase Initializer Crashes
+On Desktop JVM, native Firebase SDKs are unavailable or require distinct setup configurations. To prevent `InstanceCreationException: Could not create instance for [Singleton: 'net.maiatoday.tagspotter.core.sync.AuthService']` crashes when Koin instantiates the sync components on JVM:
+
+#### Solution
+We converted the raw eager Firebase properties in both `NonWebAuthService` and `NonWebSyncManager` into lazy-initialized, exception-safe properties using `by lazy`.
+If the platform lacks a configured Firebase default app (such as on Desktop JVM), the service catches the exception gracefully, prints a warning, and falls back to a clean mock/simulated in-memory authentication and synchronization flow. This allows you to test the desktop email/password profile fields and sync loading animations flawlessly.
+
+
+---
+
+### 2. Manual Firebase Console Actions Required
+To support native Google Sign-In and secure Cloud Synchronization, the owner must manually enable and configure providers in the Firebase Console:
+
+#### A. Enable Authentication Providers
+1. Go to the **Firebase Console** and select your project.
+2. Navigate to **Build** > **Authentication** > **Sign-in method**.
+3. **Enable Email/Password**:
+   * Click **Add new provider**, select **Email/Password**, toggle **Enable**, and click **Save**.
+4. **Enable Google Sign-In**:
+   * Click **Add new provider**, select **Google**.
+   * Toggle **Enable**.
+   * Fill in your public-facing project name and support email.
+   * Under **Web SDK configuration** (at the bottom of the Google config window), take note of the **Web client ID** and **Web client secret**. *These credentials are used as the Server Client ID for both Android and iOS native exchanges.*
+   * Click **Save**.
+
+#### B. Configure SHA-1/SHA-256 Fingerprints (For Android)
+Google Sign-In on Android requires verifying your local developer signing keys:
+1. Generate your local debug keystore SHA-1 fingerprint by running:
+   ```bash
+   ./gradlew signingReport
+   ```
+2. In the Firebase Console, go to **Project settings** (gear icon) > **General**.
+3. Under **Your apps**, select the **Android** application.
+4. Click **Add fingerprint** and paste your SHA-1 certificate fingerprint.
+5. Download the updated `google-services.json` and replace the existing file inside your Android module folder (`/androidApp/google-services.json`).
+
+#### C. Configure iOS Target in Xcode
+1. In the Firebase Console, go to **Project settings** > **General**.
+2. Select the **iOS** app. If not added, register it with Bundle ID `net.maiatoday.tagspotter`.
+3. Download `GoogleService-Info.plist` and add it to your Xcode project root under the `iosApp` group.
+4. In Xcode, select the **iosApp** target, go to the **Info** tab, expand **URL Types**, and click `+` to add a new URL scheme:
+   * **URL Schemes**: Paste your reversed client ID (found in `GoogleService-Info.plist` as `REVERSED_CLIENT_ID`, e.g., `com.googleusercontent.apps.xxxx`).
+
+---
+
+### 3. Native Google Sign-In SDK Integrations
+
+#### Android Platform Integration
+Android uses **Google Credential Manager** to prompt native logins:
+1. **Dependencies**: Add to `:androidApp` or `:core:sync` (`build.gradle.kts`):
+   ```kotlin
+   implementation("androidx.credentials:credentials:1.5.0-rc01")
+   implementation("androidx.credentials:credentials-play-services-auth:1.5.0-rc01")
+   implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+   ```
+2. **Platform Call**: Request credentials from inside your Android compose screen or Activity, then forward the ID Token to KMP:
+   ```kotlin
+   val credentialManager = CredentialManager.create(context)
+   val googleIdOption = GetGoogleIdOption.Builder()
+       .setFilterByAuthorizedAccounts(false)
+       .setServerClientId(WEB_CLIENT_ID_FROM_CONSOLE)
+       .build()
+   val request = GetCredentialRequest.Builder()
+       .addCredentialOption(googleIdOption)
+       .build()
+   val result = credentialManager.getCredential(context, request)
+   val googleIdToken = GoogleIdTokenCredential.createFrom(result.credential.data).idToken
+   viewModel.signInWithGoogle(idToken = googleIdToken)
+   ```
+
+#### iOS Platform Integration
+iOS uses the **GoogleSignIn SDK**:
+1. **Dependency**: Link GoogleSignIn Swift Package inside Xcode (`https://github.com/google/google-signin-ios`).
+2. **Platform Call**: Trigger Google Sign-In on iOS and retrieve the token:
+   ```swift
+   import GoogleSignIn
+
+   GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { signInResult, error in
+       guard let idToken = signInResult?.user.idToken?.tokenString else { return }
+       // Pass token to Kotlin AuthService:
+       authService.signInWithGoogle(idToken: idToken)
+   }
+   ```
+

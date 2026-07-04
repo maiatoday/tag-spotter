@@ -74,3 +74,47 @@ Verify that user sessions tear down gracefully without leaking state or data.
 4. **Verification**:
    - The app triggers synchronization for the new user ID.
    - No data from the previous user's Firestore collection is pulled into the current user's local database unless explicitly shared.
+
+---
+
+## Test Scenario 4: Firebase Console Data Verification Guide
+Follow these steps to log into the Firebase Console and visually confirm that Auth, Firestore, and Cloud Storage records are synced perfectly.
+
+### Step 1: Locating and Verifying Auth Records
+1. Open the **[Firebase Console](https://console.firebase.google.com/)** in your web browser.
+2. Select your **Tag Spotter** project.
+3. In the left-hand navigation sidebar, click on **Build > Authentication**.
+4. Select the **Users** tab.
+5. **Verification**:
+   - Verify that your newly signed-in user email (or the unique Firebase User ID if signed in via Google) appears in the user list.
+   - Under the **Provider** column, check that the correct icon is displayed (a letter icon for Email/Password, or the Google logo for Google Sign-In).
+   - Copy the value under the **User UID** column (e.g., `a1B2c3D4e5F6...`). This UID is used as the document directory key in Firestore and Cloud Storage.
+
+### Step 2: Locating and Verifying Firestore Metadata
+1. In the left-hand navigation sidebar, click on **Build > Firestore Database**.
+2. Select the **Data** tab to open the Firestore document explorer.
+3. In the hierarchy view, locate the root collection named `users`.
+4. Click on the document whose ID matches the **User UID** you copied in Step 1.
+5. Under that user document, locate the nested collection named `spots`.
+6. Click on any document inside the `spots` collection.
+7. **Verification**:
+   - Verify that each document matches a local spot created in the app.
+   - Confirm that the fields exist and hold correct, synchronized data:
+     - `uuid`: High-precision UUID string.
+     - `photographerName`: The handle matching the creator's profile.
+     - `description`: The spot's notes/caption.
+     - `latitude` / `longitude`: Exact GPS coordinates of the logged spot.
+     - `lastEditedAt`: Epoch timestamp matching the last update.
+     - `status`: `"active"`, `"deleted"`, or `"erased"` depending on local actions.
+
+### Step 3: Locating and Verifying Cloud Storage Thumbnail Media
+1. In the left-hand navigation sidebar, click on **Build > Storage**.
+2. Select the **Files** tab.
+3. Navigate into the nested directories following this path:
+   `users / {USER_UID} / thumbnails /`
+4. **Verification**:
+   - Verify that one JPG thumbnail file exists for every image attached to your spots.
+   - The filename should correspond exactly to the image's generated `uuid` or tracking key (e.g. `image_uuid.jpg`).
+   - Click on any thumbnail file. In the right-hand preview panel, verify that a downscaled, highly compressed version of your street art photo is rendered.
+   - Confirm that full-size, heavy photo files are **NOT** uploaded here, which saves substantial network bandwidth and cloud resources.
+

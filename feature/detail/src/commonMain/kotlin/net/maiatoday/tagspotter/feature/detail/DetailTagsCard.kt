@@ -57,11 +57,16 @@ fun DetailTagsCard(
     details: SpotDetails,
     isCreationMode: Boolean,
     recentCustomTags: List<String>,
-    onUpdateTags: (List<String>) -> Unit
+    onUpdateTags: (List<String>) -> Unit,
+    onSetEditing: (Boolean) -> Unit = {}
 ) {
     var isEditingTags by remember { mutableStateOf(isCreationMode) }
     var customTagEditInput by remember { mutableStateOf("") }
     val localTagsList = remember { mutableStateListOf<String>() }
+
+    LaunchedEffect(isEditingTags) {
+        onSetEditing(isEditingTags)
+    }
 
     LaunchedEffect(isEditingTags, details.spot.tags) {
         if (isEditingTags) {

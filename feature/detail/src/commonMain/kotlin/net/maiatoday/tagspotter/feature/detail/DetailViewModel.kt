@@ -75,8 +75,24 @@ class DetailViewModel(
         } else null
     )
 
+    private val _isEditing = MutableStateFlow(false)
+    val isEditing = _isEditing.asStateFlow()
+
+    fun setEditing(editing: Boolean) {
+        _isEditing.value = editing
+    }
+
+    private var cachedDetails: SpotDetails? = null
+
     val spotDetails: StateFlow<SpotDetails?> = if (spotId != -1L) {
-        repository.getSpotById(spotId)
+        kotlinx.coroutines.flow.flow {
+            repository.getSpotById(spotId).collect { dbDetails ->
+                if (!_isEditing.value || cachedDetails == null) {
+                    cachedDetails = dbDetails
+                    emit(dbDetails)
+                }
+            }
+        }
     } else {
         _draftDetails
     }.stateIn(

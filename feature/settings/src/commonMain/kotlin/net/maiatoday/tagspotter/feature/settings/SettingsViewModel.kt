@@ -8,11 +8,69 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.database.SpotRepository
+import net.maiatoday.tagspotter.core.sync.AuthService
+import net.maiatoday.tagspotter.core.sync.SyncManager
+import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
+
+import kotlinx.coroutines.flow.first
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
-    private val spotRepository: SpotRepository
+    private val spotRepository: SpotRepository,
+    private val authService: AuthService,
+    private val syncManager: SyncManager
 ) : ViewModel() {
+
+    val currentUser: StateFlow<FirebaseUserWrapper?> = authService.currentUserFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val isSyncing: StateFlow<Boolean> = syncManager.isSyncing
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    fun signInWithGoogle() {
+        viewModelScope.launch {
+            authService.signInWithGoogle()
+        }
+    }
+
+    fun signInWithEmailAndPassword(email: String, password: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val result = authService.signInWithEmailAndPassword(email, password)
+            if (result.isSuccess) {
+                authService.currentUserFlow.first()?.uid?.let { uid ->
+                    syncManager.startRealtimeSync(uid)
+                }
+            }
+            onResult(result)
+        }
+    }
+
+    fun signUpWithEmailAndPassword(email: String, password: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val result = authService.signUpWithEmailAndPassword(email, password)
+            if (result.isSuccess) {
+                authService.currentUserFlow.first()?.uid?.let { uid ->
+                    syncManager.startRealtimeSync(uid)
+                }
+            }
+            onResult(result)
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authService.signOut()
+            syncManager.stopRealtimeSync()
+        }
+    }
 
     val photographerName: StateFlow<String> = settingsRepository.photographerName
         .stateIn(

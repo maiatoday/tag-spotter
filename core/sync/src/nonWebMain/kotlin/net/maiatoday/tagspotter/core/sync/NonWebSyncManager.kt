@@ -15,8 +15,22 @@ class NonWebSyncManager(
     private val _isSyncing = MutableStateFlow(false)
     override val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
-    private val firestore = Firebase.firestore
-    private val storage = Firebase.storage
+    private val firestore by lazy {
+        try {
+            Firebase.firestore
+        } catch (e: Exception) {
+            println("Firebase Firestore not available (expected on Desktop JVM): ${e.message}")
+            null
+        }
+    }
+    private val storage by lazy {
+        try {
+            Firebase.storage
+        } catch (e: Exception) {
+            println("Firebase Storage not available (expected on Desktop JVM): ${e.message}")
+            null
+        }
+    }
     private var realtimeJob: Job? = null
     private var activeUserId: String? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -24,12 +38,21 @@ class NonWebSyncManager(
     override suspend fun syncNow() {
         val userId = activeUserId ?: return
         if (_isSyncing.value) return
+        val currentFirestore = firestore
+        val currentStorage = storage
+        if (currentFirestore == null || currentStorage == null) {
+            println("Skipping real sync on Desktop JVM (Simulating successful mock sync)")
+            _isSyncing.value = true
+            delay(1000)
+            _isSyncing.value = false
+            return
+        }
         _isSyncing.value = true
 
         try {
             // 1. Push stage: find all unsynced local spots
             val unsyncedSpots = repository.getUnsyncedSpots()
-            val spotsCollection = firestore.collection("users").document(userId).collection("spots")
+            val spotsCollection = currentFirestore.collection("users").document(userId).collection("spots")
 
             unsyncedSpots.forEach { localDetail ->
                 val uuid = localDetail.spot.uuid
@@ -43,7 +66,7 @@ class NonWebSyncManager(
                         try {
                             val bytes = readBytesFromFile(image.thumbnailPath)
                             if (bytes != null) {
-                                val storageRef = storage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                                val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
                                 storageRef.putData(bytes.toFirebaseStorageData())
                             }
                         } catch (e: Exception) {
@@ -81,10 +104,15 @@ class NonWebSyncManager(
     override fun startRealtimeSync(userId: String) {
         activeUserId = userId
         realtimeJob?.cancel()
+        val currentFirestore = firestore
+        if (currentFirestore == null) {
+            println("Skipping realtime sync on Desktop JVM (Firestore unavailable)")
+            return
+        }
 
         realtimeJob = coroutineScope.launch {
             try {
-                firestore.collection("users").document(userId).collection("spots")
+                currentFirestore.collection("users").document(userId).collection("spots")
                     .snapshots
                     .collect { querySnapshot ->
                         val localSpots = repository.getAllSpots().first()

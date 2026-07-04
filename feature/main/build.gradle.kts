@@ -46,6 +46,7 @@ kotlin {
                 implementation(project(":core:photo"))
                 implementation(project(":core:ai"))
                 implementation(project(":core:ui"))
+                implementation(project(":core:sync"))
                 implementation(project(":feature:gallery"))
                 implementation(project(":feature:map"))
                 implementation(project(":feature:detail"))

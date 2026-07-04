@@ -743,14 +743,16 @@ fun DetailScreen(
                         onUpdatePhotographer = { viewModel.updatePhotographer(it) },
                         onUpdateDescription = { viewModel.updateDescription(it) },
                         onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
-                        onMapPickerClick = { isMapPickerDialogVisible = true }
+                        onMapPickerClick = { isMapPickerDialogVisible = true },
+                        onSetEditing = { viewModel.setEditing(it) }
                     )
 
                     DetailTagsCard(
                         details = details,
                         isCreationMode = isCreationMode,
                         recentCustomTags = recentCustomTags,
-                        onUpdateTags = { viewModel.updateTags(it) }
+                        onUpdateTags = { viewModel.updateTags(it) },
+                        onSetEditing = { viewModel.setEditing(it) }
                     )
 
                     DetailMiniMapCard(
@@ -825,14 +827,16 @@ fun DetailScreen(
                             onUpdatePhotographer = { viewModel.updatePhotographer(it) },
                             onUpdateDescription = { viewModel.updateDescription(it) },
                             onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
-                            onMapPickerClick = { isMapPickerDialogVisible = true }
+                            onMapPickerClick = { isMapPickerDialogVisible = true },
+                            onSetEditing = { viewModel.setEditing(it) }
                         )
 
                         DetailTagsCard(
                             details = details,
                             isCreationMode = isCreationMode,
                             recentCustomTags = recentCustomTags,
-                            onUpdateTags = { viewModel.updateTags(it) }
+                            onUpdateTags = { viewModel.updateTags(it) },
+                            onSetEditing = { viewModel.setEditing(it) }
                         )
 
                         DetailMiniMapCard(
