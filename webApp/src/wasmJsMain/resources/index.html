@@ -7,9 +7,27 @@
         html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000; }
         #compose-canvas { width:100%; height:100%; }
     </style>
+
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+    apiKey: "AIzaSy_MockWebApiKeyForCompilation",
+    authDomain: "tagspotter-mock-id.firebaseapp.com",
+    projectId: "tagspotter-mock-id",
+    storageBucket: "tagspotter-mock-id.firebasestorage.app",
+    messagingSenderId: "123456789012",
+    appId: "1:123456789012:web:46b766a08df2171476926e"
+  };
+
+    </script>
 </head>
 <body>
-    <div id="compose-canvas"></div>
-    <script src="webApp.js" type="application/javascript"></script>
+<div id="compose-canvas"></div>
+<script src="webApp.js" type="application/javascript"></script>
 </body>
 </html>
