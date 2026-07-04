@@ -1,6 +1,8 @@
 package net.maiatoday.tagspotter.feature.detail
 
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
+import net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper
+import net.maiatoday.tagspotter.feature.detail.res.DateFormatter
 
 
 
@@ -78,7 +80,7 @@ fun DetailNotesSection(
     onUpdateNote: (Long, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val platformHelper = net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper()
+    val platformHelper = rememberDetailPlatformHelper()
     var editingNoteId by remember { mutableStateOf<Long?>(null) }
     var editingText by remember { mutableStateOf("") }
     val speechLauncher = platformHelper.rememberSpeechRecognizerLauncher { spokenText ->
@@ -148,7 +150,7 @@ fun DetailNotesSection(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = net.maiatoday.tagspotter.feature.detail.res.DateFormatter.formatDate(note.timestamp, "MMM dd, yyyy - hh:mm a"),
+                                text = DateFormatter.formatDate(note.timestamp, "MMM dd, yyyy - hh:mm a"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.Bold

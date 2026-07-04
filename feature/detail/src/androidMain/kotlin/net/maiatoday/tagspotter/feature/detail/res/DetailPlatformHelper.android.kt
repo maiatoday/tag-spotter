@@ -16,6 +16,7 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.photo.ImageOptimizer
+import net.maiatoday.tagspotter.feature.detail.R
 import java.io.File
 import java.util.Locale
 
@@ -37,16 +38,16 @@ actual fun rememberDetailPlatformHelper(): DetailPlatformHelper {
                                 putExtra(Intent.EXTRA_STREAM, uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(intent, context.getString(net.maiatoday.tagspotter.feature.detail.R.string.content_desc_search_lens)))
+                            context.startActivity(Intent.createChooser(intent, context.getString(R.string.content_desc_search_lens)))
                         } else {
-                            Toast.makeText(context, context.getString(net.maiatoday.tagspotter.feature.detail.R.string.toast_img_file_not_found), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.toast_img_file_not_found), Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, context.getString(net.maiatoday.tagspotter.feature.detail.R.string.toast_failed_share_img, e.message ?: ""), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_failed_share_img, e.message ?: ""), Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    Toast.makeText(context, context.getString(net.maiatoday.tagspotter.feature.detail.R.string.toast_no_img_search), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_no_img_search), Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -69,12 +70,12 @@ actual fun rememberDetailPlatformHelper(): DetailPlatformHelper {
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                        putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(net.maiatoday.tagspotter.feature.detail.R.string.recognizer_prompt))
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.recognizer_prompt))
                     }
                     try {
                         speechLauncher.launch(intent)
                     } catch (_: Exception) {
-                        Toast.makeText(context, context.getString(net.maiatoday.tagspotter.feature.detail.R.string.speech_recognition_unsupported), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.speech_recognition_unsupported), Toast.LENGTH_SHORT).show()
                     }
                 }
             }

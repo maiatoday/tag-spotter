@@ -1,4 +1,4 @@
-@OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+@file:OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
 plugins {
     kotlin("multiplatform")
     alias(libs.plugins.android.kotlin.multiplatform.library)
@@ -67,13 +67,6 @@ kotlin {
             dependsOn(nonWebMain)
         }
         
-        val iosSimulatorArm64Main by getting {
-            dependsOn(iosMain.get())
-        }
-        
-        val iosArm64Main by getting {
-            dependsOn(iosMain.get())
-        }
         
         wasmJsMain {
             dependencies {

@@ -6,6 +6,7 @@ import org.jetbrains.compose.resources.StringResource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import net.maiatoday.tagspotter.core.photo.resolveLocalPath
 
 @Composable
 actual fun rememberToastLauncher(): ToastLauncher {
@@ -24,7 +25,8 @@ actual fun rememberToastLauncher(): ToastLauncher {
     }
 }
 
+
 actual fun formatImageModel(imagePath: String, thumbnailPath: String): Any {
     val path = thumbnailPath.ifEmpty { imagePath }
-    return net.maiatoday.tagspotter.core.photo.resolveLocalPath(path)
+    return resolveLocalPath(path)
 }

@@ -7,6 +7,7 @@ import java.io.File
 import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 
 object PackManager {
 
@@ -72,7 +73,7 @@ object PackManager {
 
     suspend fun importPack(
         repository: SpotRepository,
-        photoProcessor: net.maiatoday.tagspotter.core.photo.PhotoProcessor,
+        photoProcessor: PhotoProcessor,
         packFilePath: String,
         filesDir: String,
         cacheDir: String,

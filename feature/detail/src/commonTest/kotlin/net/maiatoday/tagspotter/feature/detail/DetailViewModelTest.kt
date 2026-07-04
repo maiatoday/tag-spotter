@@ -90,10 +90,10 @@ class DetailViewModelTest {
         assertEquals("Initial Photographer", viewModel.defaultPhotographer.value)
         val initialLoadedDetails = viewModel.spotDetails.value
         assertNotNull(initialLoadedDetails)
-        assertEquals("Original Description", initialLoadedDetails?.spot?.description)
-        assertEquals("active", initialLoadedDetails?.spot?.status)
-        assertEquals(listOf("Artist A"), initialLoadedDetails?.spot?.artists)
-        assertEquals("Photographer A", initialLoadedDetails?.spot?.photographer)
+        assertEquals("Original Description", initialLoadedDetails.spot.description)
+        assertEquals("active", initialLoadedDetails.spot.status)
+        assertEquals(listOf("Artist A"), initialLoadedDetails.spot.artists)
+        assertEquals("Photographer A", initialLoadedDetails.spot.photographer)
 
         // Update status
         viewModel.updateStatus("erased")
@@ -553,7 +553,7 @@ class DetailViewModelTest {
         assertTrue(state is WikiSearchState.Error)
         assertEquals(
             "No title logged. Please set a title/description first.",
-            (state as WikiSearchState.Error).message
+            state.message
         )
     }
 
@@ -599,7 +599,7 @@ class DetailViewModelTest {
         assertTrue(state is WikiSearchState.Error)
         assertEquals(
             "Missing Gemini API Key. Please configure it in Settings.",
-            (state as WikiSearchState.Error).message
+            state.message
         )
     }
 

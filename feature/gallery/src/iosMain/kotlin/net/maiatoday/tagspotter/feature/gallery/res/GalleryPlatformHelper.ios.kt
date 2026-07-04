@@ -3,6 +3,7 @@ package net.maiatoday.tagspotter.feature.gallery.res
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.database.MultiplatformPackExporter
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSFileManager
@@ -48,7 +49,7 @@ class IosGalleryPlatformHelper : GalleryPlatformHelper {
         onError: (Throwable) -> Unit
     ) {
         try {
-            net.maiatoday.tagspotter.core.database.MultiplatformPackExporter.exportPack(
+            MultiplatformPackExporter.exportPack(
                 spots = spots,
                 destZipFilePath = uriString,
                 cacheDir = getCacheDir(),

@@ -443,6 +443,7 @@ fun SpotDetailScreen(
     onOpenOnPhone: () -> Unit
 ) {
     val context = LocalContext.current
+    val mapsAppNotFoundMessage = stringResource(R.string.toast_maps_app_not_found)
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val imageHeight = (configuration.screenHeightDp * 2 / 3).dp
 
@@ -515,7 +516,7 @@ fun SpotDetailScreen(
                         try {
                             context.startActivity(mapIntent)
                         } catch (e: Exception) {
-                            Toast.makeText(context, context.getString(R.string.toast_maps_app_not_found), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, mapsAppNotFoundMessage, Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(

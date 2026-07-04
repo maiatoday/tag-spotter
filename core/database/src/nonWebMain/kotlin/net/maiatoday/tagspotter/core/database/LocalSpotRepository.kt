@@ -8,6 +8,7 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
+import net.maiatoday.tagspotter.core.model.generateUuid
 
 class LocalSpotRepository(
     private val spotDao: SpotDao,
@@ -46,7 +47,7 @@ class LocalSpotRepository(
                     timestamp = spot.createdAt,
                     rating = rating,
                     isMain = isMain,
-                    uuid = net.maiatoday.tagspotter.core.model.generateUuid(),
+                    uuid = generateUuid(),
                     lastEditedAt = spot.createdAt
                 )
             )
@@ -64,7 +65,7 @@ class LocalSpotRepository(
                 timestamp = timestamp,
                 rating = rating,
                 isMain = isMain,
-                uuid = net.maiatoday.tagspotter.core.model.generateUuid(),
+                uuid = generateUuid(),
                 lastEditedAt = now
             )
         )
@@ -79,7 +80,7 @@ class LocalSpotRepository(
                 spotId = spotId,
                 noteText = noteText,
                 timestamp = timestamp,
-                uuid = net.maiatoday.tagspotter.core.model.generateUuid(),
+                uuid = generateUuid(),
                 lastEditedAt = now
             )
         )

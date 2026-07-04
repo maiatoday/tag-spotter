@@ -3,6 +3,7 @@ package net.maiatoday.tagspotter.feature.detail
 import net.maiatoday.tagspotter.core.database.epochMillis
 
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
+import net.maiatoday.tagspotter.core.ui.res.TagRes
 
 
 
@@ -94,6 +95,9 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 
+import net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper
+import net.maiatoday.tagspotter.feature.detail.res.rememberToastLauncher
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
@@ -108,8 +112,8 @@ fun DetailScreen(
     draftDefaultCategory: String = "graffiti",
     draftCaptureTime: Long? = null
 ) {
-    val platformHelper = net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper()
-    val toastLauncher = net.maiatoday.tagspotter.feature.detail.res.rememberToastLauncher()
+    val platformHelper = rememberDetailPlatformHelper()
+    val toastLauncher = rememberToastLauncher()
     val scope = rememberCoroutineScope()
     val isCreationMode = spotId == -1L
 
@@ -153,7 +157,7 @@ fun DetailScreen(
         if (mainImagePath.isNotEmpty()) {
             viewModel.identifyArtist(mainImagePath)
         } else {
-            toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.toast_no_img_analyze)
+            toastLauncher.showToast(DetailRes.string.toast_no_img_analyze)
         }
     }
 
@@ -216,7 +220,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text(spotDetails?.spot?.category?.let { stringResource(it.getCategoryCreatorLabel()) } ?: stringResource(net.maiatoday.tagspotter.core.ui.res.TagRes.string.creator_label_default), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text(spotDetails?.spot?.category?.let { stringResource(it.getCategoryCreatorLabel()) } ?: stringResource(TagRes.string.creator_label_default), style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                                 Text(suggestionArtist, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
@@ -364,19 +368,19 @@ fun DetailScreen(
         val error = aiState as AiState.Error
         val (title, message) = when (error) {
             is AiState.Error.MissingKey -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_missing_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_missing_msg)
+                stringResource(DetailRes.string.err_key_missing_title) to stringResource(DetailRes.string.err_key_missing_msg)
             }
             is AiState.Error.InvalidKey -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_invalid_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_key_invalid_msg)
+                stringResource(DetailRes.string.err_key_invalid_title) to stringResource(DetailRes.string.err_key_invalid_msg)
             }
             is AiState.Error.QuotaExceeded -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_quota_exceeded_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_quota_exceeded_msg)
+                stringResource(DetailRes.string.err_quota_exceeded_title) to stringResource(DetailRes.string.err_quota_exceeded_msg)
             }
             is AiState.Error.SafetyBlocked -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_safety_blocked_title) to stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_safety_blocked_msg)
+                stringResource(DetailRes.string.err_safety_blocked_title) to stringResource(DetailRes.string.err_safety_blocked_msg)
             }
             is AiState.Error.Generic -> {
-                stringResource(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.err_generic_recognition_title) to error.message
+                stringResource(DetailRes.string.err_generic_recognition_title) to error.message
             }
         }
 
@@ -464,7 +468,7 @@ fun DetailScreen(
         }
         is WikiSearchState.NotFound -> {
             LaunchedEffect(state) {
-                toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.wiki_not_found_toast)
+                toastLauncher.showToast(DetailRes.string.wiki_not_found_toast)
                 viewModel.resetWikiSearchState()
             }
         }
@@ -1042,7 +1046,7 @@ fun DetailScreen(
                             onClick = {
                                 viewModel.updateLocation(tempLat, tempLng)
                                 isMapPickerDialogVisible = false
-                                toastLauncher.showToast(net.maiatoday.tagspotter.feature.detail.res.DetailRes.string.location_updated_toast)
+                                toastLauncher.showToast(DetailRes.string.location_updated_toast)
                             },
                             modifier = Modifier.weight(1.5f),
                             colors = ButtonDefaults.buttonColors(

@@ -1,5 +1,6 @@
 package net.maiatoday.tagspotter.core.database
 
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.model.SpotDetails
 
 object PackManager {
@@ -10,7 +11,7 @@ object PackManager {
 
     suspend fun importPack(
         repository: SpotRepository,
-        photoProcessor: net.maiatoday.tagspotter.core.photo.PhotoProcessor,
+        photoProcessor: PhotoProcessor,
         packFilePath: String,
         filesDir: String,
         cacheDir: String,

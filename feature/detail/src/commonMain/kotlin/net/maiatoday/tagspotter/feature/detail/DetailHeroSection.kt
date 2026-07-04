@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.feature.detail
 
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
+import net.maiatoday.tagspotter.feature.detail.res.formatImageModel
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,7 +54,7 @@ fun DetailHeroSection(
             .background(Color.Black)
     ) {
         val imageModel = remember(imagePath, thumbnailPath) {
-            net.maiatoday.tagspotter.feature.detail.res.formatImageModel(imagePath, thumbnailPath)
+            formatImageModel(imagePath, thumbnailPath)
         }
         AsyncImage(
             model = imageModel,

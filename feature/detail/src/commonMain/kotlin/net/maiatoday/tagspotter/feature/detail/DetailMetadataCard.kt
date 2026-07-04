@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.feature.detail
 
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
+import net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper
 
 
 import androidx.compose.foundation.BorderStroke
@@ -94,7 +95,7 @@ fun DetailMetadataCard(
     onMapPickerClick: () -> Unit,
     onSetEditing: (Boolean) -> Unit = {}
 ) {
-    val platformHelper = net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper()
+    val platformHelper = rememberDetailPlatformHelper()
     var isEditingArtists by remember { mutableStateOf(isCreationMode) }
     var artistEditInput by remember { mutableStateOf("") }
     val localArtistsList = remember { mutableStateListOf<String>() }

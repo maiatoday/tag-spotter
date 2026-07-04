@@ -1,6 +1,8 @@
 package net.maiatoday.tagspotter.feature.detail
 
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
+import net.maiatoday.tagspotter.feature.detail.res.formatImageModel
+import net.maiatoday.tagspotter.feature.detail.res.DateFormatter
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -132,7 +134,7 @@ fun SpotTimelineCard(
     ) {
         Column {
             val imageModel = remember(image.imagePath, image.thumbnailPath) {
-                net.maiatoday.tagspotter.feature.detail.res.formatImageModel(image.imagePath, image.thumbnailPath)
+                formatImageModel(image.imagePath, image.thumbnailPath)
             }
             Box(
                 modifier = Modifier
@@ -180,7 +182,7 @@ fun SpotTimelineCard(
                 }
             }
 
-            val formattedDate = net.maiatoday.tagspotter.feature.detail.res.DateFormatter.formatDate(image.timestamp, "MMM dd, yyyy")
+            val formattedDate = DateFormatter.formatDate(image.timestamp, "MMM dd, yyyy")
             Column(
                 modifier = Modifier
                     .fillMaxSize()
