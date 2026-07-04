@@ -38,6 +38,7 @@ external fun webAuthSignOut(
 class WasmAuthService : AuthService {
     private val _currentUserFlow = MutableStateFlow<FirebaseUserWrapper?>(null)
     override val currentUserFlow: Flow<FirebaseUserWrapper?> = _currentUserFlow
+    override val isGoogleSignInSupported: Boolean = true
 
     init {
         try {
@@ -87,6 +88,10 @@ class WasmAuthService : AuthService {
                 onFailure = { err -> if (continuation.isActive) continuation.resume(Result.failure(Exception(err))) }
             )
         }
+    }
+
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = runCatching {
+        println("WASM: sendPasswordResetEmail not implemented for $email")
     }
 
     override suspend fun signOut() {

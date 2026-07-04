@@ -40,6 +40,15 @@ import net.maiatoday.tagspotter.core.database.ImportPackWorker
 import org.koin.androidx.compose.koinViewModel
 import java.io.File
 import java.util.UUID
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import androidx.compose.runtime.rememberCoroutineScope
+import org.koin.compose.koinInject
+import net.maiatoday.tagspotter.core.sync.AuthService
+import net.maiatoday.tagspotter.core.sync.SyncManager
+import kotlinx.coroutines.flow.first
 
 class MainActivity : ComponentActivity() {
   private var initialSpotId by mutableStateOf<Long?>(null)
@@ -204,11 +213,45 @@ fun MainActivityContent(
         viewModel.updateLocationPermission(granted)
     }
 
+    val authService: AuthService = koinInject()
+    val syncManager: SyncManager = koinInject()
+    val coroutineScope = rememberCoroutineScope()
+
+    val googleSignInTrigger = {
+        coroutineScope.launch {
+            try {
+                val credentialManager = CredentialManager.create(context)
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId("261786695723-4tunva2l3vha7c7hmmr49ou39h3j3s26.apps.googleusercontent.com")
+                    .build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+                val result = credentialManager.getCredential(context, request)
+                val idToken = GoogleIdTokenCredential.createFrom(result.credential.data).idToken
+                
+                authService.signInWithGoogle(idToken).onSuccess {
+                    authService.currentUserFlow.first()?.uid?.let { uid ->
+                        syncManager.startRealtimeSync(uid)
+                    }
+                    Toast.makeText(context, "Google Sign-In Successful!", Toast.LENGTH_SHORT).show()
+                }.onFailure {
+                    Toast.makeText(context, "Sync Failed: ${it.message}", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Cancelled or failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+        Unit
+    }
+
     MainNavigation(
         initialSpotId = initialSpotId,
         onNavigateToSpotHandled = onNavigateToSpotHandled,
         onTriggerFiles = triggerFiles,
         versionName = versionName,
-        showToast = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+        showToast = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() },
+        onGoogleSignInClick = googleSignInTrigger
     )
 }

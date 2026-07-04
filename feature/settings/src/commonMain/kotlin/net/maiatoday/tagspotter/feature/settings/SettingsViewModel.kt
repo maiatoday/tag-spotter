@@ -34,10 +34,21 @@ class SettingsViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
-
-    fun signInWithGoogle() {
+    val isGoogleSignInSupported: Boolean = authService.isGoogleSignInSupported
+    fun signInWithGoogle(idToken: String? = null, onResult: ((Result<Unit>) -> Unit)? = null) {
         viewModelScope.launch {
-            authService.signInWithGoogle()
+            val result = authService.signInWithGoogle(idToken)
+            if (result.isFailure) {
+                val exception = result.exceptionOrNull()
+                println("Google Sign-In failed: ${exception?.message}")
+                exception?.printStackTrace()
+            }
+            if (result.isSuccess) {
+                authService.currentUserFlow.first()?.uid?.let { uid ->
+                    syncManager.startRealtimeSync(uid)
+                }
+            }
+            onResult?.invoke(result)
         }
     }
 
@@ -61,6 +72,13 @@ class SettingsViewModel(
                     syncManager.startRealtimeSync(uid)
                 }
             }
+            onResult(result)
+        }
+    }
+
+    fun sendPasswordResetEmail(email: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val result = authService.sendPasswordResetEmail(email)
             onResult(result)
         }
     }

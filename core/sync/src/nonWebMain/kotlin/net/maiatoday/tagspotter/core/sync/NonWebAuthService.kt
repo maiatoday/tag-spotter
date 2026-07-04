@@ -20,6 +20,8 @@ class NonWebAuthService : AuthService {
 
     private val mockUserFlow = kotlinx.coroutines.flow.MutableStateFlow<FirebaseUserWrapper?>(null)
 
+    override val isGoogleSignInSupported: Boolean by lazy { isGoogleSignInSupportedPlatform && auth != null }
+
     override val currentUserFlow: Flow<FirebaseUserWrapper?> = flow {
         val actualAuth = auth
         if (actualAuth != null) {
@@ -63,6 +65,16 @@ class NonWebAuthService : AuthService {
             actualAuth.createUserWithEmailAndPassword(email, password)
         } else {
             mockUserFlow.value = FirebaseUserWrapper("mock-email-uid", email, email.substringBefore("@"))
+        }
+    }
+
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = runCatching {
+        val actualAuth = auth
+        if (actualAuth != null) {
+            actualAuth.sendPasswordResetEmail(email)
+        } else {
+            // Mock success
+            println("Mock: Password reset email sent to $email")
         }
     }
 

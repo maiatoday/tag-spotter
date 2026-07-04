@@ -12,6 +12,7 @@
 		2ECACC695940F13A4EDFB2D7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F7F4335A9FA704A52EB0C58D /* GoogleService-Info.plist */; };
 		379D4C6DBBA934A8EF44CDDE /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = A61EAF9635BFCCA5966D2AE0 /* FirebaseStorage */; };
 		445C052442747365B7CB2124 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 617043448F4869026C2F0BB4 /* FirebaseAuth */; };
+		A825AC5F0531A8569219D47A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = B6E18E1D8AEE3BF1FDA1E5E9 /* GoogleSignIn */; };
 		B7C4F6137AC8345E71E92063 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 84FCD721953CC33D9035BCCD /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
 
@@ -39,6 +40,7 @@
 				445C052442747365B7CB2124 /* FirebaseAuth in Frameworks */,
 				B7C4F6137AC8345E71E92063 /* FirebaseFirestore in Frameworks */,
 				379D4C6DBBA934A8EF44CDDE /* FirebaseStorage in Frameworks */,
+				A825AC5F0531A8569219D47A /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +90,7 @@
 				617043448F4869026C2F0BB4 /* FirebaseAuth */,
 				84FCD721953CC33D9035BCCD /* FirebaseFirestore */,
 				A61EAF9635BFCCA5966D2AE0 /* FirebaseStorage */,
+				B6E18E1D8AEE3BF1FDA1E5E9 /* GoogleSignIn */,
 			);
 			productName = iosApp;
 			productReference = 2C8D9ECC2FDEA735006004E2 /* iosApp.app */;
@@ -120,6 +123,7 @@
 			packageReferences = (
 				BDD6BF8B7672CA51FA8BCF56 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				7C4F1707FE80007C7DCEAE3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				DF1BCD5B98717A06C1B5AE17 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2C8D9ECD2FDEA735006004E2 /* Products */;
@@ -318,7 +322,7 @@
 				OTHER_LDFLAGS = (
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = net.maiatoday.iosApp;
+				PRODUCT_BUNDLE_IDENTIFIER = net.maiatoday.tagspotter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -355,7 +359,7 @@
 				OTHER_LDFLAGS = (
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = net.maiatoday.iosApp;
+				PRODUCT_BUNDLE_IDENTIFIER = net.maiatoday.tagspotter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -407,6 +411,14 @@
 				minimumVersion = 0.9.19;
 			};
 		};
+		DF1BCD5B98717A06C1B5AE17 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -429,6 +441,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7C4F1707FE80007C7DCEAE3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		B6E18E1D8AEE3BF1FDA1E5E9 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DF1BCD5B98717A06C1B5AE17 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

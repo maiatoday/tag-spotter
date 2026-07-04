@@ -142,6 +142,11 @@ dependencies {
   implementation(libs.room.ktx)
   implementation(libs.sqlite.bundled)
 
+  // Google Credential Manager for Native Google Sign-In
+  implementation("androidx.credentials:credentials:1.5.0-rc01")
+  implementation("androidx.credentials:credentials-play-services-auth:1.5.0-rc01")
+  implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
   // Local tests: jUnit, coroutines, Android runner
   testImplementation(libs.junit.jupiter.api)
   testRuntimeOnly(libs.junit.jupiter.engine)

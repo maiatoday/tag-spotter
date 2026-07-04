@@ -26,6 +26,7 @@ import kotlin.test.assertNull
 class FakeAuthService : AuthService {
     private val _currentUserFlow = MutableStateFlow<FirebaseUserWrapper?>(null)
     override val currentUserFlow = _currentUserFlow.asStateFlow()
+    override val isGoogleSignInSupported: Boolean = true
 
     var signInWithGoogleCalled = false
     var signInWithEmailCalled = false
@@ -61,6 +62,14 @@ class FakeAuthService : AuthService {
             Result.success(Unit)
         } else {
             Result.failure(Exception("Email Sign-Up failed"))
+        }
+    }
+
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return if (shouldSucceed) {
+            Result.success(Unit)
+        } else {
+            Result.failure(Exception("Password reset failed"))
         }
     }
 

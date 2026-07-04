@@ -21,7 +21,8 @@ fun MainNavigation(
     onNavigateToSpotHandled: () -> Unit = {},
     onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
     versionName: String,
-    showToast: (String) -> Unit
+    showToast: (String) -> Unit,
+    onGoogleSignInClick: (() -> Unit)? = null
 ) {
     val config = remember {
         SavedStateConfiguration {
@@ -103,7 +104,8 @@ fun MainNavigation(
                         if (backStack.size > 1) {
                             backStack.removeLastOrNull()
                         }
-                    }
+                    },
+                    onGoogleSignInClick = onGoogleSignInClick
                 )
             }
         }

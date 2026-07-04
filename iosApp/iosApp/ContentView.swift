@@ -2,12 +2,17 @@ import SwiftUI
 import SharedApp
 import PhotosUI
 import UniformTypeIdentifiers
+import GoogleSignIn
 
 struct ComposeView: UIViewControllerRepresentable {
     var onTriggerFiles: (@escaping (String) -> KotlinUnit) -> Void
+    var onGoogleSignInClick: () -> Void
 
     func makeUIViewController(context: Context) -> UIViewController {
-        return MainViewControllerKt.createMainViewController(onTriggerFiles: onTriggerFiles)
+        return MainViewControllerKt.createMainViewController(
+            onTriggerFiles: onTriggerFiles,
+            onGoogleSignInClick: onGoogleSignInClick
+        )
     }
     
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
@@ -75,6 +80,26 @@ struct ContentView: View {
             ComposeView(onTriggerFiles: { callback in
                 self.onPickedCallback = callback
                 self.isPickerPresented = true
+            }, onGoogleSignInClick: {
+                guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
+                      let rootViewController = window.rootViewController else { return }
+                
+                GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { signInResult, error in
+                    if let error = error {
+                        print("Google Sign-In Error: \(error.localizedDescription)")
+                        return
+                    }
+                    guard let result = signInResult,
+                          let idToken = result.user.idToken?.tokenString else { return }
+                    
+                    MainViewControllerKt.iosSignInWithGoogle(idToken: idToken) { success, errorMsg in
+                        if success.boolValue {
+                            print("Google Sign-In Success!")
+                        } else {
+                            print("Google Sign-In KMP Success Failure: \(errorMsg ?? "Unknown")")
+                        }
+                    }
+                }
             })
             .ignoresSafeArea(.all, edges: .all)
         }

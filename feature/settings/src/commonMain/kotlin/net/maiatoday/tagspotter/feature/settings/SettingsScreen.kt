@@ -79,6 +79,7 @@ fun rememberSettingsStrings() = SettingsStrings(
 fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onGoogleSignInClick: (() -> Unit)? = null,
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val toastLauncher = rememberToastLauncher()
@@ -155,7 +156,7 @@ fun SettingsScreen(
                 val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
                 var emailInput by remember { mutableStateOf("") }
                 var passwordInput by remember { mutableStateOf("") }
-                var showEmailForm by remember { mutableStateOf(false) }
+                var showEmailForm by remember(viewModel.isGoogleSignInSupported) { mutableStateOf(!viewModel.isGoogleSignInSupported) }
                 var isSignUpMode by remember { mutableStateOf(false) }
 
                 // Backup & Sync Card
@@ -285,51 +286,90 @@ fun SettingsScreen(
                         } else {
                             // Unauthenticated UI
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // "Sign In with Google" (Standard button)
-                                Button(
-                                    onClick = { viewModel.signInWithGoogle() },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.White,
-                                        contentColor = Color.Black
-                                    ),
-                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                if (viewModel.isGoogleSignInSupported) {
+                                    // "Sign In with Google" (Standard button)
+                                    Button(
+                                        onClick = {
+                                            if (onGoogleSignInClick != null) {
+                                                onGoogleSignInClick()
+                                            } else {
+                                                viewModel.signInWithGoogle { res ->
+                                                    if (res.isFailure) {
+                                                        toastLauncher.showToast(res.exceptionOrNull()?.message ?: "Sign-in failed")
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color.White,
+                                            contentColor = Color.Black
+                                        ),
+                                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
                                     ) {
-                                        Text(
-                                            text = "G",
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontWeight = FontWeight.ExtraBold
-                                            ),
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = "Sign In with Google",
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                text = "G",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.ExtraBold
+                                                ),
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(
+                                                text = "Sign In with Google",
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // Or fallback email/password toggle
+                                    Text(
+                                        text = if (showEmailForm) "Cancel Email Sign In" else "Use Email / Password instead",
+                                        modifier = Modifier
+                                            .align(Alignment.CenterHorizontally)
+                                            .clickable { showEmailForm = !showEmailForm }
+                                            .padding(8.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                } else {
+                                    // Desktop JVM specific helper on how to convert Google login to Email/Password
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 12.dp)
+                                            .background(
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                            .padding(12.dp)
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Desktop Google Account Access",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "If you initially logged in with Google on your mobile phone, type your Google email above and click 'Reset Password / Create Desktop Password' below to link an email password and access your cloud backup folder on Desktop.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                            )
+                                        }
                                     }
                                 }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                // Or fallback email/password toggle
-                                Text(
-                                    text = if (showEmailForm) "Cancel Email Sign In" else "Use Email / Password instead",
-                                    modifier = Modifier
-                                        .align(Alignment.CenterHorizontally)
-                                        .clickable { showEmailForm = !showEmailForm }
-                                        .padding(8.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Medium
-                                )
 
                                 if (showEmailForm) {
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -380,6 +420,29 @@ fun SettingsScreen(
                                             .padding(4.dp),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Reset Password / Create Desktop Password",
+                                        modifier = Modifier
+                                            .align(Alignment.CenterHorizontally)
+                                            .clickable {
+                                                if (emailInput.isBlank()) {
+                                                    toastLauncher.showToast("Please enter your email address first")
+                                                } else {
+                                                    viewModel.sendPasswordResetEmail(emailInput) { res ->
+                                                       if (res.isSuccess) {
+                                                           toastLauncher.showToast("Password reset email sent! Check your inbox.")
+                                                       } else {
+                                                           toastLauncher.showToast(res.exceptionOrNull()?.message ?: "Failed to send reset email")
+                                                       }
+                                                    }
+                                                }
+                                            }
+                                            .padding(4.dp),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
                                     )
                                 }
                             }

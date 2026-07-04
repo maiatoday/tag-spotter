@@ -8,7 +8,7 @@ actual fun rememberToastLauncher(): ToastLauncher {
     return remember {
         object : ToastLauncher {
             override fun showToast(message: String) {
-                println("Toast: $message")
+                println("JVM Toast: $message")
             }
         }
     }
