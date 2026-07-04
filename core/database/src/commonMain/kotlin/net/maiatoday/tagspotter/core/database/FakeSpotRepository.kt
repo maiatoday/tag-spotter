@@ -333,4 +333,49 @@ class FakeSpotRepository : SpotRepository {
         spotsMap[spotEntry.spot.id] = spotEntry.copy(notes = updatedNotes)
         updateFlow()
     }
+
+    override suspend fun getUnsyncedSpots(): List<SpotDetails> {
+        return spotsMap.values.filter { !it.spot.isSynced }
+    }
+
+    override suspend fun markSpotAsSynced(spotUuid: String) {
+        val entry = spotsMap.values.find { it.spot.uuid == spotUuid } ?: return
+        val updatedSpot = entry.spot.copy(isSynced = true)
+        spotsMap[entry.spot.id] = entry.copy(spot = updatedSpot)
+        updateFlow()
+    }
+
+    override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
+        val existingEntry = spotsMap.values.find { it.spot.uuid == spotDetails.spot.uuid }
+        if (existingEntry != null) {
+            val localId = existingEntry.spot.id
+            val spotWithLocalId = spotDetails.spot.copy(id = localId, isSynced = true)
+            val imagesWithLocalId = spotDetails.images.mapIndexed { index, img ->
+                val existingImg = existingEntry.images.find { it.uuid == img.uuid }
+                img.copy(
+                    id = existingImg?.id ?: ((index + 1).toLong() + 1000L),
+                    spotId = localId
+                )
+            }
+            val notesWithLocalId = spotDetails.notes.mapIndexed { index, note ->
+                val existingNote = existingEntry.notes.find { it.uuid == note.uuid }
+                note.copy(
+                    id = existingNote?.id ?: ((index + 1).toLong() + 1000L),
+                    spotId = localId
+                )
+            }
+            spotsMap[localId] = SpotDetails(spotWithLocalId, imagesWithLocalId, notesWithLocalId)
+        } else {
+            val nextId = (spotsMap.keys.maxOrNull() ?: 0L) + 1L
+            val spotWithLocalId = spotDetails.spot.copy(id = nextId, isSynced = true)
+            val imagesWithLocalId = spotDetails.images.mapIndexed { index, img ->
+                img.copy(id = (index + 1).toLong(), spotId = nextId)
+            }
+            val notesWithLocalId = spotDetails.notes.mapIndexed { index, note ->
+                note.copy(id = (index + 1).toLong(), spotId = nextId)
+            }
+            spotsMap[nextId] = SpotDetails(spotWithLocalId, imagesWithLocalId, notesWithLocalId)
+        }
+        updateFlow()
+    }
 }

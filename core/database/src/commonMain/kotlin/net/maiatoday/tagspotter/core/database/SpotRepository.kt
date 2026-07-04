@@ -42,4 +42,9 @@ interface SpotRepository {
     suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String)
     suspend fun deleteNote(noteId: Long)
     suspend fun updateNote(noteId: Long, noteText: String)
+
+    suspend fun getUnsyncedSpots(): List<SpotDetails>
+    suspend fun markSpotAsSynced(spotUuid: String)
+    suspend fun saveSyncedSpot(spotDetails: SpotDetails)
 }
+

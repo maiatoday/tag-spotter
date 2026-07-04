@@ -28,6 +28,7 @@ kotlin {
                 implementation(project(":core:model"))
                 implementation(project(":core:database"))
                 implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.serialization.json)
                 implementation(libs.koin.core)
             }
         }
@@ -45,6 +46,7 @@ kotlin {
                 implementation(libs.firebase.auth)
                 implementation(libs.firebase.firestore)
                 implementation(libs.firebase.storage)
+                implementation("com.squareup.okio:okio:3.9.0")
             }
         }
         

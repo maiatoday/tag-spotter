@@ -346,7 +346,48 @@ class LocalSpotRepository(
         }
     }
 
+    override suspend fun getUnsyncedSpots(): List<SpotDetails> {
+        return spotDao.getUnsyncedSpotsDetails().map { it.toDomain() }
+    }
+
+    override suspend fun markSpotAsSynced(spotUuid: String) {
+        spotDao.markSpotAsSynced(spotUuid)
+    }
+
+    override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
+        val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
+        val finalSpotId = if (existingSpot != null) {
+            val spotWithLocalId = spotDetails.spot.copy(id = existingSpot.id, isSynced = true)
+            spotDao.insertSpot(spotWithLocalId.toEntity())
+            existingSpot.id
+        } else {
+            val spotToInsert = spotDetails.spot.copy(id = 0L, isSynced = true)
+            spotDao.insertSpot(spotToInsert.toEntity())
+        }
+
+        spotDetails.images.forEach { image ->
+            val existingImage = spotDao.getImageByUuid(image.uuid)
+            val imageToInsert = if (existingImage != null) {
+                image.copy(id = existingImage.id, spotId = finalSpotId)
+            } else {
+                image.copy(id = 0L, spotId = finalSpotId)
+            }
+            spotDao.insertImage(imageToInsert.toEntity())
+        }
+
+        spotDetails.notes.forEach { note ->
+            val existingNote = spotDao.getNoteByUuid(note.uuid)
+            val noteToInsert = if (existingNote != null) {
+                note.copy(id = existingNote.id, spotId = finalSpotId)
+            } else {
+                note.copy(id = 0L, spotId = finalSpotId)
+            }
+            spotDao.insertNote(noteToInsert.toEntity())
+        }
+    }
+
     companion object {
         val MOCK_SPOT_IDS = listOf(9001L, 9002L, 9003L)
     }
 }
+

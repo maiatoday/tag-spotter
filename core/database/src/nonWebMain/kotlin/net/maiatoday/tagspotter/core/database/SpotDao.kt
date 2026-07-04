@@ -107,4 +107,21 @@ interface SpotDao {
 
     @Query("UPDATE spot_notes SET noteText = :noteText, lastEditedAt = :lastEditedAt WHERE id = :noteId")
     suspend fun updateNoteText(noteId: Long, noteText: String, lastEditedAt: Long)
+
+    @Transaction
+    @Query("SELECT * FROM spots WHERE isSynced = 0")
+    suspend fun getUnsyncedSpotsDetails(): List<SpotDetailsEntity>
+
+    @Query("UPDATE spots SET isSynced = 1 WHERE uuid = :uuid")
+    suspend fun markSpotAsSynced(uuid: String)
+
+    @Query("SELECT * FROM spots WHERE uuid = :uuid")
+    suspend fun getSpotByUuid(uuid: String): SpotEntity?
+
+    @Query("SELECT * FROM spot_images WHERE uuid = :uuid")
+    suspend fun getImageByUuid(uuid: String): SpotImageEntity?
+
+    @Query("SELECT * FROM spot_notes WHERE uuid = :uuid")
+    suspend fun getNoteByUuid(uuid: String): SpotNoteEntity?
 }
+

@@ -335,4 +335,42 @@ class WasmSpotRepository : SpotRepository {
             }
         }
     }
+
+    override suspend fun getUnsyncedSpots(): List<SpotDetails> {
+        return spotsFlow.value.values.filter { !it.spot.isSynced }
+    }
+
+    override suspend fun markSpotAsSynced(spotUuid: String) {
+        spotsFlow.value = spotsFlow.value.mapValues { entry ->
+            val details = entry.value
+            if (details.spot.uuid == spotUuid) {
+                details.copy(spot = details.spot.copy(isSynced = true))
+            } else {
+                details
+            }
+        }
+    }
+
+    override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
+        val existingEntry = spotsFlow.value.entries.find { it.value.spot.uuid == spotDetails.spot.uuid }
+        val finalSpotId = existingEntry?.key ?: nextSpotId++
+        
+        val spotToSave = spotDetails.spot.copy(id = finalSpotId, isSynced = true)
+        
+        val imagesToSave = spotDetails.images.map { image ->
+            val existingImage = existingEntry?.value?.images?.find { it.uuid == image.uuid }
+            val finalImgId = existingImage?.id ?: nextImageId++
+            image.copy(id = finalImgId, spotId = finalSpotId)
+        }
+        
+        val notesToSave = spotDetails.notes.map { note ->
+            val existingNote = existingEntry?.value?.notes?.find { it.uuid == note.uuid }
+            val finalNoteId = existingNote?.id ?: nextNoteId++
+            note.copy(id = finalNoteId, spotId = finalSpotId)
+        }
+        
+        val updatedDetails = SpotDetails(spotToSave, imagesToSave, notesToSave)
+        spotsFlow.value = spotsFlow.value + (finalSpotId to updatedDetails)
+    }
 }
+
