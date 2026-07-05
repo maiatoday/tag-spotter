@@ -372,5 +372,54 @@ class WasmSpotRepository : SpotRepository {
         val updatedDetails = SpotDetails(spotToSave, imagesToSave, notesToSave)
         spotsFlow.value = spotsFlow.value + (finalSpotId to updatedDetails)
     }
+
+    override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {}
+    override suspend fun clearUserCache(userUid: String) {}
+
+    private val loadedPacksMap = mutableMapOf<String, net.maiatoday.tagspotter.core.model.LoadedPack>()
+    private val loadedPacksFlow = MutableStateFlow<List<net.maiatoday.tagspotter.core.model.LoadedPack>>(emptyList())
+
+    override fun getAllLoadedPacks(): Flow<List<net.maiatoday.tagspotter.core.model.LoadedPack>> = loadedPacksFlow
+
+    override suspend fun saveLoadedPack(pack: net.maiatoday.tagspotter.core.model.LoadedPack) {
+        loadedPacksMap[pack.packId] = pack
+        loadedPacksFlow.value = loadedPacksMap.values.toList()
+    }
+
+    override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
+        val currentMap = spotsFlow.value.toMutableMap()
+        val existing = currentMap.values.find { it.spot.uuid == spotDetails.spot.uuid }
+        if (existing != null) {
+            val spotId = existing.spot.id
+            val updatedSpot = spotDetails.spot.copy(id = spotId)
+            val updatedImages = spotDetails.images.map { img ->
+                val existingImg = existing.images.find { it.uuid == img.uuid }
+                img.copy(id = existingImg?.id ?: 0L, spotId = spotId)
+            }
+            val updatedNotes = spotDetails.notes.map { note ->
+                val existingNote = existing.notes.find { it.uuid == note.uuid }
+                note.copy(id = existingNote?.id ?: 0L, spotId = spotId)
+            }
+            currentMap[spotId] = SpotDetails(updatedSpot, updatedImages, updatedNotes)
+        } else {
+            val nextId = (currentMap.keys.maxOrNull() ?: 0L) + 1L
+            val updatedSpot = spotDetails.spot.copy(id = nextId)
+            val updatedImages = spotDetails.images.mapIndexed { idx, img ->
+                img.copy(id = idx + 1L, spotId = nextId)
+            }
+            val updatedNotes = spotDetails.notes.mapIndexed { idx, note ->
+                note.copy(id = idx + 1L, spotId = nextId)
+            }
+            currentMap[nextId] = SpotDetails(updatedSpot, updatedImages, updatedNotes)
+        }
+        spotsFlow.value = currentMap
+    }
+
+    override suspend fun deleteLoadedPack(packId: String) {
+        loadedPacksMap.remove(packId)
+        loadedPacksFlow.value = loadedPacksMap.values.toList()
+        
+        spotsFlow.value = spotsFlow.value.filterValues { it.spot.parentPackId != packId }
+    }
 }
 

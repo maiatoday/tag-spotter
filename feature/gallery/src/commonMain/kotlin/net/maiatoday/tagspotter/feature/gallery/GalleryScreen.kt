@@ -26,6 +26,13 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -36,12 +43,15 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -67,10 +77,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.model.FilterCenter
@@ -119,6 +127,33 @@ fun GalleryScreen(
     var isSearchExpanded by remember { mutableStateOf(false) }
     var exportMinRatingThreshold by remember { mutableIntStateOf(0) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
+
+    // Direct Cloud Pack Sharing state variables
+    val photographerName by viewModel.photographerName.collectAsStateWithLifecycle()
+    val loadedPacks by viewModel.loadedPacks.collectAsStateWithLifecycle()
+
+    var showShareCollectionDialog by remember { mutableStateOf(false) }
+    var sharePackTitle by remember { mutableStateOf("") }
+    var sharePackDesc by remember { mutableStateOf("") }
+    var sharePackAuthor by remember { mutableStateOf("") }
+    var generatedShareCode by remember { mutableStateOf<String?>(null) }
+    var isSharingInProgress by remember { mutableStateOf(false) }
+    var sharingError by remember { mutableStateOf<String?>(null) }
+
+    var showImportPackDialog by remember { mutableStateOf(false) }
+    var importPackCode by remember { mutableStateOf("") }
+    var isImportingInProgress by remember { mutableStateOf(false) }
+    var importError by remember { mutableStateOf<String?>(null) }
+    var fetchedSharedPack by remember { mutableStateOf<net.maiatoday.tagspotter.core.model.SharedPack?>(null) }
+
+    var showLoadedPacksDialog by remember { mutableStateOf(false) }
+    var refreshingPackId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(showShareCollectionDialog) {
+        if (showShareCollectionDialog && sharePackAuthor.isEmpty()) {
+            sharePackAuthor = photographerName
+        }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
@@ -191,6 +226,480 @@ fun GalleryScreen(
             dismissButton = {
                 TextButton(onClick = { spotsToDelete = emptyList() }) {
                     Text(stringResource(GalleryStrings.cancel))
+                }
+            }
+        )
+    }
+
+    // Direct Cloud Pack Sharing Dialogs
+    val clipboardManager = LocalClipboardManager.current
+
+    if (showShareCollectionDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isSharingInProgress) {
+                    showShareCollectionDialog = false
+                    generatedShareCode = null
+                    sharingError = null
+                }
+            },
+            title = {
+                Text(
+                    text = if (generatedShareCode == null) "Share Cloud Pack" else "Pack Shared Successfully!",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (generatedShareCode == null) {
+                        Text(
+                            text = "Bundle the selected ${selectedSpotIds.size} spots into a shareable Cloud Pack.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                        OutlinedTextField(
+                            value = sharePackTitle,
+                            onValueChange = { sharePackTitle = it },
+                            label = { Text("Pack Title") },
+                            placeholder = { Text("e.g. Milan Graffiti") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        if (sharingError == "Title is required") {
+                            Text("Title is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                        OutlinedTextField(
+                            value = sharePackDesc,
+                            onValueChange = { sharePackDesc = it },
+                            label = { Text("Description") },
+                            placeholder = { Text("e.g. Awesome street art spots") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = sharePackAuthor,
+                            onValueChange = { sharePackAuthor = it },
+                            label = { Text("Author Name") },
+                            placeholder = { Text("e.g. Alice") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        if (sharingError != null && sharingError != "Title is required") {
+                            Text(
+                                text = sharingError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    } else {
+                        val shareCode = generatedShareCode!!
+                        val deepLink = "https://tagspotter.net/import?pack=$shareCode"
+                        
+                        Text(
+                            text = "Your collection is live! Share this code, link, or let others scan the QR code.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "SHARE CODE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = shareCode,
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 4.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = deepLink,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                    )
+                                    TextButton(onClick = {
+                                        clipboardManager.setText(AnnotatedString(deepLink))
+                                        platformHelper.showToast("Copied link to clipboard!")
+                                    }) {
+                                        Text("Copy Link")
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(200.dp)
+                                .align(Alignment.CenterHorizontally)
+                                .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                                .padding(12.dp)
+                        ) {
+                            QrCodeCanvas(
+                                text = deepLink,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (generatedShareCode == null) {
+                    Button(
+                        onClick = {
+                            if (sharePackTitle.isBlank()) {
+                                sharingError = "Title is required"
+                                return@Button
+                            }
+                            isSharingInProgress = true
+                            sharingError = null
+                            viewModel.sharePack(
+                                title = sharePackTitle,
+                                description = sharePackDesc,
+                                author = sharePackAuthor,
+                                spotIds = selectedSpotIds.toList(),
+                                onSuccess = { code ->
+                                    isSharingInProgress = false
+                                    generatedShareCode = code
+                                },
+                                onError = { error ->
+                                    isSharingInProgress = false
+                                    sharingError = "Failed to share pack: ${error.message}"
+                                }
+                            )
+                        },
+                        enabled = !isSharingInProgress && sharePackTitle.isNotBlank()
+                    ) {
+                        if (isSharingInProgress) {
+                            Text("Uploading...")
+                        } else {
+                            Text("Create Pack")
+                        }
+                    }
+                } else {
+                    Button(onClick = {
+                        showShareCollectionDialog = false
+                        generatedShareCode = null
+                        sharePackTitle = ""
+                        sharePackDesc = ""
+                        sharePackAuthor = ""
+                        selectedSpotIds.clear()
+                        isMultiSelectMode = false
+                    }) {
+                        Text("Close")
+                    }
+                }
+            },
+            dismissButton = {
+                if (generatedShareCode == null && !isSharingInProgress) {
+                    TextButton(onClick = { showShareCollectionDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
+    }
+
+    if (showImportPackDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isImportingInProgress) {
+                    showImportPackDialog = false
+                    importPackCode = ""
+                    importError = null
+                    fetchedSharedPack = null
+                }
+            },
+            title = {
+                Text(
+                    text = if (fetchedSharedPack == null) "Import Cloud Pack" else "Load Shared Pack?",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (fetchedSharedPack == null) {
+                        Text(
+                            text = "Enter a 6-character pack share code to fetch and load spots locally.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        OutlinedTextField(
+                            value = importPackCode,
+                            onValueChange = { importPackCode = it.uppercase().trim() },
+                            label = { Text("Share Code") },
+                            placeholder = { Text("e.g. H7K9R2") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        if (importError != null) {
+                            Text(
+                                text = importError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    } else {
+                        val pack = fetchedSharedPack!!
+                        Text(
+                            text = "Found shared pack on Cloud:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = pack.title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "By ${pack.authorName}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (pack.description.isNotBlank()) {
+                            Text(
+                                text = pack.description,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        Text(
+                            text = "This bundle contains ${pack.spots.size} spots. Loaded spots will be saved with parent pack ID '${pack.packId}'.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                        if (importError != null) {
+                            Text(
+                                text = importError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (fetchedSharedPack == null) {
+                    Button(
+                        onClick = {
+                            if (importPackCode.length != 6) {
+                                importError = "Share code must be exactly 6 characters"
+                                return@Button
+                            }
+                            isImportingInProgress = true
+                            importError = null
+                            viewModel.importPackByCode(
+                                code = importPackCode,
+                                onSuccess = { sharedPack ->
+                                    isImportingInProgress = false
+                                    fetchedSharedPack = sharedPack
+                                },
+                                onError = { error ->
+                                    isImportingInProgress = false
+                                    importError = "Failed to find pack. Please check the code."
+                                }
+                            )
+                        },
+                        enabled = !isImportingInProgress && importPackCode.isNotBlank()
+                    ) {
+                        if (isImportingInProgress) {
+                            Text("Fetching...")
+                        } else {
+                            Text("Fetch Pack")
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            isImportingInProgress = true
+                            importError = null
+                            viewModel.saveImportedPack(
+                                sharedPack = fetchedSharedPack!!,
+                                onSuccess = {
+                                    isImportingInProgress = false
+                                    showImportPackDialog = false
+                                    importPackCode = ""
+                                    fetchedSharedPack = null
+                                    platformHelper.showToast("Pack imported successfully!")
+                                },
+                                onError = { error ->
+                                    isImportingInProgress = false
+                                    importError = "Failed to save pack: ${error.message}"
+                                }
+                            )
+                        },
+                        enabled = !isImportingInProgress
+                    ) {
+                        if (isImportingInProgress) {
+                            Text("Saving...")
+                        } else {
+                            Text("Load Pack")
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                if (!isImportingInProgress) {
+                    TextButton(onClick = {
+                        if (fetchedSharedPack != null) {
+                            fetchedSharedPack = null
+                        } else {
+                            showImportPackDialog = false
+                            importPackCode = ""
+                            importError = null
+                        }
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
+    }
+
+    if (showLoadedPacksDialog) {
+        AlertDialog(
+            onDismissRequest = { showLoadedPacksDialog = false },
+            title = {
+                Text(
+                    text = "Loaded Cloud Packs",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (loadedPacks.isEmpty()) {
+                        Text(
+                            text = "No imported packs found on this device.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                        )
+                    } else {
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(250.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(loadedPacks) { pack ->
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                            Text(
+                                                text = pack.title,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = "By ${pack.authorName} (${pack.packId})",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            if (pack.description.isNotBlank()) {
+                                                Text(
+                                                    text = pack.description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color.Gray,
+                                                    maxLines = 2
+                                                )
+                                            }
+                                        }
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    refreshingPackId = pack.packId
+                                                    viewModel.refreshPack(
+                                                        packId = pack.packId,
+                                                        onSuccess = {
+                                                            refreshingPackId = null
+                                                            platformHelper.showToast("Pack refreshed!")
+                                                        },
+                                                        onError = { e ->
+                                                            refreshingPackId = null
+                                                            platformHelper.showToast("Refresh failed: ${e.message}")
+                                                        }
+                                                    )
+                                                },
+                                                enabled = refreshingPackId == null
+                                            ) {
+                                                if (refreshingPackId == pack.packId) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(18.dp),
+                                                        strokeWidth = 2.dp
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Refresh,
+                                                        contentDescription = "Refresh",
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    viewModel.unloadPack(pack.packId) {
+                                                        platformHelper.showToast("Pack unloaded.")
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Unload",
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showLoadedPacksDialog = false }) {
+                    Text("Done")
                 }
             }
         )
@@ -320,6 +829,13 @@ fun GalleryScreen(
                                     isShareMenuExpanded = false
                                     spotsToExport = spots.filter { it.spot.id in selectedSpotIds }
                                     showExportOptionsDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Share Collection (Cloud)") },
+                                onClick = {
+                                    isShareMenuExpanded = false
+                                    showShareCollectionDialog = true
                                 }
                             )
                             DropdownMenuItem(
@@ -515,6 +1031,22 @@ fun GalleryScreen(
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
+
+                IconButton(onClick = { showImportPackDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowDownward,
+                        contentDescription = "Import Cloud Pack",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                IconButton(onClick = { showLoadedPacksDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Manage Loaded Packs",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
 
                 IconButton(onClick = { isSearchExpanded = true }) {
                     Icon(
@@ -1180,3 +1712,40 @@ fun EmptyGalleryState(
         }
     }
 }
+
+@Composable
+fun QrCodeCanvas(text: String, modifier: Modifier = Modifier) {
+    val matrix = remember(text) {
+        try {
+            QrCodeEncoder().encode(text)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    if (matrix != null) {
+        val size = matrix.size
+        Canvas(modifier = modifier) {
+            val moduleWidth = this.size.width / size
+            val moduleHeight = this.size.height / size
+            for (y in 0 until size) {
+                for (x in 0 until size) {
+                    if (matrix[y][x]) {
+                        drawRect(
+                            color = Color.Black,
+                            topLeft = Offset(x * moduleWidth, y * moduleHeight),
+                            size = Size(moduleWidth, moduleHeight)
+                        )
+                    } else {
+                        drawRect(
+                            color = Color.White,
+                            topLeft = Offset(x * moduleWidth, y * moduleHeight),
+                            size = Size(moduleWidth, moduleHeight)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -123,5 +123,17 @@ interface SpotDao {
 
     @Query("SELECT * FROM spot_notes WHERE uuid = :uuid")
     suspend fun getNoteByUuid(uuid: String): SpotNoteEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLoadedPack(pack: LoadedPackEntity)
+
+    @Query("SELECT * FROM loaded_packs ORDER BY importedAt DESC")
+    fun getAllLoadedPacks(): Flow<List<LoadedPackEntity>>
+
+    @Query("DELETE FROM loaded_packs WHERE packId = :packId")
+    suspend fun deleteLoadedPack(packId: String)
+
+    @Query("DELETE FROM spots WHERE parentPackId = :packId")
+    suspend fun deleteSpotsByPackId(packId: String)
 }
 

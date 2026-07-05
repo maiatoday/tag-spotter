@@ -421,6 +421,41 @@ class LocalSpotRepository(
         }
     }
 
+    override fun getAllLoadedPacks(): Flow<List<net.maiatoday.tagspotter.core.model.LoadedPack>> {
+        return spotDao.getAllLoadedPacks().map { list ->
+            list.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun saveLoadedPack(pack: net.maiatoday.tagspotter.core.model.LoadedPack) {
+        spotDao.insertLoadedPack(pack.toEntity())
+    }
+
+    override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
+        val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
+        val spotId = existingSpot?.id ?: 0L
+        
+        val updatedSpot = spotDetails.spot.copy(id = spotId)
+        val savedSpotId = spotDao.insertSpot(updatedSpot.toEntity())
+        
+        spotDetails.images.forEach { image ->
+            val existingImg = spotDao.getImageByUuid(image.uuid)
+            val imgId = existingImg?.id ?: 0L
+            spotDao.insertImage(image.copy(id = imgId, spotId = savedSpotId).toEntity())
+        }
+        
+        spotDetails.notes.forEach { note ->
+            val existingNote = spotDao.getNoteByUuid(note.uuid)
+            val noteId = existingNote?.id ?: 0L
+            spotDao.insertNote(note.copy(id = noteId, spotId = savedSpotId).toEntity())
+        }
+    }
+
+    override suspend fun deleteLoadedPack(packId: String) {
+        spotDao.deleteSpotsByPackId(packId)
+        spotDao.deleteLoadedPack(packId)
+    }
+
     companion object {
         val MOCK_SPOT_IDS = listOf(9001L, 9002L, 9003L)
     }

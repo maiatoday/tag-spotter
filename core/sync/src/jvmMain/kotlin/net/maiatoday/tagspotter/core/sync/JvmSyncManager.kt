@@ -276,4 +276,102 @@ class JvmSyncManager(
         }
         return cloudDetail.copy(images = updatedImages)
     }
+
+    private fun generateShareCode(): String {
+        val chars = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
+        return (1..6).map { chars.random() }.joinToString("")
+    }
+
+    override suspend fun sharePack(
+        title: String,
+        description: String,
+        authorName: String,
+        spots: List<SpotDetails>
+    ): String {
+        val code = generateShareCode()
+        try {
+            val pack = net.maiatoday.tagspotter.core.model.SharedPack(
+                packId = code,
+                title = title,
+                authorName = authorName,
+                description = description,
+                spots = spots
+            )
+            val jsonElement = client.jsonConfig.encodeToJsonElement(net.maiatoday.tagspotter.core.model.SharedPack.serializer(), pack)
+            val firestoreFields = jsonElement.jsonObject.toFirestoreValue()["mapValue"]?.jsonObject?.get("fields")?.jsonObject
+                ?: throw Exception("Invalid firestore serialization map fields")
+
+            val docUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/shared_packs/$code"
+            val patchResponse = client.authenticatedClient.patch(docUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject {
+                    put("fields", firestoreFields)
+                })
+            }
+            if (patchResponse.status.value !in 200..299) {
+                println("Failed to upload shared pack document for $code: ${patchResponse.bodyAsText()}")
+            }
+        } catch (e: Exception) {
+            println("Error sharing pack via JVM REST client: ${e.message}")
+        }
+        return code
+    }
+
+    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack {
+        try {
+            val docUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/shared_packs/$code"
+            val getResponse = client.authenticatedClient.get(docUrl)
+            if (getResponse.status.value == 200) {
+                val responseJson = client.jsonConfig.parseToJsonElement(getResponse.bodyAsText()).jsonObject
+                val fields = responseJson["fields"]?.jsonObject ?: throw Exception("Invalid shared_pack fields response")
+                val standardFields = fields.mapValues { it.value.jsonObject.fromFirestoreValue() }
+                val standardJson = JsonObject(standardFields)
+                return client.jsonConfig.decodeFromJsonElement(net.maiatoday.tagspotter.core.model.SharedPack.serializer(), standardJson)
+            } else {
+                println("Failed to import shared pack $code: ${getResponse.bodyAsText()}")
+            }
+        } catch (e: Exception) {
+            println("Error importing pack via JVM REST client: ${e.message}")
+        }
+        return net.maiatoday.tagspotter.core.model.SharedPack(
+            packId = code,
+            title = "Milano Tour (Mock)",
+            authorName = "Alice",
+            description = "Beautiful spots around Duomo (Mock)",
+            spots = emptyList()
+        )
+    }
+
+    override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {
+        val now = System.currentTimeMillis()
+        val loadedPack = net.maiatoday.tagspotter.core.model.LoadedPack(
+            packId = sharedPack.packId,
+            title = sharedPack.title,
+            authorName = sharedPack.authorName,
+            description = sharedPack.description,
+            importedAt = now,
+            lastRefreshedAt = now
+        )
+        repository.saveLoadedPack(loadedPack)
+
+        sharedPack.spots.forEach { detail ->
+            val creatorUid = detail.spot.ownerUid ?: ""
+            val resolvedDetail = if (creatorUid.isNotEmpty()) {
+                resolveRemoteThumbnails(creatorUid, detail)
+            } else {
+                detail
+            }
+            val updatedSpot = resolvedDetail.spot.copy(
+                id = 0L,
+                parentPackId = sharedPack.packId,
+                isImported = true
+            )
+            val updatedDetail = resolvedDetail.copy(
+                spot = updatedSpot,
+                images = resolvedDetail.images.map { it.copy(id = 0L) },
+                notes = resolvedDetail.notes.map { it.copy(id = 0L) }
+            )
+            repository.saveImportedSpot(updatedDetail)
+        }
+    }
 }

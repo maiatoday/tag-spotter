@@ -145,4 +145,57 @@ class WasmSyncManager(
         activeUserId = null
         isListening = false
     }
+
+    private fun generateShareCode(): String {
+        val chars = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
+        return (1..6).map { chars.random() }.joinToString("")
+    }
+
+    override suspend fun sharePack(
+        title: String,
+        description: String,
+        authorName: String,
+        spots: List<SpotDetails>
+    ): String {
+        val code = generateShareCode()
+        println("Web shared pack code generated: $code")
+        return code
+    }
+
+    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack {
+        return net.maiatoday.tagspotter.core.model.SharedPack(
+            packId = code,
+            title = "Milano Tour (Mock)",
+            authorName = "Alice",
+            description = "Beautiful spots around Duomo",
+            spots = emptyList()
+        )
+    }
+
+    override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {
+        val now = 0L
+        val loadedPack = net.maiatoday.tagspotter.core.model.LoadedPack(
+            packId = sharedPack.packId,
+            title = sharedPack.title,
+            authorName = sharedPack.authorName,
+            description = sharedPack.description,
+            importedAt = now,
+            lastRefreshedAt = now
+        )
+        repository.saveLoadedPack(loadedPack)
+
+        sharedPack.spots.forEach { detail ->
+            val updatedSpot = detail.spot.copy(
+                id = 0L,
+                parentPackId = sharedPack.packId,
+                isImported = true
+            )
+            val updatedDetail = detail.copy(
+                spot = updatedSpot,
+                images = detail.images.map { it.copy(id = 0L) },
+                notes = detail.notes.map { it.copy(id = 0L) }
+            )
+            repository.saveSpotDetails(updatedDetail)
+        }
+    }
 }

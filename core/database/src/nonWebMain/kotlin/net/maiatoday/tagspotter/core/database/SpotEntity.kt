@@ -33,7 +33,8 @@ data class SpotEntity(
     val photographerUuid: String = "",
     val lastEditedAt: Long = createdAt,
     val isSynced: Boolean = false,
-    val ownerUid: String? = null
+    val ownerUid: String? = null,
+    val parentPackId: String? = null
 )
 
 @Entity(
@@ -117,7 +118,8 @@ fun SpotEntity.toDomain(): Spot = Spot(
     photographerUuid = photographerUuid,
     lastEditedAt = lastEditedAt,
     isSynced = isSynced,
-    ownerUid = ownerUid
+    ownerUid = ownerUid,
+    parentPackId = parentPackId
 )
 
 fun Spot.toEntity(): SpotEntity = SpotEntity(
@@ -138,7 +140,8 @@ fun Spot.toEntity(): SpotEntity = SpotEntity(
     photographerUuid = photographerUuid,
     lastEditedAt = lastEditedAt,
     isSynced = isSynced,
-    ownerUid = ownerUid
+    ownerUid = ownerUid,
+    parentPackId = parentPackId
 )
 
 fun SpotImageEntity.toDomain(): SpotImage = SpotImage(
@@ -191,4 +194,32 @@ fun SpotDetailsEntity.toDomain(): SpotDetails = SpotDetails(
     spot = spot.toDomain(),
     images = images.map { it.toDomain() },
     notes = notes.map { it.toDomain() }
+)
+
+@Entity(tableName = "loaded_packs")
+data class LoadedPackEntity(
+    @PrimaryKey val packId: String,
+    val title: String,
+    val authorName: String,
+    val description: String,
+    val importedAt: Long,
+    val lastRefreshedAt: Long
+)
+
+fun LoadedPackEntity.toDomain(): net.maiatoday.tagspotter.core.model.LoadedPack = net.maiatoday.tagspotter.core.model.LoadedPack(
+    packId = packId,
+    title = title,
+    authorName = authorName,
+    description = description,
+    importedAt = importedAt,
+    lastRefreshedAt = lastRefreshedAt
+)
+
+fun net.maiatoday.tagspotter.core.model.LoadedPack.toEntity(): LoadedPackEntity = LoadedPackEntity(
+    packId = packId,
+    title = title,
+    authorName = authorName,
+    description = description,
+    importedAt = importedAt,
+    lastRefreshedAt = lastRefreshedAt
 )

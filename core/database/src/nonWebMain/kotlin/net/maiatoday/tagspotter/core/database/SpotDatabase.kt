@@ -70,13 +70,29 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE spots ADD COLUMN parentPackId TEXT")
+        connection.execSQL("""
+            CREATE TABLE IF NOT EXISTS loaded_packs (
+                packId TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                authorName TEXT NOT NULL,
+                description TEXT NOT NULL,
+                importedAt INTEGER NOT NULL,
+                lastRefreshedAt INTEGER NOT NULL
+            )
+        """.trimIndent())
+    }
+}
+
 fun RoomDatabase.Builder<SpotDatabase>.configureSpotDatabase(): RoomDatabase.Builder<SpotDatabase> {
-    return this.addMigrations(MIGRATION_10_11, MIGRATION_11_12)
+    return this.addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
 }
 
 @Database(
-    entities = [SpotEntity::class, SpotImageEntity::class, SpotNoteEntity::class],
-    version = 12,
+    entities = [SpotEntity::class, SpotImageEntity::class, SpotNoteEntity::class, LoadedPackEntity::class],
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

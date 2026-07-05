@@ -22,13 +22,125 @@ import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import kotlinx.coroutines.flow.first
 
+import net.maiatoday.tagspotter.core.sync.SyncManager
+
 class GalleryViewModel(
     private val repository: SpotRepository,
     private val filterManager: FilterManager,
     private val settingsRepository: SettingsRepository,
     private val locationProvider: LocationProvider,
-    private val photoProcessor: PhotoProcessor
+    private val photoProcessor: PhotoProcessor,
+    private val syncManager: SyncManager
 ) : ViewModel() {
+
+    val photographerName: StateFlow<String> = settingsRepository.photographerName
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ""
+        )
+
+    val loadedPacks: StateFlow<List<net.maiatoday.tagspotter.core.model.LoadedPack>> = repository.getAllLoadedPacks()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun sharePack(
+        title: String,
+        description: String,
+        author: String,
+        spotIds: List<Long>,
+        onSuccess: (String) -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val allSpots = spots.value
+                val selectedSpots = allSpots.filter { it.spot.id in spotIds }
+                val code = syncManager.sharePack(title, description, author, selectedSpots)
+                onSuccess(code)
+            } catch (e: Throwable) {
+                onError(e)
+            }
+        }
+    }
+
+    fun importPackByCode(
+        code: String,
+        onSuccess: (net.maiatoday.tagspotter.core.model.SharedPack) -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val sharedPack = syncManager.importPackByCode(code.uppercase().trim())
+                onSuccess(sharedPack)
+            } catch (e: Throwable) {
+                onError(e)
+            }
+        }
+    }
+
+    fun saveImportedPack(
+        sharedPack: net.maiatoday.tagspotter.core.model.SharedPack,
+        onSuccess: () -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                syncManager.saveImportedPack(sharedPack)
+                val loadedPack = net.maiatoday.tagspotter.core.model.LoadedPack(
+                    packId = sharedPack.packId,
+                    title = sharedPack.title,
+                    authorName = sharedPack.authorName,
+                    description = sharedPack.description,
+                    importedAt = net.maiatoday.tagspotter.core.database.epochMillis(),
+                    lastRefreshedAt = net.maiatoday.tagspotter.core.database.epochMillis()
+                )
+                repository.saveLoadedPack(loadedPack)
+                onSuccess()
+            } catch (e: Throwable) {
+                onError(e)
+            }
+        }
+    }
+
+    fun refreshPack(
+        packId: String,
+        onSuccess: () -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val sharedPack = syncManager.importPackByCode(packId)
+                syncManager.saveImportedPack(sharedPack)
+                val loadedPack = net.maiatoday.tagspotter.core.model.LoadedPack(
+                    packId = sharedPack.packId,
+                    title = sharedPack.title,
+                    authorName = sharedPack.authorName,
+                    description = sharedPack.description,
+                    importedAt = net.maiatoday.tagspotter.core.database.epochMillis(),
+                    lastRefreshedAt = net.maiatoday.tagspotter.core.database.epochMillis()
+                )
+                repository.saveLoadedPack(loadedPack)
+                onSuccess()
+            } catch (e: Throwable) {
+                onError(e)
+            }
+        }
+    }
+
+    fun unloadPack(
+        packId: String,
+        onCompleted: () -> Unit
+    ) {
+        viewModelScope.launch {
+            repository.deleteLoadedPack(packId)
+            onCompleted()
+        }
+    }
+
 
     val homeCity: StateFlow<String> = settingsRepository.homeCity
         .stateIn(

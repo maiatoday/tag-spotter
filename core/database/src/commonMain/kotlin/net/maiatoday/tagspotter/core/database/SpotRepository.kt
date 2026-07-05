@@ -49,5 +49,11 @@ interface SpotRepository {
 
     suspend fun adoptLocalSpots(userUid: String, backup: Boolean)
     suspend fun clearUserCache(userUid: String)
+
+    suspend fun saveImportedSpot(spotDetails: SpotDetails)
+
+    fun getAllLoadedPacks(): Flow<List<net.maiatoday.tagspotter.core.model.LoadedPack>>
+    suspend fun saveLoadedPack(pack: net.maiatoday.tagspotter.core.model.LoadedPack)
+    suspend fun deleteLoadedPack(packId: String)
 }
 

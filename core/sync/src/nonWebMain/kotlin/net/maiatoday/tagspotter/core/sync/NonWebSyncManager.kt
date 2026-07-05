@@ -147,4 +147,75 @@ class NonWebSyncManager(
         realtimeJob = null
         activeUserId = null
     }
+
+    private fun generateShareCode(): String {
+        val chars = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
+        return (1..6).map { chars.random() }.joinToString("")
+    }
+
+    override suspend fun sharePack(
+        title: String,
+        description: String,
+        authorName: String,
+        spots: List<SpotDetails>
+    ): String {
+        val code = generateShareCode()
+        val currentFirestore = firestore
+        if (currentFirestore != null) {
+            val pack = net.maiatoday.tagspotter.core.model.SharedPack(
+                packId = code,
+                title = title,
+                authorName = authorName,
+                description = description,
+                spots = spots
+            )
+            currentFirestore.collection("shared_packs").document(code).set(net.maiatoday.tagspotter.core.model.SharedPack.serializer(), pack)
+        } else {
+            println("Firestore not available, simulated sharing pack code: $code")
+        }
+        return code
+    }
+
+    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack {
+        val currentFirestore = firestore
+        if (currentFirestore != null) {
+            val doc = currentFirestore.collection("shared_packs").document(code).get()
+            return doc.data(net.maiatoday.tagspotter.core.model.SharedPack.serializer())
+        } else {
+            return net.maiatoday.tagspotter.core.model.SharedPack(
+                packId = code,
+                title = "Milano Tour (Mock)",
+                authorName = "Alice",
+                description = "Beautiful spots around Duomo",
+                spots = emptyList()
+            )
+        }
+    }
+
+    override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {
+        val now = net.maiatoday.tagspotter.core.database.epochMillis()
+        val loadedPack = net.maiatoday.tagspotter.core.model.LoadedPack(
+            packId = sharedPack.packId,
+            title = sharedPack.title,
+            authorName = sharedPack.authorName,
+            description = sharedPack.description,
+            importedAt = now,
+            lastRefreshedAt = now
+        )
+        repository.saveLoadedPack(loadedPack)
+
+        sharedPack.spots.forEach { detail ->
+            val updatedSpot = detail.spot.copy(
+                id = 0L,
+                parentPackId = sharedPack.packId,
+                isImported = true
+            )
+            val updatedDetail = detail.copy(
+                spot = updatedSpot,
+                images = detail.images.map { it.copy(id = 0L) },
+                notes = detail.notes.map { it.copy(id = 0L) }
+            )
+            repository.saveSpotDetails(updatedDetail)
+        }
+    }
 }
