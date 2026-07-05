@@ -10,6 +10,7 @@ import net.maiatoday.tagspotter.core.model.SpotNote
 import net.maiatoday.tagspotter.core.model.generateUuid
 
 class WasmSpotRepository : SpotRepository {
+    override var activeUid: String? = null
     private val spotsFlow: MutableStateFlow<Map<Long, SpotDetails>> = MutableStateFlow(emptyMap<Long, SpotDetails>())
     private var nextSpotId = 1L
     private var nextImageId = 1L

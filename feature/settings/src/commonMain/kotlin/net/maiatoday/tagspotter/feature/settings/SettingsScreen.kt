@@ -156,6 +156,7 @@ fun SettingsScreen(
                 val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
                 var emailInput by remember { mutableStateOf("") }
                 var passwordInput by remember { mutableStateOf("") }
+                var passwordVisible by remember { mutableStateOf(false) }
                 var showEmailForm by remember(viewModel.isGoogleSignInSupported) { mutableStateOf(!viewModel.isGoogleSignInSupported) }
                 var isSignUpMode by remember { mutableStateOf(false) }
                 var showSignOutDialog by remember { mutableStateOf(false) }
@@ -500,7 +501,15 @@ fun SettingsScreen(
                                         onValueChange = { passwordInput = it },
                                         label = { Text("Password") },
                                         singleLine = true,
-                                        visualTransformation = PasswordVisualTransformation(),
+                                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                        trailingIcon = {
+                                            val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                                            val description = if (passwordVisible) "Hide password" else "Show password"
+
+                                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                                Icon(imageVector = image, contentDescription = description)
+                                            }
+                                        },
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
