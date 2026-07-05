@@ -5,6 +5,7 @@ import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.*
@@ -180,12 +181,13 @@ class JvmSyncManager(
                                 val standardFields = fields.mapValues { it.value.jsonObject.fromFirestoreValue() }
                                 val standardJsonObj = JsonObject(standardFields)
                                 val cloudDetail = client.jsonConfig.decodeFromJsonElement(SpotDetails.serializer(), standardJsonObj)
+                                val updatedCloudDetail = resolveRemoteThumbnails(userId, cloudDetail)
                                 
-                                val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
+                                val localMatch = localSpots.find { it.spot.uuid == updatedCloudDetail.spot.uuid }
                                 if (localMatch == null) {
-                                    repository.saveSyncedSpot(cloudDetail)
-                                } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
-                                    repository.saveSyncedSpot(cloudDetail)
+                                    repository.saveSyncedSpot(updatedCloudDetail)
+                                } else if (updatedCloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
+                                    repository.saveSyncedSpot(updatedCloudDetail)
                                 }
                             }
                         } catch (e: Exception) {
@@ -225,5 +227,53 @@ class JvmSyncManager(
         realtimeJob?.cancel()
         realtimeJob = null
         activeUserId = null
+    }
+
+    private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
+        val updatedImages = cloudDetail.images.map { image ->
+            val userHome = System.getProperty("user.home")
+            val localThumbnailFile = java.io.File("$userHome/Pictures/TagSpotter/thumbnails/$userId/${image.uuid}.jpg")
+            
+            if (localThumbnailFile.exists() && localThumbnailFile.isFile) {
+                // If it exists locally on disk, save the local path inside the local database `thumbnailPath` field.
+                image.copy(thumbnailPath = localThumbnailFile.absolutePath)
+            } else {
+                try {
+                    val objectPath = "users/$userId/thumbnails/${image.uuid}.jpg"
+                    val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
+                    val getUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath"
+                    val getResponse = client.authenticatedClient.get(getUrl)
+                    if (getResponse.status.value == 200) {
+                        val getResponseText = getResponse.bodyAsText()
+                        val responseJson = client.jsonConfig.parseToJsonElement(getResponseText).jsonObject
+                        val downloadToken = responseJson["downloadTokens"]?.jsonPrimitive?.content
+                        if (!downloadToken.isNullOrEmpty()) {
+                            val secureUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media&token=$downloadToken"
+                            
+                            // Download the secure URL bytes
+                            val downloadResponse = client.authenticatedClient.get(secureUrl)
+                            if (downloadResponse.status.value == 200) {
+                                val bytes = downloadResponse.readRawBytes()
+                                localThumbnailFile.parentFile?.mkdirs()
+                                localThumbnailFile.writeBytes(bytes)
+                                println("Downloaded and persisted remote thumbnail for ${image.uuid} to ${localThumbnailFile.absolutePath}")
+                            }
+                            
+                            // Save the remote HTTPS download URL directly inside the local database `thumbnailPath` field.
+                            image.copy(thumbnailPath = secureUrl)
+                        } else {
+                            image
+                        }
+                    } else {
+                        println("Failed to fetch storage metadata for ${image.uuid}: ${getResponse.bodyAsText()}")
+                        image
+                    }
+                } catch (e: Exception) {
+                    println("Error resolving remote thumbnail for ${image.uuid}: ${e.message}")
+                    image
+                }
+            }
+        }
+        return cloudDetail.copy(images = updatedImages)
     }
 }
