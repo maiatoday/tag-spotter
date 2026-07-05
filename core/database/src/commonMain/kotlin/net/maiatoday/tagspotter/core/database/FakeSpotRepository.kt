@@ -10,6 +10,7 @@ import net.maiatoday.tagspotter.core.model.SpotNote
 import kotlin.collections.plus
 
 class FakeSpotRepository : SpotRepository {
+    override var activeUid: String? = null
     private val spotsMap = mutableMapOf<Long, SpotDetails>()
     private val spotsFlow = MutableStateFlow<List<SpotDetails>>(emptyList())
 
@@ -376,6 +377,25 @@ class FakeSpotRepository : SpotRepository {
             }
             spotsMap[nextId] = SpotDetails(spotWithLocalId, imagesWithLocalId, notesWithLocalId)
         }
+        updateFlow()
+    }
+
+    override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {
+        val targetOwner = if (backup) userUid else "local_only"
+        spotsMap.forEach { (id, details) ->
+            if (details.spot.ownerUid == null) {
+                val updatedSpot = details.spot.copy(ownerUid = targetOwner, isSynced = !backup)
+                val updatedImages = details.images.map { it.copy(ownerUid = targetOwner) }
+                val updatedNotes = details.notes.map { it.copy(ownerUid = targetOwner) }
+                spotsMap[id] = details.copy(spot = updatedSpot, images = updatedImages, notes = updatedNotes)
+            }
+        }
+        updateFlow()
+    }
+
+    override suspend fun clearUserCache(userUid: String) {
+        val keysToRemove = spotsMap.filter { it.value.spot.ownerUid == userUid }.keys
+        keysToRemove.forEach { spotsMap.remove(it) }
         updateFlow()
     }
 }

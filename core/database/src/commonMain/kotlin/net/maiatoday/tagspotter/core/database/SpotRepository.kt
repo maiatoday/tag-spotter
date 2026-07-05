@@ -6,6 +6,7 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 
 interface SpotRepository {
+    var activeUid: String?
     fun getAllSpots(): Flow<List<SpotDetails>>
     fun getSpotsByCategory(category: String): Flow<List<SpotDetails>>
     fun getSpotById(id: Long): Flow<SpotDetails?>
@@ -45,5 +46,8 @@ interface SpotRepository {
     suspend fun getUnsyncedSpots(): List<SpotDetails>
     suspend fun markSpotAsSynced(spotUuid: String)
     suspend fun saveSyncedSpot(spotDetails: SpotDetails)
+
+    suspend fun adoptLocalSpots(userUid: String, backup: Boolean)
+    suspend fun clearUserCache(userUid: String)
 }
 

@@ -14,19 +14,21 @@ class LocalSpotRepository(
     private val photoProcessor: PhotoProcessor
 ) : SpotRepository {
 
+    override var activeUid: String? = null
+
     override fun getAllSpots(): Flow<List<SpotDetails>> {
-        return spotDao.getAllSpotsDetails().map { list ->
+        return spotDao.getAllSpotsDetails(activeUid).map { list ->
             list.map { it.toDomain() }
         }
     }
 
     override fun getSpotsByCategory(category: String): Flow<List<SpotDetails>> {
         if (category == "All") {
-            return spotDao.getAllSpotsDetails().map { list ->
+            return spotDao.getAllSpotsDetails(activeUid).map { list ->
                 list.map { it.toDomain() }
             }
         }
-        return spotDao.getAllSpotsDetailsByCategory(category).map { list ->
+        return spotDao.getAllSpotsDetailsByCategory(category, activeUid).map { list ->
             list.map { it.toDomain() }
         }
     }
@@ -36,7 +38,7 @@ class LocalSpotRepository(
     }
 
     override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int, isMain: Boolean): Long {
-        val spotId = spotDao.insertSpot(spot.toEntity())
+        val spotId = spotDao.insertSpot(spot.copy(ownerUid = activeUid).toEntity())
         if (imagePath.isNotEmpty()) {
             spotDao.insertImage(
                 SpotImageEntity(
@@ -47,7 +49,8 @@ class LocalSpotRepository(
                     rating = rating,
                     isMain = isMain,
                     uuid = generateUuid(),
-                    lastEditedAt = spot.createdAt
+                    lastEditedAt = spot.createdAt,
+                    ownerUid = activeUid
                 )
             )
         }
@@ -65,7 +68,8 @@ class LocalSpotRepository(
                 rating = rating,
                 isMain = isMain,
                 uuid = generateUuid(),
-                lastEditedAt = now
+                lastEditedAt = now,
+                ownerUid = activeUid
             )
         )
         spotDao.touchSpot(spotId, now)
@@ -80,7 +84,8 @@ class LocalSpotRepository(
                 noteText = noteText,
                 timestamp = timestamp,
                 uuid = generateUuid(),
-                lastEditedAt = now
+                lastEditedAt = now,
+                ownerUid = activeUid
             )
         )
         spotDao.touchSpot(spotId, now)
@@ -133,7 +138,7 @@ class LocalSpotRepository(
     }
 
     override fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>> {
-        return spotDao.getAllUsedTags().map { rawTagsList ->
+        return spotDao.getAllUsedTags(activeUid).map { rawTagsList ->
             rawTagsList.asSequence().flatMap { rawTags ->
                 Converters().toStringList(rawTags)
             }
@@ -249,7 +254,7 @@ class LocalSpotRepository(
     }
 
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
-        val existingSpots = spotDao.getAllSpotsDetails().first()
+        val existingSpots = spotDao.getAllSpotsDetails(activeUid).first()
         var importedCount = 0
         spots.forEach { importedDetail ->
             val importedSpot = importedDetail.spot
@@ -260,12 +265,12 @@ class LocalSpotRepository(
                         e.longitude == importedSpot.longitude
             }
             if (!isDuplicate) {
-                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L, isImported = true).toEntity())
+                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L, isImported = true, ownerUid = activeUid).toEntity())
                 importedDetail.images.forEach { image ->
-                    spotDao.insertImage(image.copy(id = 0L, spotId = newSpotId).toEntity())
+                    spotDao.insertImage(image.copy(id = 0L, spotId = newSpotId, ownerUid = activeUid).toEntity())
                 }
                 importedDetail.notes.forEach { note ->
-                    spotDao.insertNote(note.copy(id = 0L, spotId = newSpotId).toEntity())
+                    spotDao.insertNote(note.copy(id = 0L, spotId = newSpotId, ownerUid = activeUid).toEntity())
                 }
                 importedCount++
             }
@@ -279,11 +284,11 @@ class LocalSpotRepository(
     }
 
     override suspend fun getStarredSpots(): List<Spot> {
-        return spotDao.getStarredSpots().map { it.toDomain() }
+        return spotDao.getStarredSpots(activeUid).map { it.toDomain() }
     }
 
     override suspend fun getStarredSpotsCount(): Int {
-        return spotDao.getStarredSpotsCount()
+        return spotDao.getStarredSpotsCount(activeUid)
     }
 
     override suspend fun setMainImage(spotId: Long, imageId: Long) {
@@ -314,7 +319,7 @@ class LocalSpotRepository(
         val now = epochMillis()
         spotDao.updateImageRating(imageId, rating, now)
         // Retrieve spotId for image to touch the parent spot
-        val images = spotDao.getAllSpotsDetails().first().flatMap { it.images }
+        val images = spotDao.getAllSpotsDetails(activeUid).first().flatMap { it.images }
         val matchingImage = images.find { it.id == imageId }
         if (matchingImage != null) {
             spotDao.touchSpot(matchingImage.spotId, now)
@@ -327,7 +332,7 @@ class LocalSpotRepository(
     }
 
     override suspend fun deleteNote(noteId: Long) {
-        val notes = spotDao.getAllSpotsDetails().first().flatMap { it.notes }
+        val notes = spotDao.getAllSpotsDetails(activeUid).first().flatMap { it.notes }
         val matchingNote = notes.find { it.id == noteId }
         spotDao.deleteNoteById(noteId)
         if (matchingNote != null) {
@@ -339,7 +344,7 @@ class LocalSpotRepository(
     override suspend fun updateNote(noteId: Long, noteText: String) {
         val now = epochMillis()
         spotDao.updateNoteText(noteId, noteText, now)
-        val notes = spotDao.getAllSpotsDetails().first().flatMap { it.notes }
+        val notes = spotDao.getAllSpotsDetails(activeUid).first().flatMap { it.notes }
         val matchingNote = notes.find { it.id == noteId }
         if (matchingNote != null) {
             spotDao.touchSpot(matchingNote.spotId, now)
@@ -347,7 +352,7 @@ class LocalSpotRepository(
     }
 
     override suspend fun getUnsyncedSpots(): List<SpotDetails> {
-        return spotDao.getUnsyncedSpotsDetails().map { it.toDomain() }
+        return spotDao.getUnsyncedSpotsDetails(activeUid ?: "").map { it.toDomain() }
     }
 
     override suspend fun markSpotAsSynced(spotUuid: String) {
@@ -357,20 +362,20 @@ class LocalSpotRepository(
     override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
         val finalSpotId = if (existingSpot != null) {
-            val spotWithLocalId = spotDetails.spot.copy(id = existingSpot.id, isSynced = true)
+            val spotWithLocalId = spotDetails.spot.copy(id = existingSpot.id, isSynced = true, ownerUid = activeUid)
             spotDao.insertSpot(spotWithLocalId.toEntity())
             existingSpot.id
         } else {
-            val spotToInsert = spotDetails.spot.copy(id = 0L, isSynced = true)
+            val spotToInsert = spotDetails.spot.copy(id = 0L, isSynced = true, ownerUid = activeUid)
             spotDao.insertSpot(spotToInsert.toEntity())
         }
 
         spotDetails.images.forEach { image ->
             val existingImage = spotDao.getImageByUuid(image.uuid)
             val imageToInsert = if (existingImage != null) {
-                image.copy(id = existingImage.id, spotId = finalSpotId)
+                image.copy(id = existingImage.id, spotId = finalSpotId, ownerUid = activeUid)
             } else {
-                image.copy(id = 0L, spotId = finalSpotId)
+                image.copy(id = 0L, spotId = finalSpotId, ownerUid = activeUid)
             }
             spotDao.insertImage(imageToInsert.toEntity())
         }
@@ -378,11 +383,41 @@ class LocalSpotRepository(
         spotDetails.notes.forEach { note ->
             val existingNote = spotDao.getNoteByUuid(note.uuid)
             val noteToInsert = if (existingNote != null) {
-                note.copy(id = existingNote.id, spotId = finalSpotId)
+                note.copy(id = existingNote.id, spotId = finalSpotId, ownerUid = activeUid)
             } else {
-                note.copy(id = 0L, spotId = finalSpotId)
+                note.copy(id = 0L, spotId = finalSpotId, ownerUid = activeUid)
             }
             spotDao.insertNote(noteToInsert.toEntity())
+        }
+    }
+
+    override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {
+        val targetOwner = if (backup) userUid else "local_only"
+        val allSpots = spotDao.getAllSpotsDetails(null).first()
+        allSpots.forEach { detail ->
+            if (detail.spot.ownerUid == null) {
+                val updatedSpot = detail.spot.copy(ownerUid = targetOwner, isSynced = !backup)
+                spotDao.insertSpot(updatedSpot)
+                detail.images.forEach { img ->
+                    spotDao.insertImage(img.copy(ownerUid = targetOwner))
+                }
+                detail.notes.forEach { note ->
+                    spotDao.insertNote(note.copy(ownerUid = targetOwner))
+                }
+            }
+        }
+    }
+
+    override suspend fun clearUserCache(userUid: String) {
+        val allSpots = spotDao.getAllSpotsDetails(userUid).first()
+        allSpots.forEach { detail ->
+            if (detail.spot.ownerUid == userUid) {
+                detail.images.forEach { image ->
+                    photoProcessor.deleteFile(image.thumbnailPath)
+                    photoProcessor.deleteFile(image.imagePath)
+                }
+                spotDao.deleteSpotById(detail.spot.id)
+            }
         }
     }
 

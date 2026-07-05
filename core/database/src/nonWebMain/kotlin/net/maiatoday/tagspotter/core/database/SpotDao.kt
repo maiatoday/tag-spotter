@@ -59,24 +59,24 @@ interface SpotDao {
     fun getSpotDetails(id: Long): Flow<SpotDetailsEntity?>
 
     @Transaction
-    @Query("SELECT * FROM spots ORDER BY createdAt DESC")
-    fun getAllSpotsDetails(): Flow<List<SpotDetailsEntity>>
+    @Query("SELECT * FROM spots WHERE ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid) ORDER BY createdAt DESC")
+    fun getAllSpotsDetails(activeUid: String?): Flow<List<SpotDetailsEntity>>
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE category = :category ORDER BY createdAt DESC")
-    fun getAllSpotsDetailsByCategory(category: String): Flow<List<SpotDetailsEntity>>
+    @Query("SELECT * FROM spots WHERE category = :category AND (ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)) ORDER BY createdAt DESC")
+    fun getAllSpotsDetailsByCategory(category: String, activeUid: String?): Flow<List<SpotDetailsEntity>>
 
-    @Query("SELECT DISTINCT tags FROM spots")
-    fun getAllUsedTags(): Flow<List<String>>
+    @Query("SELECT DISTINCT tags FROM spots WHERE ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)")
+    fun getAllUsedTags(activeUid: String?): Flow<List<String>>
 
     @Query("UPDATE spots SET isStarred = :isStarred, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
     suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean, lastEditedAt: Long)
 
-    @Query("SELECT * FROM spots WHERE isStarred = 1")
-    suspend fun getStarredSpots(): List<SpotEntity>
+    @Query("SELECT * FROM spots WHERE isStarred = 1 AND (ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
+    suspend fun getStarredSpots(activeUid: String?): List<SpotEntity>
 
-    @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1")
-    suspend fun getStarredSpotsCount(): Int
+    @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1 AND (ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
+    suspend fun getStarredSpotsCount(activeUid: String?): Int
 
     @Query("UPDATE spot_images SET isMain = 0 WHERE spotId = :spotId")
     suspend fun clearMainImages(spotId: Long)
@@ -109,8 +109,8 @@ interface SpotDao {
     suspend fun updateNoteText(noteId: Long, noteText: String, lastEditedAt: Long)
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE isSynced = 0")
-    suspend fun getUnsyncedSpotsDetails(): List<SpotDetailsEntity>
+    @Query("SELECT * FROM spots WHERE isSynced = 0 AND (ownerUid = :activeUid OR ownerUid IS NULL)")
+    suspend fun getUnsyncedSpotsDetails(activeUid: String): List<SpotDetailsEntity>
 
     @Query("UPDATE spots SET isSynced = 1 WHERE uuid = :uuid")
     suspend fun markSpotAsSynced(uuid: String)

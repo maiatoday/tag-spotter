@@ -13,6 +13,7 @@ import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
 
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
@@ -21,11 +22,27 @@ class SettingsViewModel(
     private val syncManager: SyncManager
 ) : ViewModel() {
 
+    init {
+        viewModelScope.launch {
+            authService.currentUserFlow.collect { user ->
+                spotRepository.activeUid = user?.uid
+            }
+        }
+    }
+
     val currentUser: StateFlow<FirebaseUserWrapper?> = authService.currentUserFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = null
+        )
+
+    val hasOfflineSpots: StateFlow<Boolean> = spotRepository.getAllSpots()
+        .map { spots -> spots.any { it.spot.ownerUid == null } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
         )
 
     val isSyncing: StateFlow<Boolean> = syncManager.isSyncing
@@ -83,10 +100,23 @@ class SettingsViewModel(
         }
     }
 
-    fun signOut() {
+    fun adoptOfflineSpots(backup: Boolean) {
         viewModelScope.launch {
+            authService.currentUserFlow.first()?.uid?.let { uid ->
+                spotRepository.adoptLocalSpots(uid, backup)
+            }
+        }
+    }
+
+    fun signOut(clearCache: Boolean = false) {
+        viewModelScope.launch {
+            val uid = authService.currentUserFlow.first()?.uid
+            if (uid != null && clearCache) {
+                spotRepository.clearUserCache(uid)
+            }
             authService.signOut()
             syncManager.stopRealtimeSync()
+            spotRepository.activeUid = null
         }
     }
 

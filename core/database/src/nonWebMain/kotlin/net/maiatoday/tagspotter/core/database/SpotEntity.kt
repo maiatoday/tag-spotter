@@ -32,7 +32,8 @@ data class SpotEntity(
     val uuid: String = "",
     val photographerUuid: String = "",
     val lastEditedAt: Long = createdAt,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val ownerUid: String? = null
 )
 
 @Entity(
@@ -56,7 +57,8 @@ data class SpotImageEntity(
     val isMain: Boolean = false,
     val rating: Int = 0,
     val uuid: String = "",
-    val lastEditedAt: Long = timestamp
+    val lastEditedAt: Long = timestamp,
+    val ownerUid: String? = null
 )
 
 @Entity(
@@ -77,7 +79,8 @@ data class SpotNoteEntity(
     val noteText: String,
     val timestamp: Long,
     val uuid: String = "",
-    val lastEditedAt: Long = timestamp
+    val lastEditedAt: Long = timestamp,
+    val ownerUid: String? = null
 )
 
 data class SpotDetailsEntity(
@@ -113,7 +116,8 @@ fun SpotEntity.toDomain(): Spot = Spot(
     uuid = uuid,
     photographerUuid = photographerUuid,
     lastEditedAt = lastEditedAt,
-    isSynced = isSynced
+    isSynced = isSynced,
+    ownerUid = ownerUid
 )
 
 fun Spot.toEntity(): SpotEntity = SpotEntity(
@@ -133,7 +137,8 @@ fun Spot.toEntity(): SpotEntity = SpotEntity(
     uuid = uuid,
     photographerUuid = photographerUuid,
     lastEditedAt = lastEditedAt,
-    isSynced = isSynced
+    isSynced = isSynced,
+    ownerUid = ownerUid
 )
 
 fun SpotImageEntity.toDomain(): SpotImage = SpotImage(
@@ -145,7 +150,8 @@ fun SpotImageEntity.toDomain(): SpotImage = SpotImage(
     isMain = isMain,
     rating = rating,
     uuid = uuid,
-    lastEditedAt = lastEditedAt
+    lastEditedAt = lastEditedAt,
+    ownerUid = ownerUid
 )
 
 fun SpotImage.toEntity(): SpotImageEntity = SpotImageEntity(
@@ -157,7 +163,8 @@ fun SpotImage.toEntity(): SpotImageEntity = SpotImageEntity(
     isMain = isMain,
     rating = rating,
     uuid = uuid,
-    lastEditedAt = lastEditedAt
+    lastEditedAt = lastEditedAt,
+    ownerUid = ownerUid
 )
 
 fun SpotNoteEntity.toDomain(): SpotNote = SpotNote(
@@ -166,7 +173,8 @@ fun SpotNoteEntity.toDomain(): SpotNote = SpotNote(
     noteText = noteText,
     timestamp = timestamp,
     uuid = uuid,
-    lastEditedAt = lastEditedAt
+    lastEditedAt = lastEditedAt,
+    ownerUid = ownerUid
 )
 
 fun SpotNote.toEntity(): SpotNoteEntity = SpotNoteEntity(
@@ -175,7 +183,8 @@ fun SpotNote.toEntity(): SpotNoteEntity = SpotNoteEntity(
     noteText = noteText,
     timestamp = timestamp,
     uuid = uuid,
-    lastEditedAt = lastEditedAt
+    lastEditedAt = lastEditedAt,
+    ownerUid = ownerUid
 )
 
 fun SpotDetailsEntity.toDomain(): SpotDetails = SpotDetails(

@@ -46,8 +46,17 @@ class MainViewModel(
     private val photoProcessor: PhotoProcessor,
     private val settingsRepository: SettingsRepository,
     private val spotRepository: SpotRepository,
+    private val authService: net.maiatoday.tagspotter.core.sync.AuthService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
+
+    init {
+        viewModelScope.launch {
+            authService.currentUserFlow.collect { user ->
+                spotRepository.activeUid = user?.uid
+            }
+        }
+    }
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()

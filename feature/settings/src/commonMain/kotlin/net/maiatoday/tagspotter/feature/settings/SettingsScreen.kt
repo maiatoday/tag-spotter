@@ -158,6 +158,61 @@ fun SettingsScreen(
                 var passwordInput by remember { mutableStateOf("") }
                 var showEmailForm by remember(viewModel.isGoogleSignInSupported) { mutableStateOf(!viewModel.isGoogleSignInSupported) }
                 var isSignUpMode by remember { mutableStateOf(false) }
+                var showSignOutDialog by remember { mutableStateOf(false) }
+
+                if (showSignOutDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showSignOutDialog = false },
+                        title = { Text("Sign Out", fontWeight = FontWeight.Bold) },
+                        text = { Text("When signing out, do you want to keep cached files locally (locked to your account but hidden from active dashboard) or clear the cache to completely delete them from this device?") },
+                        confirmButton = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        viewModel.signOut(clearCache = false)
+                                        showSignOutDialog = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Keep Cache", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = {
+                                        viewModel.signOut(clearCache = true)
+                                        showSignOutDialog = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Clear Cache", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        },
+                        dismissButton = {
+                            Button(
+                                onClick = { showSignOutDialog = false },
+                                colors = ButtonDefaults.textButtonColors(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Cancel", color = Color.Gray)
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        textContentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                }
 
                 // Backup & Sync Card
                 Card(
@@ -270,10 +325,69 @@ fun SettingsScreen(
                                 }
                             }
 
+                            // Adoption Prompt UI (Phase 3)
+                            val hasOfflineSpots by viewModel.hasOfflineSpots.collectAsStateWithLifecycle()
+                            if (hasOfflineSpots) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                            text = "We found offline spots on this device.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "Do you want to back them up to ${user.email ?: "this account"} or keep them strictly local?",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Button(
+                                                onClick = { viewModel.adoptOfflineSpots(backup = false) },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.surface,
+                                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                                ),
+                                                modifier = Modifier.weight(1f),
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+                                            ) {
+                                                Text("Keep Local", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                                            }
+                                            Button(
+                                                onClick = { viewModel.adoptOfflineSpots(backup = true) },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.primary,
+                                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                                ),
+                                                modifier = Modifier.weight(1f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Text("Back Up", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Button(
-                                onClick = { viewModel.signOut() },
+                                onClick = { showSignOutDialog = true },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = MaterialTheme.colorScheme.error

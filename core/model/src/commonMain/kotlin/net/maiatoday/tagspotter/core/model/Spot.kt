@@ -20,7 +20,8 @@ data class Spot(
     val uuid: String = generateUuid(),
     val photographerUuid: String = "",
     val lastEditedAt: Long = createdAt,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val ownerUid: String? = null
 ) {
     companion object {
         val CATEGORIES = listOf("graffiti", "sculpture", "nature", "architecture", "public_place", "food")
@@ -37,7 +38,8 @@ data class SpotImage(
     val isMain: Boolean = false,
     val rating: Int = 0,
     val uuid: String = generateUuid(),
-    val lastEditedAt: Long = timestamp
+    val lastEditedAt: Long = timestamp,
+    val ownerUid: String? = null
 )
 
 @Serializable
@@ -47,7 +49,8 @@ data class SpotNote(
     val noteText: String,
     val timestamp: Long,
     val uuid: String = generateUuid(),
-    val lastEditedAt: Long = timestamp
+    val lastEditedAt: Long = timestamp,
+    val ownerUid: String? = null
 )
 
 @Serializable

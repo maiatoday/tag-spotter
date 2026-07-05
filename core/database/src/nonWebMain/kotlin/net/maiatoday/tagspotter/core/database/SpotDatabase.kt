@@ -62,13 +62,21 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
     }
 }
 
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE spots ADD COLUMN ownerUid TEXT")
+        connection.execSQL("ALTER TABLE spot_images ADD COLUMN ownerUid TEXT")
+        connection.execSQL("ALTER TABLE spot_notes ADD COLUMN ownerUid TEXT")
+    }
+}
+
 fun RoomDatabase.Builder<SpotDatabase>.configureSpotDatabase(): RoomDatabase.Builder<SpotDatabase> {
-    return this.addMigrations(MIGRATION_10_11)
+    return this.addMigrations(MIGRATION_10_11, MIGRATION_11_12)
 }
 
 @Database(
     entities = [SpotEntity::class, SpotImageEntity::class, SpotNoteEntity::class],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
