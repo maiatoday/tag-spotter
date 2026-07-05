@@ -27,6 +27,7 @@ kotlin {
             dependencies {
                 implementation(project(":core:model"))
                 implementation(project(":core:database"))
+                implementation(project(":core:settings"))
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.koin.core)
@@ -61,6 +62,13 @@ kotlin {
         
         jvmMain {
             dependsOn(nonWebMain)
+            dependencies {
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.ktor.client.auth)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
+            }
         }
         
         iosMain {

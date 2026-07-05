@@ -1,0 +1,229 @@
+package net.maiatoday.tagspotter.core.sync
+
+import io.ktor.client.request.get
+import io.ktor.client.request.patch
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.serialization.json.*
+import net.maiatoday.tagspotter.core.database.SpotRepository
+import net.maiatoday.tagspotter.core.model.SpotDetails
+
+fun JsonElement.toFirestoreValue(): JsonObject {
+    val element = this
+    return when (element) {
+        is JsonNull -> buildJsonObject { put("nullValue", JsonNull) }
+        is JsonPrimitive -> {
+            if (element.isString) {
+                buildJsonObject { put("stringValue", element.content) }
+            } else {
+                val booleanValue = element.booleanOrNull
+                if (booleanValue != null) {
+                    buildJsonObject { put("booleanValue", booleanValue) }
+                } else {
+                    val doubleValue = element.doubleOrNull
+                    if (element.content.contains(".") || element.content.contains("e", ignoreCase = true)) {
+                        buildJsonObject { put("doubleValue", doubleValue ?: 0.0) }
+                    } else {
+                        buildJsonObject { put("integerValue", element.content) }
+                    }
+                }
+            }
+        }
+        is JsonArray -> {
+            buildJsonObject {
+                put("arrayValue", buildJsonObject {
+                    putJsonArray("values") {
+                        element.forEach { item ->
+                            add(item.toFirestoreValue())
+                        }
+                    }
+                })
+            }
+        }
+        is JsonObject -> {
+            buildJsonObject {
+                put("mapValue", buildJsonObject {
+                    putJsonObject("fields") {
+                        element.forEach { (key, value) ->
+                            put(key, value.toFirestoreValue())
+                        }
+                    }
+                })
+            }
+        }
+    }
+}
+
+fun JsonObject.fromFirestoreValue(): JsonElement {
+    if (containsKey("nullValue")) return JsonNull
+    val stringVal = this["stringValue"]?.jsonPrimitive
+    if (stringVal != null) return JsonPrimitive(stringVal.content)
+    val booleanVal = this["booleanValue"]?.jsonPrimitive
+    if (booleanVal != null) return JsonPrimitive(booleanVal.boolean)
+    
+    val integerVal = this["integerValue"]?.jsonPrimitive
+    if (integerVal != null) {
+        val longVal = integerVal.content.toLongOrNull()
+        if (longVal != null) return JsonPrimitive(longVal)
+        return JsonPrimitive(integerVal.content)
+    }
+    
+    val doubleVal = this["doubleValue"]?.jsonPrimitive
+    if (doubleVal != null) {
+        val dVal = doubleVal.content.toDoubleOrNull()
+        if (dVal != null) return JsonPrimitive(dVal)
+        return JsonPrimitive(doubleVal.content)
+    }
+    
+    val arrayVal = this["arrayValue"]?.jsonObject
+    if (arrayVal != null) {
+        val values = arrayVal["values"]?.jsonArray ?: return JsonArray(emptyList())
+        return JsonArray(values.map { it.jsonObject.fromFirestoreValue() })
+    }
+    val mapVal = this["mapValue"]?.jsonObject
+    if (mapVal != null) {
+        val fields = mapVal["fields"]?.jsonObject ?: return JsonObject(emptyMap())
+        return JsonObject(fields.mapValues { it.value.jsonObject.fromFirestoreValue() })
+    }
+    return JsonNull
+}
+
+class JvmSyncManager(
+    private val repository: SpotRepository,
+    private val client: JvmFirebaseClient
+) : SyncManager {
+
+    private val _isSyncing = MutableStateFlow(false)
+    override val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
+    private var realtimeJob: Job? = null
+    private var activeUserId: String? = null
+    private val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    override suspend fun syncNow() {
+        val userId = activeUserId ?: return
+        if (_isSyncing.value) return
+        _isSyncing.value = true
+
+        try {
+            // 1. Push stage: find all unsynced local spots
+            val unsyncedSpots = repository.getUnsyncedSpots()
+
+            unsyncedSpots.forEach { localDetail ->
+                val uuid = localDetail.spot.uuid
+                
+                // Convert SpotDetails to standard JSON, then to Firestore structured value format
+                val jsonElement = client.jsonConfig.encodeToJsonElement(SpotDetails.serializer(), localDetail)
+                val firestoreFields = jsonElement.jsonObject.toFirestoreValue()["mapValue"]?.jsonObject?.get("fields")?.jsonObject 
+                    ?: throw Exception("Invalid firestore serialization map fields")
+
+                // Upload local metadata to Firestore
+                val docUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/users/$userId/spots/$uuid"
+                val patchResponse = client.authenticatedClient.patch(docUrl) {
+                    contentType(ContentType.Application.Json)
+                    setBody(buildJsonObject {
+                        put("fields", firestoreFields)
+                    })
+                }
+
+                if (patchResponse.status.value !in 200..299) {
+                    println("Failed to push spot metadata for $uuid: ${patchResponse.bodyAsText()}")
+                }
+
+                // Upload thumbnail attachments if any and if local
+                localDetail.images.forEach { image ->
+                    if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                        try {
+                            val bytes = readBytesFromFile(image.thumbnailPath)
+                            if (bytes != null) {
+                                val objectPath = "users/$userId/thumbnails/${image.uuid}.jpg"
+                                val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
+                                val storageUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o?uploadType=media&name=$encodedPath"
+                                val storageResponse = client.authenticatedClient.post(storageUrl) {
+                                    contentType(ContentType.Image.JPEG)
+                                    setBody(bytes)
+                                }
+                                if (storageResponse.status.value !in 200..299) {
+                                    println("Storage upload failed for ${image.uuid}: ${storageResponse.bodyAsText()}")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("Failed to upload thumbnail ${image.uuid}: ${e.message}")
+                        }
+                    }
+                }
+
+                // Mark as successfully synced locally
+                repository.markSpotAsSynced(uuid)
+            }
+
+            // 2. Pull stage: fetch remote spots and apply Last-Write-Wins
+            val listUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/users/$userId/spots"
+            val getResponse = client.authenticatedClient.get(listUrl)
+
+            if (getResponse.status.value == 200) {
+                val getResponseText = getResponse.bodyAsText()
+                val responseJson = client.jsonConfig.parseToJsonElement(getResponseText).jsonObject
+                val documents = responseJson["documents"]?.jsonArray
+                if (documents != null) {
+                    val localSpots = repository.getAllSpots().first()
+                    documents.forEach { docElement ->
+                        try {
+                            val docObj = docElement.jsonObject
+                            val fields = docObj["fields"]?.jsonObject
+                            if (fields != null) {
+                                val standardFields = fields.mapValues { it.value.jsonObject.fromFirestoreValue() }
+                                val standardJsonObj = JsonObject(standardFields)
+                                val cloudDetail = client.jsonConfig.decodeFromJsonElement(SpotDetails.serializer(), standardJsonObj)
+                                
+                                val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
+                                if (localMatch == null) {
+                                    repository.saveSyncedSpot(cloudDetail)
+                                } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
+                                    repository.saveSyncedSpot(cloudDetail)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("Error parsing pulled spot: ${e.message}")
+                        }
+                    }
+                }
+            } else if (getResponse.status.value == 404) {
+                println("No spots collection found in Firestore yet (404).")
+            } else {
+                println("Failed to pull spots: ${getResponse.bodyAsText()}")
+            }
+
+        } catch (e: Exception) {
+            println("Error during JvmSyncManager syncNow: ${e.message}")
+        } finally {
+            _isSyncing.value = false
+        }
+    }
+
+    override fun startRealtimeSync(userId: String) {
+        activeUserId = userId
+        realtimeJob?.cancel()
+        realtimeJob = coroutineScope.launch {
+            while (isActive) {
+                try {
+                    syncNow()
+                } catch (e: Exception) {
+                    println("Realtime polling sync error: ${e.message}")
+                }
+                delay(10000)
+            }
+        }
+    }
+
+    override fun stopRealtimeSync() {
+        realtimeJob?.cancel()
+        realtimeJob = null
+        activeUserId = null
+    }
+}
