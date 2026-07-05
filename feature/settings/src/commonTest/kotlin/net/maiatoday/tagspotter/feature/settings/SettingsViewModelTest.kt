@@ -103,6 +103,29 @@ class FakeSyncManager : SyncManager {
         stopRealtimeSyncCalled = true
     }
 
+    override suspend fun sharePack(
+        title: String,
+        description: String,
+        authorName: String,
+        spots: List<net.maiatoday.tagspotter.core.model.SpotDetails>
+    ): String {
+        return "MOCK_CODE"
+    }
+
+    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack {
+        return net.maiatoday.tagspotter.core.model.SharedPack(
+            packId = code,
+            title = "Mock Pack",
+            authorName = "Mock Author",
+            description = "Mock Description",
+            spots = emptyList()
+        )
+    }
+
+    override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {
+        // No-op
+    }
+
     fun setSyncing(syncing: Boolean) {
         _isSyncing.value = syncing
     }
@@ -217,5 +240,13 @@ class SettingsViewModelTest {
         assertFalse(viewModel.isSyncing.value)
         syncManager.setSyncing(true)
         assertTrue(viewModel.isSyncing.value)
+    }
+
+    @Test
+    fun forcedSyncTriggersSyncNow() = runTest {
+        val viewModel = SettingsViewModel(settingsRepository, spotRepository, authService, syncManager)
+        assertFalse(syncManager.syncNowCalled)
+        viewModel.syncNow()
+        assertTrue(syncManager.syncNowCalled)
     }
 }

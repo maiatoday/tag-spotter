@@ -326,6 +326,17 @@ fun SettingsScreen(
                                 }
                             }
 
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Button(
+                                onClick = { viewModel.syncNow() },
+                                enabled = !isSyncing,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Sync Now", fontWeight = FontWeight.Bold)
+                            }
+
                             // Adoption Prompt UI (Phase 3)
                             val hasOfflineSpots by viewModel.hasOfflineSpots.collectAsStateWithLifecycle()
                             if (hasOfflineSpots) {

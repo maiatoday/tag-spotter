@@ -51,6 +51,12 @@ class SettingsViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
+
+    fun syncNow() {
+        viewModelScope.launch {
+            syncManager.syncNow()
+        }
+    }
     val isGoogleSignInSupported: Boolean = authService.isGoogleSignInSupported
     fun signInWithGoogle(idToken: String? = null, onResult: ((Result<Unit>) -> Unit)? = null) {
         viewModelScope.launch {
