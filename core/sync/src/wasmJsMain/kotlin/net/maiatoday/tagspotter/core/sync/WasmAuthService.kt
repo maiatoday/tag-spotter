@@ -63,7 +63,7 @@ class WasmAuthService : AuthService {
         return suspendCancellableCoroutine { continuation ->
             webAuthSignInWithGoogle(
                 onSuccess = { if (continuation.isActive) continuation.resume(Result.success(Unit)) },
-                onFailure = { err -> if (continuation.isActive) continuation.resume(Result.failure(Exception(err))) }
+                onFailure = { err -> if (continuation.isActive) continuation.resume(Result.failure(Exception(mapAuthError(err, "Google Sign-In failed")))) }
             )
         }
     }
@@ -74,7 +74,7 @@ class WasmAuthService : AuthService {
                 email,
                 password,
                 onSuccess = { if (continuation.isActive) continuation.resume(Result.success(Unit)) },
-                onFailure = { err -> if (continuation.isActive) continuation.resume(Result.failure(Exception(err))) }
+                onFailure = { err -> if (continuation.isActive) continuation.resume(Result.failure(Exception(mapAuthError(err, "Sign in failed")))) }
             )
         }
     }
@@ -85,7 +85,7 @@ class WasmAuthService : AuthService {
                 email,
                 password,
                 onSuccess = { if (continuation.isActive) continuation.resume(Result.success(Unit)) },
-                onFailure = { err -> if (continuation.isActive) continuation.resume(Result.failure(Exception(err))) }
+                onFailure = { err -> if (continuation.isActive) continuation.resume(Result.failure(Exception(mapAuthError(err, "Sign up failed")))) }
             )
         }
     }

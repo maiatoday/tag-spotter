@@ -42,6 +42,18 @@ class JvmAuthService(
         throw UnsupportedOperationException("Google Sign-In is not supported on Desktop JVM REST fallback.")
     }
 
+    private fun extractAndMapError(text: String, defaultMessage: String): Exception {
+        return try {
+            val json = client.jsonConfig.parseToJsonElement(text).jsonObject
+            val errorObj = json["error"]?.jsonObject
+            val rawMessage = errorObj?.get("message")?.jsonPrimitive?.content ?: ""
+            val mapped = mapAuthError(rawMessage, defaultMessage)
+            Exception(mapped)
+        } catch (e: Exception) {
+            Exception(defaultMessage)
+        }
+    }
+
     override suspend fun signInWithEmailAndPassword(email: String, password: String): Result<Unit> = runCatching {
         val response = client.authClient.post("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${JvmFirebaseConfig.apiKey}") {
             contentType(ContentType.Application.Json)
@@ -53,7 +65,7 @@ class JvmAuthService(
         }
         val text = response.bodyAsText()
         if (response.status.value !in 200..299) {
-            throw Exception("Sign in failed: $text")
+            throw extractAndMapError(text, "Sign in failed")
         }
         val json = client.jsonConfig.parseToJsonElement(text).jsonObject
         val idToken = json["idToken"]?.jsonPrimitive?.content ?: throw Exception("No ID token in response")
@@ -82,7 +94,7 @@ class JvmAuthService(
         }
         val text = response.bodyAsText()
         if (response.status.value !in 200..299) {
-            throw Exception("Sign up failed: $text")
+            throw extractAndMapError(text, "Sign up failed")
         }
         val json = client.jsonConfig.parseToJsonElement(text).jsonObject
         val idToken = json["idToken"]?.jsonPrimitive?.content ?: throw Exception("No ID token in response")
@@ -109,7 +121,7 @@ class JvmAuthService(
         }
         val text = response.bodyAsText()
         if (response.status.value !in 200..299) {
-            throw Exception("Password reset failed: $text")
+            throw extractAndMapError(text, "Password reset failed")
         }
     }
 

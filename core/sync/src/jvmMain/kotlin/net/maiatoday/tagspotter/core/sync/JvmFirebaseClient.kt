@@ -50,10 +50,8 @@ object JvmFirebaseConfig {
             }
         }
 
-        // Default fallbacks from google-services.json
-        if (apiKey.isEmpty()) apiKey = "AIzaSyAfwmc5S8Nq-HiFWcg5GGHQgQT5b3KCKpI"
-        if (projectId.isEmpty()) projectId = "tagspotter-d58b1"
-        if (storageBucket.isEmpty()) storageBucket = "tagspotter-d58b1.firebasestorage.app"
+        // No default hardcoded fallbacks to prevent secret leaks.
+        // Ensure credentials are set in local.properties or environment variables.
     }
 
     fun hasCredentials(): Boolean {
