@@ -20,6 +20,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import net.maiatoday.tagspotter.core.sync.SyncManager
+
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalleryViewModelTest {
@@ -41,6 +43,7 @@ class GalleryViewModelTest {
     private val filterManager = FilterManager()
     private val locationProvider = FakeLocationProvider()
     private val photoProcessor = FakePhotoProcessor()
+    private val syncManager = FakeSyncManager()
 
     @Test
     fun spotsFilteredByCategoryCorrectly() = runTest {
@@ -70,7 +73,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
         backgroundScope.launch(testDispatcher) {
@@ -120,7 +123,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -182,7 +185,7 @@ class GalleryViewModelTest {
             )
         )
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -233,7 +236,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
 
         // Collect spots StateFlow in backgroundScope
         backgroundScope.launch(testDispatcher) {
@@ -331,7 +334,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -369,7 +372,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -386,3 +389,14 @@ class GalleryViewModelTest {
         assertEquals(2L, viewModel.spots.value[0].spot.id)
     }
 }
+
+class FakeSyncManager : SyncManager {
+    override val isSyncing = kotlinx.coroutines.flow.MutableStateFlow(false)
+    override suspend fun syncNow() {}
+    override fun startRealtimeSync(userId: String) {}
+    override fun stopRealtimeSync() {}
+    override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String = ""
+    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack = error("not implemented")
+    override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {}
+}
+
