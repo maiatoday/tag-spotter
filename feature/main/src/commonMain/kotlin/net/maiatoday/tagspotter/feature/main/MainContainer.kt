@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
@@ -52,13 +54,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.feature.main.res.MainRes
 import net.maiatoday.tagspotter.feature.main.res.stringResource
 import net.maiatoday.tagspotter.feature.gallery.GalleryScreen
+import net.maiatoday.tagspotter.feature.gallery.GalleryViewModel
 import net.maiatoday.tagspotter.feature.gallery.res.rememberGalleryPlatformHelper
 import net.maiatoday.tagspotter.feature.map.MapScreen
 import org.koin.compose.viewmodel.koinViewModel
@@ -84,6 +91,12 @@ fun MainContainer(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    val galleryViewModel: GalleryViewModel = koinViewModel()
+    val isSyncing by galleryViewModel.isSyncing.collectAsStateWithLifecycle()
+
+    var showGalleryImportDialog by rememberSaveable { mutableStateOf(false) }
+    var showGalleryLoadedPacksDialog by rememberSaveable { mutableStateOf(false) }
 
     val platformHelper = rememberGalleryPlatformHelper()
     val importLauncher = platformHelper.rememberImportLauncher { pathString ->
@@ -178,6 +191,130 @@ fun MainContainer(
                             modifier = Modifier.padding(bottom = 24.dp)
                         )
 
+                        Text(
+                            text = "DATA & SYNC",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = Color.Gray,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+
+                        NavigationDrawerItem(
+                            label = { 
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(if (isSyncing) "Syncing..." else "Sync Now", fontWeight = FontWeight.Bold)
+                                    if (isSyncing) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            },
+                            selected = false,
+                            onClick = {
+                                galleryViewModel.syncNow()
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Sync Now",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent
+                            )
+                        )
+
+                        NavigationDrawerItem(
+                            label = { Text("Import Cloud Pack", fontWeight = FontWeight.Bold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                }
+                                selectedTab = Tab.Gallery
+                                showGalleryImportDialog = true
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDownward,
+                                    contentDescription = "Import Cloud Pack",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent
+                            )
+                        )
+
+                        NavigationDrawerItem(
+                            label = { Text("Manage Loaded Packs", fontWeight = FontWeight.Bold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                }
+                                selectedTab = Tab.Gallery
+                                showGalleryLoadedPacksDialog = true
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = "Manage Loaded Packs",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent
+                            )
+                        )
+
+                        NavigationDrawerItem(
+                            label = { Text("Import Local Pack", fontWeight = FontWeight.Bold) },
+                            selected = false,
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                }
+                                importLauncher()
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = "Import Local Pack",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent
+                            )
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+
+                        Text(
+                            text = "APP",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = Color.Gray,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+
                         NavigationDrawerItem(
                             label = { Text(stringResource(MainRes.string.drawer_settings_label), fontWeight = FontWeight.Bold) },
                             selected = false,
@@ -198,29 +335,8 @@ fun MainContainer(
                                 unselectedContainerColor = Color.Transparent
                             )
                         )
-                        
-                        NavigationDrawerItem(
-                            label = { Text("Import Pack", fontWeight = FontWeight.Bold) },
-                            selected = false,
-                            onClick = {
-                                scope.launch {
-                                    drawerState.close()
-                                }
-                                importLauncher()
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Default.Download,
-                                    contentDescription = "Import Pack",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent
-                            )
-                        )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier
@@ -390,13 +506,18 @@ fun MainContainer(
                                 scope.launch {
                                     drawerState.open()
                                 }
-                            }
+                            },
+                            showImportPackDialog = showGalleryImportDialog,
+                            onImportPackDismiss = { showGalleryImportDialog = false },
+                            showLoadedPacksDialog = showGalleryLoadedPacksDialog,
+                            onLoadedPacksDismiss = { showGalleryLoadedPacksDialog = false }
                         )
                     }
                 }
             } else {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
                     bottomBar = {
                         NavigationBar(
                             containerColor = MaterialTheme.colorScheme.surface,
@@ -523,7 +644,11 @@ fun MainContainer(
                                 scope.launch {
                                     drawerState.open()
                                 }
-                            }
+                            },
+                            showImportPackDialog = showGalleryImportDialog,
+                            onImportPackDismiss = { showGalleryImportDialog = false },
+                            showLoadedPacksDialog = showGalleryLoadedPacksDialog,
+                            onLoadedPacksDismiss = { showGalleryLoadedPacksDialog = false }
                         )
                     }
                 }
@@ -565,12 +690,20 @@ fun MainContainer(
 private fun TabContent(
     selectedTab: Tab,
     onSpotClick: (Long) -> Unit,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    showImportPackDialog: Boolean,
+    onImportPackDismiss: () -> Unit,
+    showLoadedPacksDialog: Boolean,
+    onLoadedPacksDismiss: () -> Unit
 ) {
     when (selectedTab) {
         Tab.Gallery -> GalleryScreen(
             onSpotClick = onSpotClick,
-            onMenuClick = onMenuClick
+            onMenuClick = onMenuClick,
+            showImportPackDialog = showImportPackDialog,
+            onImportPackDismiss = onImportPackDismiss,
+            showLoadedPacksDialog = showLoadedPacksDialog,
+            onLoadedPacksDismiss = onLoadedPacksDismiss
         )
         Tab.Map -> MapScreen(
             onSpotClick = onSpotClick

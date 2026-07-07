@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -99,7 +100,11 @@ fun GalleryScreen(
     onSpotClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     onMenuClick: () -> Unit = {},
-    viewModel: GalleryViewModel = koinViewModel()
+    viewModel: GalleryViewModel = koinViewModel(),
+    showImportPackDialog: Boolean = false,
+    onImportPackDismiss: () -> Unit = {},
+    showLoadedPacksDialog: Boolean = false,
+    onLoadedPacksDismiss: () -> Unit = {}
 ) {
     val platformHelper = rememberGalleryPlatformHelper()
     val deletedSuccessfullyText = stringResource(GalleryStrings.deleted_successfully)
@@ -142,13 +147,11 @@ fun GalleryScreen(
     var isSharingInProgress by remember { mutableStateOf(false) }
     var sharingError by remember { mutableStateOf<String?>(null) }
 
-    var showImportPackDialog by remember { mutableStateOf(false) }
     var importPackCode by remember { mutableStateOf("") }
     var isImportingInProgress by remember { mutableStateOf(false) }
     var importError by remember { mutableStateOf<String?>(null) }
     var fetchedSharedPack by remember { mutableStateOf<net.maiatoday.tagspotter.core.model.SharedPack?>(null) }
 
-    var showLoadedPacksDialog by remember { mutableStateOf(false) }
     var refreshingPackId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(showShareCollectionDialog) {
@@ -425,7 +428,7 @@ fun GalleryScreen(
         AlertDialog(
             onDismissRequest = {
                 if (!isImportingInProgress) {
-                    showImportPackDialog = false
+                    onImportPackDismiss()
                     importPackCode = ""
                     importError = null
                     fetchedSharedPack = null
@@ -541,7 +544,7 @@ fun GalleryScreen(
                                 sharedPack = fetchedSharedPack!!,
                                 onSuccess = {
                                     isImportingInProgress = false
-                                    showImportPackDialog = false
+                                    onImportPackDismiss()
                                     importPackCode = ""
                                     fetchedSharedPack = null
                                     platformHelper.showToast("Pack imported successfully!")
@@ -568,7 +571,7 @@ fun GalleryScreen(
                         if (fetchedSharedPack != null) {
                             fetchedSharedPack = null
                         } else {
-                            showImportPackDialog = false
+                            onImportPackDismiss()
                             importPackCode = ""
                             importError = null
                         }
@@ -582,7 +585,7 @@ fun GalleryScreen(
 
     if (showLoadedPacksDialog) {
         AlertDialog(
-            onDismissRequest = { showLoadedPacksDialog = false },
+            onDismissRequest = { onLoadedPacksDismiss() },
             title = {
                 Text(
                     text = "Loaded Cloud Packs",
@@ -700,7 +703,7 @@ fun GalleryScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = { showLoadedPacksDialog = false }) {
+                Button(onClick = { onLoadedPacksDismiss() }) {
                     Text("Done")
                 }
             }
@@ -717,51 +720,49 @@ fun GalleryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .statusBarsPadding()
+                    .height(56.dp)
                     .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // 1. Left container gets weight(1f), letting it occupy remaining space but shrink on narrow screens
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = {
                         selectedSpotIds.clear()
                         isMultiSelectMode = false
                     }) {
                         Icon(Icons.Default.Close, contentDescription = "Cancel Selection")
                     }
+                    
+                    val allVisibleIds = spots.map { it.spot.id }
+                    val isAllSelected = selectedSpotIds.size == allVisibleIds.size && allVisibleIds.isNotEmpty()
+
+                    Checkbox(
+                        checked = isAllSelected,
+                        onCheckedChange = { checked ->
+                            selectedSpotIds.clear()
+                            if (checked) {
+                                selectedSpotIds.addAll(allVisibleIds)
+                            }
+                        }
+                    )
+
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "${selectedSpotIds.size} selected",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    val allVisibleIds = spots.map { it.spot.id }
-                    val isAllSelected = selectedSpotIds.size == allVisibleIds.size
-
-                    TextButton(
-                        onClick = {
-                            if (isAllSelected) {
-                                selectedSpotIds.clear()
-                            } else {
-                                selectedSpotIds.clear()
-                                selectedSpotIds.addAll(allVisibleIds)
-                            }
-                        }
-                    ) {
-                        Text(
-                            text = stringResource(if (isAllSelected) GalleryStrings.deselect_all else GalleryStrings.select_all),
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
                 }
 
+                // 2. Right action buttons are laid out directly, ensuring they are always fully measured and visible
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -775,7 +776,7 @@ fun GalleryScreen(
                                 viewModel.bulkUpdateStarred(
                                     selectedSpotIds.toList(),
                                     isStarred = true
-                               ) {
+                                ) {
                                     selectedSpotIds.clear()
                                     isMultiSelectMode = false
                                     platformHelper.showToast(spotsStarredText)
@@ -883,6 +884,7 @@ fun GalleryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface)
+                    .statusBarsPadding()
                     .padding(bottom = 8.dp)
             ) {
                 Row(
@@ -1009,6 +1011,8 @@ fun GalleryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
                     .height(56.dp)
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1033,39 +1037,6 @@ fun GalleryScreen(
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
-
-                if (isSyncing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(40.dp).padding(8.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    IconButton(onClick = { viewModel.syncNow() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Sync Now",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                }
-
-                IconButton(onClick = { showImportPackDialog = true }) {
-
-                    Icon(
-                        imageVector = Icons.Default.ArrowDownward,
-                        contentDescription = "Import Cloud Pack",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                IconButton(onClick = { showLoadedPacksDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Manage Loaded Packs",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
 
                 IconButton(onClick = { isSearchExpanded = true }) {
                     Icon(
