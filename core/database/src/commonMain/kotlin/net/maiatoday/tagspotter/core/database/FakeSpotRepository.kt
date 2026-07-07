@@ -43,7 +43,7 @@ class FakeSpotRepository : SpotRepository {
         }
     }
 
-    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int, isMain: Boolean): Long {
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long {
         val id = if (spot.id == 0L) (spotsMap.keys.maxOrNull() ?: 0L) + 1L else spot.id
         val newSpot = spot.copy(id = id)
         val images = listOf(
@@ -63,7 +63,7 @@ class FakeSpotRepository : SpotRepository {
         return id
     }
 
-    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int, isMain: Boolean): Long {
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Long, isMain: Boolean): Long {
         val details = spotsMap[spotId] ?: return -1L
         val nextImageId = (details.images.maxOfOrNull { it.id } ?: 0L) + 1L
         val updatedImages = details.images + SpotImage(
@@ -304,7 +304,7 @@ class FakeSpotRepository : SpotRepository {
         updateFlow()
     }
 
-    override suspend fun updateImageRating(imageId: Long, rating: Int) {
+    override suspend fun updateImageRating(imageId: Long, rating: Long) {
         val spotEntry = spotsMap.values.find { details -> details.images.any { it.id == imageId } } ?: return
         val updatedImages = spotEntry.images.map { img ->
             if (img.id == imageId) img.copy(rating = rating) else img

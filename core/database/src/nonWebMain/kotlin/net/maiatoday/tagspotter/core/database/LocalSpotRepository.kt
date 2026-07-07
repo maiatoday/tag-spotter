@@ -50,7 +50,7 @@ class LocalSpotRepository(
         return spotDao.getSpotDetails(id).map { it?.toDomain() }
     }
 
-    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int, isMain: Boolean): Long {
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long {
         val spotId = spotDao.insertSpot(spot.copy(ownerUid = activeUid).toEntity())
         if (imagePath.isNotEmpty()) {
             spotDao.insertImage(
@@ -70,7 +70,7 @@ class LocalSpotRepository(
         return spotId
     }
 
-    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int, isMain: Boolean): Long {
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Long, isMain: Boolean): Long {
         val now = epochMillis()
         val imgId = spotDao.insertImage(
             SpotImageEntity(
@@ -330,7 +330,7 @@ class LocalSpotRepository(
         }
     }
 
-    override suspend fun updateImageRating(imageId: Long, rating: Int) {
+    override suspend fun updateImageRating(imageId: Long, rating: Long) {
         val now = epochMillis()
         spotDao.updateImageRating(imageId, rating, now)
         val spotId = spotDao.getSpotIdForImage(imageId)

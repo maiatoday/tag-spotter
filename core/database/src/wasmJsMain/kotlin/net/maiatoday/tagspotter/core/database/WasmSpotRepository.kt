@@ -30,7 +30,7 @@ class WasmSpotRepository : SpotRepository {
         return spotsFlow.map { it[id] }
     }
 
-    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int, isMain: Boolean): Long {
+    override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long {
         val now = epochMillis()
         val spotId = if (spot.id == 0L) nextSpotId++ else spot.id
         val newSpot = spot.copy(
@@ -61,7 +61,7 @@ class WasmSpotRepository : SpotRepository {
         return spotId
     }
 
-    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int, isMain: Boolean): Long {
+    override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Long, isMain: Boolean): Long {
         val current: SpotDetails = spotsFlow.value[spotId] ?: return 0L
         val imgId = nextImageId++
         val now = epochMillis()
@@ -275,7 +275,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (image.spotId to current.copy(spot = updatedSpot, images = updatedImages))
     }
 
-    override suspend fun updateImageRating(imageId: Long, rating: Int) {
+    override suspend fun updateImageRating(imageId: Long, rating: Long) {
         val now = epochMillis()
         spotsFlow.value = spotsFlow.value.mapValues { entry ->
             val details = entry.value

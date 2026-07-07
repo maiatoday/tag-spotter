@@ -60,7 +60,7 @@ fun DetailPhotoTimeline(
     onImageClick: (SpotImage) -> Unit,
     onHeartClick: (SpotImage) -> Unit,
     onDeleteClick: (SpotImage) -> Unit,
-    onRatingChange: (SpotImage, Int) -> Unit,
+    onRatingChange: (SpotImage, Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -119,7 +119,7 @@ fun SpotTimelineCard(
     onHeartClick: () -> Unit,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onRatingChange: (Int) -> Unit
+    onRatingChange: (Long) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -201,8 +201,8 @@ fun SpotTimelineCard(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    for (i in 1..5) {
-                        val isStarred = i <= image.rating
+                     for (i in 1..5) {
+                        val isStarred = i.toLong() <= image.rating
                         Icon(
                             imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             contentDescription = stringResource(DetailRes.string.content_desc_star_timeline, i),
@@ -210,7 +210,7 @@ fun SpotTimelineCard(
                             modifier = Modifier
                                 .size(16.dp)
                                 .clickable {
-                                    val newRating = if (image.rating == i) 0 else i
+                                    val newRating = if (image.rating == i.toLong()) 0L else i.toLong()
                                     onRatingChange(newRating)
                                 }
                         )

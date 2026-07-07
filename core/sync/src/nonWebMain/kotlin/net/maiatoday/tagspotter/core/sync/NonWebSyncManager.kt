@@ -100,17 +100,20 @@ class NonWebSyncManager(
             querySnapshot.documents.forEach { doc ->
                 try {
                     val cloudDetail = doc.data(SpotDetails.serializer())
-                    platformLog(TAG, "Processing remote spot document: ${cloudDetail.spot.uuid}")
-                    val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
+                    val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail)
+                    platformLog(TAG, "Processing remote spot document: ${resolvedDetail.spot.uuid}")
+                    val localMatch = localSpots.find { it.spot.uuid == resolvedDetail.spot.uuid }
 
                     if (localMatch == null) {
-                        platformLog(TAG, "Saving new remote spot locally: ${cloudDetail.spot.uuid}")
-                        repository.saveSyncedSpot(cloudDetail)
-                    } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
-                        platformLog(TAG, "Updating existing spot with newer remote edits: ${cloudDetail.spot.uuid}")
-                        repository.saveSyncedSpot(cloudDetail)
+                        platformLog(TAG, "Saving new remote spot locally: ${resolvedDetail.spot.uuid}")
+                        repository.saveSyncedSpot(resolvedDetail)
+                    } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
+                               resolvedDetail.images.size != localMatch.images.size ||
+                               resolvedDetail.notes.size != localMatch.notes.size) {
+                        platformLog(TAG, "Updating existing spot with newer remote edits or to heal missing items: ${resolvedDetail.spot.uuid}")
+                        repository.saveSyncedSpot(resolvedDetail)
                     } else {
-                        platformLog(TAG, "Local spot is up to date or newer: ${cloudDetail.spot.uuid}")
+                        platformLog(TAG, "Local spot is up to date or newer: ${resolvedDetail.spot.uuid}")
                     }
                 } catch (e: Exception) {
                     platformLogError(TAG, "Error parsing pulled spot document from doc ID: ${doc.id}", e)
@@ -146,14 +149,17 @@ class NonWebSyncManager(
                         querySnapshot.documents.forEach { doc ->
                             try {
                                 val cloudDetail = doc.data(SpotDetails.serializer())
-                                val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
+                                val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail)
+                                val localMatch = localSpots.find { it.spot.uuid == resolvedDetail.spot.uuid }
 
                                 if (localMatch == null) {
-                                    platformLog(TAG, "Realtime: Saving new remote spot locally: ${cloudDetail.spot.uuid}")
-                                    repository.saveSyncedSpot(cloudDetail)
-                                } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
-                                    platformLog(TAG, "Realtime: Updating existing spot: ${cloudDetail.spot.uuid}")
-                                    repository.saveSyncedSpot(cloudDetail)
+                                    platformLog(TAG, "Realtime: Saving new remote spot locally: ${resolvedDetail.spot.uuid}")
+                                    repository.saveSyncedSpot(resolvedDetail)
+                                } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
+                                           resolvedDetail.images.size != localMatch.images.size ||
+                                           resolvedDetail.notes.size != localMatch.notes.size) {
+                                    platformLog(TAG, "Realtime: Updating existing spot to sync edits or heal missing items: ${resolvedDetail.spot.uuid}")
+                                    repository.saveSyncedSpot(resolvedDetail)
                                 }
                             } catch (e: Exception) {
                                 platformLogError(TAG, "Error parsing real-time spot document from doc ID: ${doc.id}", e)
@@ -246,5 +252,25 @@ class NonWebSyncManager(
             )
             repository.saveSpotDetails(updatedDetail)
         }
+    }
+
+    private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
+        val currentStorage = storage ?: return cloudDetail
+        val updatedImages = cloudDetail.images.map { image ->
+            if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                try {
+                    val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                    val downloadUrl = storageRef.getDownloadUrl()
+                    platformLog(TAG, "Resolved remote thumbnail URL for ${image.uuid}: $downloadUrl")
+                    image.copy(thumbnailPath = downloadUrl)
+                } catch (e: Exception) {
+                    platformLogError(TAG, "Failed to resolve remote thumbnail for ${image.uuid}", e)
+                    image
+                }
+            } else {
+                image
+            }
+        }
+        return cloudDetail.copy(images = updatedImages)
     }
 }

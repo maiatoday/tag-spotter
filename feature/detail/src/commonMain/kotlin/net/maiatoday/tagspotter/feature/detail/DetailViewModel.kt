@@ -449,7 +449,7 @@ class DetailViewModel(
         }
     }
 
-    fun updateImageRating(image: SpotImage, rating: Int) {
+    fun updateImageRating(image: SpotImage, rating: Long) {
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateImageRating(image.id, rating)

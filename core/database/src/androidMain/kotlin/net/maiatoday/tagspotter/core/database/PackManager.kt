@@ -43,7 +43,7 @@ object PackManager {
     fun exportPack(context: Context, spots: List<SpotDetails>, outputStream: OutputStream, minRating: Int = 0) {
         val filteredSpots = spots.map { spotDetails ->
             val heroImage = spotDetails.images.firstOrNull { it.isMain } ?: spotDetails.images.maxByOrNull { it.timestamp }
-            spotDetails.copy(images = spotDetails.images.filter { it.rating >= minRating || it == heroImage })
+            spotDetails.copy(images = spotDetails.images.filter { it.rating >= minRating.toLong() || it == heroImage })
         }
 
         ZipOutputStream(outputStream.buffered()).use { zos ->

@@ -70,7 +70,7 @@ class PackManagerTest {
             thumbnailPath = dummyThumbFile.absolutePath,
             timestamp = 123456789L,
             isMain = true,
-            rating = 4
+            rating = 4L
         )
         val note = SpotNote(
             id = 100L,

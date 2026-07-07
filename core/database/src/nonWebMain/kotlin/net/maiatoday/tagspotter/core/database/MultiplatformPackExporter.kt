@@ -29,7 +29,7 @@ object MultiplatformPackExporter {
             val filteredSpots = spots.map { spotDetails ->
                 val heroImage = spotDetails.images.firstOrNull { it.isMain } 
                     ?: spotDetails.images.maxByOrNull { it.timestamp }
-                spotDetails.copy(images = spotDetails.images.filter { it.rating >= minRating || it == heroImage })
+                spotDetails.copy(images = spotDetails.images.filter { it.rating >= minRating.toLong() || it == heroImage })
             }
 
             // 2. Write spots.json

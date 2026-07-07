@@ -186,7 +186,9 @@ class JvmSyncManager(
                                 val localMatch = localSpots.find { it.spot.uuid == updatedCloudDetail.spot.uuid }
                                 if (localMatch == null) {
                                     repository.saveSyncedSpot(updatedCloudDetail)
-                                } else if (updatedCloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
+                                } else if (updatedCloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
+                                           updatedCloudDetail.images.size != localMatch.images.size ||
+                                           updatedCloudDetail.notes.size != localMatch.notes.size) {
                                     repository.saveSyncedSpot(updatedCloudDetail)
                                 }
                             }

@@ -56,7 +56,7 @@ data class SpotImageEntity(
     val timestamp: Long,
     val thumbnailPath: String = "",
     val isMain: Boolean = false,
-    val rating: Int = 0,
+    val rating: Long = 0L,
     val uuid: String = "",
     val lastEditedAt: Long = timestamp,
     val ownerUid: String? = null

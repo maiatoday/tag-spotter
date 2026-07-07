@@ -97,7 +97,7 @@ interface SpotDao {
     suspend fun getImagesForSpot(spotId: Long): List<SpotImageEntity>
 
     @Query("UPDATE spot_images SET rating = :rating, lastEditedAt = :lastEditedAt WHERE id = :imageId")
-    suspend fun updateImageRating(imageId: Long, rating: Int, lastEditedAt: Long)
+    suspend fun updateImageRating(imageId: Long, rating: Long, lastEditedAt: Long)
 
     @Query("UPDATE spots SET artworkDate = :artworkDate, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
     suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String, lastEditedAt: Long)

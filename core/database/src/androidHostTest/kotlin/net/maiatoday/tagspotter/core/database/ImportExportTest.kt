@@ -262,9 +262,9 @@ class ImportExportTest {
             // img1 (hero): 0 stars
             // img2: 1 star
             // img3: 5 stars
-            repository.updateImageRating(imgId1, 0)
-            repository.updateImageRating(imgId2, 1)
-            repository.updateImageRating(imgId3, 5)
+            repository.updateImageRating(imgId1, 0L)
+            repository.updateImageRating(imgId2, 1L)
+            repository.updateImageRating(imgId3, 5L)
 
             // Fetch updated spot details to verify ratings are set
             val spotsToExport = repository.getAllSpots().first()
@@ -295,9 +295,9 @@ class ImportExportTest {
             // The 1-star image should be excluded.
             Assert.assertEquals(2, importedDetail.images.size)
 
-            val rating0Image = importedDetail.images.find { it.rating == 0 }
-            val rating5Image = importedDetail.images.find { it.rating == 5 }
-            val rating1Image = importedDetail.images.find { it.rating == 1 }
+            val rating0Image = importedDetail.images.find { it.rating == 0L }
+            val rating5Image = importedDetail.images.find { it.rating == 5L }
+            val rating1Image = importedDetail.images.find { it.rating == 1L }
 
             Assert.assertNotNull("Hero image with 0 stars should be imported", rating0Image)
             Assert.assertNotNull("5-star image should be imported", rating5Image)

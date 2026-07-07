@@ -10,8 +10,8 @@ interface SpotRepository {
     fun getAllSpots(): Flow<List<SpotDetails>>
     fun getSpotsByCategory(category: String): Flow<List<SpotDetails>>
     fun getSpotById(id: Long): Flow<SpotDetails?>
-    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Int = 0, isMain: Boolean = false): Long
-    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Int = 0, isMain: Boolean = false): Long
+    suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long = 0L, isMain: Boolean = false): Long
+    suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Long = 0L, isMain: Boolean = false): Long
     suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long
     suspend fun updateSpotStatus(spotId: Long, status: String)
     suspend fun updateSpotCategory(spotId: Long, category: String)
@@ -38,7 +38,7 @@ interface SpotRepository {
     suspend fun getStarredSpotsCount(): Int
     suspend fun setMainImage(spotId: Long, imageId: Long)
     suspend fun deleteImage(image: SpotImage)
-    suspend fun updateImageRating(imageId: Long, rating: Int)
+    suspend fun updateImageRating(imageId: Long, rating: Long)
     suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String)
     suspend fun deleteNote(noteId: Long)
     suspend fun updateNote(noteId: Long, noteText: String)

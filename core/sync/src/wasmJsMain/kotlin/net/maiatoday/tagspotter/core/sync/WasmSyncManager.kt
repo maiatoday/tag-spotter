@@ -31,6 +31,13 @@ external fun webStorageUploadThumbnail(
     onFailure: (String) -> Unit
 )
 
+external fun webStorageGetDownloadUrl(
+    userId: String,
+    imageUuid: String,
+    onSuccess: (String) -> Unit,
+    onFailure: (String) -> Unit
+)
+
 class WasmSyncManager(
     private val repository: SpotRepository
 ) : SyncManager {
@@ -116,13 +123,16 @@ class WasmSyncManager(
                     coroutineScope.launch {
                         try {
                             val cloudDetail = Json.decodeFromString(SpotDetails.serializer(), spotJson)
+                            val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail)
                             val localSpots = repository.getAllSpots().first()
-                            val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
+                            val localMatch = localSpots.find { it.spot.uuid == resolvedDetail.spot.uuid }
 
                             if (localMatch == null) {
-                                repository.saveSyncedSpot(cloudDetail)
-                            } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
-                                repository.saveSyncedSpot(cloudDetail)
+                                repository.saveSyncedSpot(resolvedDetail)
+                            } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
+                                       resolvedDetail.images.size != localMatch.images.size ||
+                                       resolvedDetail.notes.size != localMatch.notes.size) {
+                                repository.saveSyncedSpot(resolvedDetail)
                             }
                         } catch (e: Exception) {
                             println("Error parsing received web spot JSON: ${e.message}")
@@ -197,5 +207,36 @@ class WasmSyncManager(
             )
             repository.saveSpotDetails(updatedDetail)
         }
+    }
+
+    private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
+        val updatedImages = cloudDetail.images.map { image ->
+            if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                try {
+                    val downloadUrl = suspendCancellableCoroutine<String> { continuation ->
+                        webStorageGetDownloadUrl(
+                            userId = userId,
+                            imageUuid = image.uuid,
+                            onSuccess = { url -> if (continuation.isActive) continuation.resume(url) },
+                            onFailure = { err ->
+                                println("Failed to resolve WASM remote thumbnail: $err")
+                                if (continuation.isActive) continuation.resume("")
+                            }
+                        )
+                    }
+                    if (downloadUrl.isNotEmpty()) {
+                        image.copy(thumbnailPath = downloadUrl)
+                    } else {
+                        image
+                    }
+                } catch (e: Exception) {
+                    println("Error resolving remote thumbnail for ${image.uuid}: ${e.message}")
+                    image
+                }
+            } else {
+                image
+            }
+        }
+        return cloudDetail.copy(images = updatedImages)
     }
 }
