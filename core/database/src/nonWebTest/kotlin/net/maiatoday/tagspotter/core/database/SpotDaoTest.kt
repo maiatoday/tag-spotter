@@ -152,20 +152,20 @@ class SpotDaoTest : BaseDaoTest() {
         dao.insertSpot(spot3)
 
         // Test getAllSpotsDetails (should sort by createdAt desc)
-        val allSpots = dao.getAllSpotsDetails().first()
+        val allSpots = dao.getAllSpotsDetails(null).first()
         assertEquals(3, allSpots.size)
         assertEquals(3L, allSpots[0].spot.id)
         assertEquals(2L, allSpots[1].spot.id)
         assertEquals(1L, allSpots[2].spot.id)
 
         // Test getAllSpotsDetailsByCategory
-        val graffitiSpots = dao.getAllSpotsDetailsByCategory("graffiti").first()
+        val graffitiSpots = dao.getAllSpotsDetailsByCategory("graffiti", null).first()
         assertEquals(2, graffitiSpots.size)
         assertEquals(3L, graffitiSpots[0].spot.id)
         assertEquals(1L, graffitiSpots[1].spot.id)
 
         // Test getAllUsedTags
-        val allTags = dao.getAllUsedTags().first()
+        val allTags = dao.getAllUsedTags(null).first()
         val expected1 = Converters().fromStringList(listOf("tag1", "tag2"))
         val expected2 = Converters().fromStringList(listOf("tag2", "tag3"))
         assertTrue(allTags.contains(expected1))
@@ -223,5 +223,42 @@ class SpotDaoTest : BaseDaoTest() {
         val image11New = detailsNew.images.find { it.id == 11L }
         assertTrue(image10New?.isMain == true)
         assertTrue(image11New?.isMain == false)
+    }
+
+    @Test
+    fun getSpotIdForNoteAndImageLookups() = runTest {
+        val spot = SpotEntity(
+            id = 45L,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Spot 45",
+            tags = emptyList(),
+            category = "graffiti",
+            status = "active"
+        )
+        dao.insertSpot(spot)
+
+        dao.insertImage(
+            SpotImageEntity(
+                id = 101L,
+                spotId = 45L,
+                imagePath = "/path/101.png",
+                timestamp = 1000L
+            )
+        )
+        dao.insertNote(
+            SpotNoteEntity(
+                id = 201L,
+                spotId = 45L,
+                noteText = "A nice note",
+                timestamp = 1000L
+            )
+        )
+
+        assertEquals(45L, dao.getSpotIdForNote(201L))
+        assertEquals(45L, dao.getSpotIdForImage(101L))
+        assertNull(dao.getSpotIdForNote(999L))
+        assertNull(dao.getSpotIdForImage(999L))
     }
 }

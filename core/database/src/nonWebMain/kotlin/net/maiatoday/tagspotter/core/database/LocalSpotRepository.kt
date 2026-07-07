@@ -1,7 +1,10 @@
 package net.maiatoday.tagspotter.core.database
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
@@ -9,26 +12,36 @@ import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.generateUuid
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class LocalSpotRepository(
     private val spotDao: SpotDao,
     private val photoProcessor: PhotoProcessor
 ) : SpotRepository {
 
-    override var activeUid: String? = null
+    private val _activeUidFlow = MutableStateFlow<String?>(null)
+
+    override var activeUid: String?
+        get() = _activeUidFlow.value
+        set(value) {
+            _activeUidFlow.value = value
+        }
 
     override fun getAllSpots(): Flow<List<SpotDetails>> {
-        return spotDao.getAllSpotsDetails(activeUid).map { list ->
+        return _activeUidFlow.flatMapLatest { uid ->
+            spotDao.getAllSpotsDetails(uid)
+        }.map { list ->
             list.map { it.toDomain() }
         }
     }
 
     override fun getSpotsByCategory(category: String): Flow<List<SpotDetails>> {
-        if (category == "All") {
-            return spotDao.getAllSpotsDetails(activeUid).map { list ->
-                list.map { it.toDomain() }
+        return _activeUidFlow.flatMapLatest { uid ->
+            if (category == "All") {
+                spotDao.getAllSpotsDetails(uid)
+            } else {
+                spotDao.getAllSpotsDetailsByCategory(category, uid)
             }
-        }
-        return spotDao.getAllSpotsDetailsByCategory(category, activeUid).map { list ->
+        }.map { list ->
             list.map { it.toDomain() }
         }
     }
@@ -138,7 +151,9 @@ class LocalSpotRepository(
     }
 
     override fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>> {
-        return spotDao.getAllUsedTags(activeUid).map { rawTagsList ->
+        return _activeUidFlow.flatMapLatest { uid ->
+            spotDao.getAllUsedTags(uid)
+        }.map { rawTagsList ->
             rawTagsList.asSequence().flatMap { rawTags ->
                 Converters().toStringList(rawTags)
             }
@@ -318,11 +333,9 @@ class LocalSpotRepository(
     override suspend fun updateImageRating(imageId: Long, rating: Int) {
         val now = epochMillis()
         spotDao.updateImageRating(imageId, rating, now)
-        // Retrieve spotId for image to touch the parent spot
-        val images = spotDao.getAllSpotsDetails(activeUid).first().flatMap { it.images }
-        val matchingImage = images.find { it.id == imageId }
-        if (matchingImage != null) {
-            spotDao.touchSpot(matchingImage.spotId, now)
+        val spotId = spotDao.getSpotIdForImage(imageId)
+        if (spotId != null) {
+            spotDao.touchSpot(spotId, now)
         }
     }
 
@@ -332,22 +345,20 @@ class LocalSpotRepository(
     }
 
     override suspend fun deleteNote(noteId: Long) {
-        val notes = spotDao.getAllSpotsDetails(activeUid).first().flatMap { it.notes }
-        val matchingNote = notes.find { it.id == noteId }
+        val spotId = spotDao.getSpotIdForNote(noteId)
         spotDao.deleteNoteById(noteId)
-        if (matchingNote != null) {
+        if (spotId != null) {
             val now = epochMillis()
-            spotDao.touchSpot(matchingNote.spotId, now)
+            spotDao.touchSpot(spotId, now)
         }
     }
 
     override suspend fun updateNote(noteId: Long, noteText: String) {
         val now = epochMillis()
         spotDao.updateNoteText(noteId, noteText, now)
-        val notes = spotDao.getAllSpotsDetails(activeUid).first().flatMap { it.notes }
-        val matchingNote = notes.find { it.id == noteId }
-        if (matchingNote != null) {
-            spotDao.touchSpot(matchingNote.spotId, now)
+        val spotId = spotDao.getSpotIdForNote(noteId)
+        if (spotId != null) {
+            spotDao.touchSpot(spotId, now)
         }
     }
 

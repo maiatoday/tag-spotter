@@ -108,6 +108,12 @@ interface SpotDao {
     @Query("UPDATE spot_notes SET noteText = :noteText, lastEditedAt = :lastEditedAt WHERE id = :noteId")
     suspend fun updateNoteText(noteId: Long, noteText: String, lastEditedAt: Long)
 
+    @Query("SELECT spotId FROM spot_notes WHERE id = :noteId")
+    suspend fun getSpotIdForNote(noteId: Long): Long?
+
+    @Query("SELECT spotId FROM spot_images WHERE id = :imageId")
+    suspend fun getSpotIdForImage(imageId: Long): Long?
+
     @Transaction
     @Query("SELECT * FROM spots WHERE isSynced = 0 AND (ownerUid = :activeUid OR ownerUid IS NULL)")
     suspend fun getUnsyncedSpotsDetails(activeUid: String): List<SpotDetailsEntity>

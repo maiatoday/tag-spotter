@@ -40,6 +40,19 @@ class GalleryViewModel(
             initialValue = ""
         )
 
+    val isSyncing: StateFlow<Boolean> = syncManager.isSyncing
+
+    fun syncNow() {
+        viewModelScope.launch {
+            try {
+                syncManager.syncNow()
+            } catch (_: Exception) {
+                // Ignore or log sync errors
+            }
+        }
+    }
+
+
     val loadedPacks: StateFlow<List<net.maiatoday.tagspotter.core.model.LoadedPack>> = repository.getAllLoadedPacks()
         .stateIn(
             scope = viewModelScope,

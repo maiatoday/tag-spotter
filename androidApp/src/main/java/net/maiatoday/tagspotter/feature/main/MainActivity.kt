@@ -217,6 +217,17 @@ fun MainActivityContent(
     val syncManager: SyncManager = koinInject()
     val coroutineScope = rememberCoroutineScope()
 
+    LaunchedEffect(authService, syncManager) {
+        authService.currentUserFlow.collect { user ->
+            if (user != null) {
+                syncManager.startRealtimeSync(user.uid)
+            } else {
+                syncManager.stopRealtimeSync()
+            }
+        }
+    }
+
+
     val googleSignInTrigger = {
         coroutineScope.launch {
             try {

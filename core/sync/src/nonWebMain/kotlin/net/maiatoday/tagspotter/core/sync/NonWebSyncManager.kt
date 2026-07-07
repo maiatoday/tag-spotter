@@ -34,14 +34,22 @@ class NonWebSyncManager(
     private var realtimeJob: Job? = null
     private var activeUserId: String? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val TAG = "NonWebSyncManager"
 
     override suspend fun syncNow() {
-        val userId = activeUserId ?: return
-        if (_isSyncing.value) return
+        platformLog(TAG, "syncNow called. activeUserId: $activeUserId, isSyncing: ${_isSyncing.value}")
+        val userId = activeUserId ?: run {
+            platformLog(TAG, "syncNow early return: activeUserId is null")
+            return
+        }
+        if (_isSyncing.value) {
+            platformLog(TAG, "syncNow early return: already syncing")
+            return
+        }
         val currentFirestore = firestore
         val currentStorage = storage
         if (currentFirestore == null || currentStorage == null) {
-            println("Skipping real sync on Desktop JVM (Simulating successful mock sync)")
+            platformLog(TAG, "Skipping real sync on Desktop JVM (Simulating successful mock sync)")
             _isSyncing.value = true
             delay(1000)
             _isSyncing.value = false
@@ -52,10 +60,12 @@ class NonWebSyncManager(
         try {
             // 1. Push stage: find all unsynced local spots
             val unsyncedSpots = repository.getUnsyncedSpots()
+            platformLog(TAG, "Push stage: Found ${unsyncedSpots.size} unsynced local spots")
             val spotsCollection = currentFirestore.collection("users").document(userId).collection("spots")
 
             unsyncedSpots.forEach { localDetail ->
                 val uuid = localDetail.spot.uuid
+                platformLog(TAG, "Pushing spot: $uuid")
                 
                 // Upload local metadata to Firestore
                 spotsCollection.document(uuid).set(SpotDetails.serializer(), localDetail)
@@ -66,55 +76,72 @@ class NonWebSyncManager(
                         try {
                             val bytes = readBytesFromFile(image.thumbnailPath)
                             if (bytes != null) {
+                                platformLog(TAG, "Uploading thumbnail for image: ${image.uuid}")
                                 val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
                                 storageRef.putData(bytes.toFirebaseStorageData())
                             }
                         } catch (e: Exception) {
-                            println("Failed to upload thumbnail ${image.uuid}: ${e.message}")
+                            platformLogError(TAG, "Failed to upload thumbnail ${image.uuid}", e)
                         }
                     }
                 }
 
                 // Mark as successfully synced locally
                 repository.markSpotAsSynced(uuid)
+                platformLog(TAG, "Marked spot as synced locally: $uuid")
             }
 
             // 2. Pull stage: fetch remote spots and apply Last-Write-Wins
+            platformLog(TAG, "Pull stage: Fetching remote spots from Firestore")
             val querySnapshot = spotsCollection.get()
             val localSpots = repository.getAllSpots().first()
+            platformLog(TAG, "Pull stage: Found ${querySnapshot.documents.size} remote spots and ${localSpots.size} local spots")
 
             querySnapshot.documents.forEach { doc ->
-                val cloudDetail = doc.data(SpotDetails.serializer())
-                val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
+                try {
+                    val cloudDetail = doc.data(SpotDetails.serializer())
+                    platformLog(TAG, "Processing remote spot document: ${cloudDetail.spot.uuid}")
+                    val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
 
-                if (localMatch == null) {
-                    repository.saveSyncedSpot(cloudDetail)
-                } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
-                    repository.saveSyncedSpot(cloudDetail)
+                    if (localMatch == null) {
+                        platformLog(TAG, "Saving new remote spot locally: ${cloudDetail.spot.uuid}")
+                        repository.saveSyncedSpot(cloudDetail)
+                    } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
+                        platformLog(TAG, "Updating existing spot with newer remote edits: ${cloudDetail.spot.uuid}")
+                        repository.saveSyncedSpot(cloudDetail)
+                    } else {
+                        platformLog(TAG, "Local spot is up to date or newer: ${cloudDetail.spot.uuid}")
+                    }
+                } catch (e: Exception) {
+                    platformLogError(TAG, "Error parsing pulled spot document from doc ID: ${doc.id}", e)
                 }
             }
 
         } catch (e: Exception) {
-            println("Error during syncNow: ${e.message}")
+            platformLogError(TAG, "Error during syncNow", e)
         } finally {
             _isSyncing.value = false
+            platformLog(TAG, "syncNow completed")
         }
     }
 
     override fun startRealtimeSync(userId: String) {
+        platformLog(TAG, "startRealtimeSync called with userId: $userId")
         activeUserId = userId
         realtimeJob?.cancel()
         val currentFirestore = firestore
         if (currentFirestore == null) {
-            println("Skipping realtime sync on Desktop JVM (Firestore unavailable)")
+            platformLog(TAG, "Skipping realtime sync on Desktop JVM (Firestore unavailable)")
             return
         }
 
         realtimeJob = coroutineScope.launch {
             try {
+                platformLog(TAG, "Subscribing to realtime snapshots for user: $userId")
                 currentFirestore.collection("users").document(userId).collection("spots")
                     .snapshots
                     .collect { querySnapshot ->
+                        platformLog(TAG, "Received realtime snapshot update with ${querySnapshot.documents.size} documents")
                         val localSpots = repository.getAllSpots().first()
                         querySnapshot.documents.forEach { doc ->
                             try {
@@ -122,17 +149,19 @@ class NonWebSyncManager(
                                 val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
 
                                 if (localMatch == null) {
+                                    platformLog(TAG, "Realtime: Saving new remote spot locally: ${cloudDetail.spot.uuid}")
                                     repository.saveSyncedSpot(cloudDetail)
                                 } else if (cloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) {
+                                    platformLog(TAG, "Realtime: Updating existing spot: ${cloudDetail.spot.uuid}")
                                     repository.saveSyncedSpot(cloudDetail)
                                 }
                             } catch (e: Exception) {
-                                println("Error parsing real-time spot document: ${e.message}")
+                                platformLogError(TAG, "Error parsing real-time spot document from doc ID: ${doc.id}", e)
                             }
                         }
                     }
             } catch (e: Exception) {
-                println("Error in realtime sync stream: ${e.message}")
+                platformLogError(TAG, "Error in realtime sync stream", e)
             }
         }
 

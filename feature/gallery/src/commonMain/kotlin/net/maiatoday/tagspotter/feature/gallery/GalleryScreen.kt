@@ -110,6 +110,8 @@ fun GalleryScreen(
     val spots by viewModel.spots.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val showStarredOnly by viewModel.showStarredOnly.collectAsStateWithLifecycle()
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+
 
     val activeFilterCenter by viewModel.activeFilterCenter.collectAsStateWithLifecycle()
     val activeRadiusMeters by viewModel.activeRadiusMeters.collectAsStateWithLifecycle()
@@ -1032,7 +1034,24 @@ fun GalleryScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(40.dp).padding(8.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    IconButton(onClick = { viewModel.syncNow() }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Sync Now",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
                 IconButton(onClick = { showImportPackDialog = true }) {
+
                     Icon(
                         imageVector = Icons.Default.ArrowDownward,
                         contentDescription = "Import Cloud Pack",
