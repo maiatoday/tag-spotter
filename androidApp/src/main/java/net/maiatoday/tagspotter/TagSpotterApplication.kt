@@ -7,6 +7,11 @@ import net.maiatoday.tagspotter.core.database.SpotDatabase
 import net.maiatoday.tagspotter.core.database.getDatabaseBuilder
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import net.maiatoday.tagspotter.di.secretsModule
+import net.maiatoday.tagspotter.di.androidAiModule
+import com.google.firebase.Firebase
+import com.google.firebase.initialize
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import net.maiatoday.tagspotter.feature.main.initKoin
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
@@ -31,7 +36,13 @@ open class TagSpotterApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        initKoin(listOf(secretsModule)).apply {
+        // Initialize Firebase and App Check using the Debug provider
+        Firebase.initialize(this)
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+            DebugAppCheckProviderFactory.getInstance()
+        )
+        
+        initKoin(listOf(secretsModule, androidAiModule)).apply {
             androidContext(this@TagSpotterApplication)
         }
         
