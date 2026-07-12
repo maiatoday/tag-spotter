@@ -188,13 +188,6 @@ class SettingsViewModel(
             initialValue = true
         )
 
-    val geminiApiKey: StateFlow<String> = settingsRepository.geminiApiKey
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ""
-        )
-
     fun updateDarkMapEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateDarkMapEnabled(enabled)
@@ -206,11 +199,4 @@ class SettingsViewModel(
             settingsRepository.updateArtistRecognitionEnabled(enabled)
         }
     }
-
-    fun updateGeminiApiKey(key: String) {
-        viewModelScope.launch {
-            settingsRepository.updateGeminiApiKey(key)
-        }
-    }
-
 }

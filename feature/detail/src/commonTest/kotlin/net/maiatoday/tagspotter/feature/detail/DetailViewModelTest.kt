@@ -318,8 +318,7 @@ class DetailViewModelTest {
     fun aiAugmentationAvailabilityPropagatedCorrectly() = runTest {
         // 1. Clean/Reset shared mock states BEFORE instantiating DetailViewModel
         settingsRepository.updateArtistRecognitionEnabled(true)
-        secretsProvider.apiKey = ""
-        settingsRepository.updateGeminiApiKey("")
+        aiRecognitionService.isSupported = true
 
         val viewModel = DetailViewModel(
             -1L,
@@ -334,50 +333,23 @@ class DetailViewModelTest {
             viewModel.isAiAugmentationAvailable.collect {}
         }
 
-        // 2. Verified initially false (both keys empty)
+        // 2. Verified initially true (enabled and service is supported)
+        assertEquals(true, viewModel.isAiAugmentationAvailable.value)
+
+        // 3. Disable in settings -> should be false
+        settingsRepository.updateArtistRecognitionEnabled(false)
         assertEquals(false, viewModel.isAiAugmentationAvailable.value)
 
-        // 3. Enable secrets provider key and trigger emission
-        secretsProvider.apiKey = "secret_123"
+        // 4. Re-enable in settings but set service as unsupported -> should be false
+        settingsRepository.updateArtistRecognitionEnabled(true)
+        aiRecognitionService.isSupported = false
+        // Trigger a settings change to force re-evaluation of the flow map
         settingsRepository.updateArtistRecognitionEnabled(false)
         settingsRepository.updateArtistRecognitionEnabled(true)
-        assertEquals(true, viewModel.isAiAugmentationAvailable.value)
-
-        // 4. Verify user key fallback
-        secretsProvider.apiKey = ""
-        settingsRepository.updateGeminiApiKey("user_key_456")
-        assertEquals(true, viewModel.isAiAugmentationAvailable.value)
-
-        // 5. Verify setting toggle disable overrides keys
-        settingsRepository.updateArtistRecognitionEnabled(false)
         assertEquals(false, viewModel.isAiAugmentationAvailable.value)
     }
 
-    @Test
-    fun identifyArtistFailsWhenApiKeyIsMissing() = runTest {
-        settingsRepository.updateGeminiApiKey("")
-        secretsProvider.apiKey = ""
-        val viewModel = DetailViewModel(
-            spotId = -1L,
-            repository = repository,
-            settingsRepository = settingsRepository,
-            aiRecognitionService = aiRecognitionService,
-            secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
-        )
 
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.aiState.collect {}
-        }
-
-        assertEquals(AiState.Idle, viewModel.aiState.value)
-
-        // Trigger identification with a dummy path
-        viewModel.identifyArtist("some_path.png")
-
-        // Verification: should set error to MissingKey since API Key is empty
-        assertEquals(AiState.Error.MissingKey, viewModel.aiState.value)
-    }
 
     @Test
     fun identifyArtistSuccess() = runTest {

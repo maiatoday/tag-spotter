@@ -114,9 +114,6 @@ fun SettingsScreen(
     val cities = listOf("Milan", "London", "New York", "Paris", "Tokyo", "Berlin", "Rome", "San Francisco", "Sydney", "Custom")
 
     val artistRecognitionEnabled by viewModel.artistRecognitionEnabled.collectAsStateWithLifecycle()
-    val savedApiKey by viewModel.geminiApiKey.collectAsStateWithLifecycle()
-    var geminiApiKeyInput by remember(savedApiKey) { mutableStateOf(savedApiKey) }
-    var isApiKeyVisible by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -772,7 +769,6 @@ fun SettingsScreen(
                         Button(
                             onClick = {
                                 viewModel.updatePhotographerName(photographerNameInput.trim())
-                                viewModel.updateGeminiApiKey(geminiApiKeyInput.trim())
                                 if (homeCityInput == "Custom") {
                                     val lat = customLatInput.trim().toDoubleOrNull()
                                     val lng = customLngInput.trim().toDoubleOrNull()
@@ -863,51 +859,7 @@ fun SettingsScreen(
                             )
                         }
 
-                        if (artistRecognitionEnabled) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = stringResource(SettingsRes.string.ai_detection_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(SettingsRes.string.ai_detection_desc),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
 
-                            OutlinedTextField(
-                                value = geminiApiKeyInput,
-                                onValueChange = { geminiApiKeyInput = it },
-                                label = { Text(stringResource(SettingsRes.string.gemini_api_key_label)) },
-                                placeholder = { Text(stringResource(SettingsRes.string.gemini_api_key_placeholder)) },
-                                singleLine = true,
-                                visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Key,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                },
-                                trailingIcon = {
-                                    val image = if (isApiKeyVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                                    val description = if (isApiKeyVisible) stringResource(SettingsRes.string.content_desc_hide_api_key) else stringResource(SettingsRes.string.content_desc_show_api_key)
-                                    IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
-                                        Icon(imageVector = image, contentDescription = description)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = Color.Gray,
-                                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                        }
                     }
                 }
             }

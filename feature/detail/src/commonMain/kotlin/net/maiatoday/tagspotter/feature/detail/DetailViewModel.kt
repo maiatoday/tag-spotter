@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.model.Spot
@@ -108,16 +109,13 @@ class DetailViewModel(
             initialValue = true
         )
 
-    val isAiAugmentationAvailable: StateFlow<Boolean> = combine(
-        settingsRepository.artistRecognitionEnabled,
-        settingsRepository.geminiApiKey
-    ) { enabled, userKey ->
-        enabled && (secretsProvider.getGeminiApiKey().isNotEmpty() || userKey.isNotEmpty())
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = false
-    )
+    val isAiAugmentationAvailable: StateFlow<Boolean> = settingsRepository.artistRecognitionEnabled
+        .map { enabled -> enabled && aiRecognitionService.isSupported }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
     val darkMapEnabled: StateFlow<Boolean> = settingsRepository.darkMapEnabled
         .stateIn(
@@ -144,16 +142,6 @@ class DetailViewModel(
         viewModelScope.launch {
             _aiState.value = AiState.Identifying
             try {
-                // 1. Resolve API Key
-                var apiKey = secretsProvider.getGeminiApiKey()
-                if (apiKey.isEmpty()) {
-                    apiKey = settingsRepository.geminiApiKey.first()
-                }
-                if (apiKey.isEmpty()) {
-                    _aiState.value = AiState.Error.MissingKey
-                    return@launch
-                }
-                
                 val currentSpot = spotDetails.value?.spot
                 val category = currentSpot?.category ?: "graffiti"
                 val currentArtist = currentSpot?.artists?.joinToString(", ")
@@ -164,7 +152,6 @@ class DetailViewModel(
                 
                 val suggestion = aiRecognitionService.identifyArtist(
                     imagePath = imagePath,
-                    apiKey = apiKey,
                     category = category,
                     currentArtist = currentArtist,
                     currentTitle = currentTitle,
@@ -206,20 +193,10 @@ class DetailViewModel(
         viewModelScope.launch {
             _wikiSearchState.value = WikiSearchState.Searching
             try {
-                // 1. Resolve API Key
-                var apiKey = secretsProvider.getGeminiApiKey()
-                if (apiKey.isEmpty()) {
-                    apiKey = settingsRepository.geminiApiKey.first()
-                }
-                if (apiKey.isEmpty()) {
-                    _wikiSearchState.value = WikiSearchState.Error("Missing Gemini API Key. Please configure it in Settings.")
-                    return@launch
-                }
-
                 val category = spotDetails.value?.spot?.category ?: "graffiti"
                 val artists = spotDetails.value?.spot?.artists ?: emptyList()
 
-                val url = aiRecognitionService.searchWikipediaForSpot(title, category, artists, apiKey)
+                val url = aiRecognitionService.searchWikipediaForSpot(title, category, artists)
                 if (!url.isNullOrBlank()) {
                     _wikiSearchState.value = WikiSearchState.Success(url, title)
                 } else {

@@ -20,6 +20,23 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
+import net.maiatoday.tagspotter.core.sync.AuthService
+import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+class FakeAuthService : AuthService {
+    private val _currentUserFlow = MutableStateFlow<FirebaseUserWrapper?>(null)
+    override val currentUserFlow = _currentUserFlow.asStateFlow()
+    override val isGoogleSignInSupported: Boolean = true
+    override suspend fun signInWithGoogle(idToken: String?): Result<Unit> = Result.success(Unit)
+    override suspend fun signInWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
+    override suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = Result.success(Unit)
+    override suspend fun signOut() {}
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
 
@@ -31,6 +48,7 @@ class MainViewModelTest {
     private val spotRepository = FakeSpotRepository()
     private val locationProvider = FakeLocationProvider()
     private val photoProcessor = FakePhotoProcessor()
+    private val authService = FakeAuthService()
 
     @Test
     fun updateLocationPermission_updatesState() = runTest {
@@ -39,6 +57,7 @@ class MainViewModelTest {
             photoProcessor,
             settingsRepository,
             spotRepository,
+            authService,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -58,6 +77,7 @@ class MainViewModelTest {
             photoProcessor,
             settingsRepository,
             spotRepository,
+            authService,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -81,6 +101,7 @@ class MainViewModelTest {
             photoProcessor,
             settingsRepository,
             spotRepository,
+            authService,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -120,6 +141,7 @@ class MainViewModelTest {
             photoProcessor,
             settingsRepository,
             spotRepository,
+            authService,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -152,6 +174,7 @@ class MainViewModelTest {
             photoProcessor,
             settingsRepository,
             spotRepository,
+            authService,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -181,6 +204,7 @@ class MainViewModelTest {
             photoProcessor,
             settingsRepository,
             spotRepository,
+            authService,
             UnconfinedTestDispatcher(testScheduler)
         )
 
