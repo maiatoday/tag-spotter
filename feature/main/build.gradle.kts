@@ -28,6 +28,8 @@ kotlin {
             baseName = "SharedApp"
             isStatic = true
             export(project(":core:database"))
+            export(project(":core:model"))
+            export(project(":core:ai"))
         }
     }
     
@@ -39,12 +41,12 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                implementation(project(":core:model"))
+                api(project(":core:model"))
                 api(project(":core:database"))
                 implementation(project(":core:settings"))
                 implementation(project(":core:location"))
                 implementation(project(":core:photo"))
-                implementation(project(":core:ai"))
+                api(project(":core:ai"))
                 implementation(project(":core:ui"))
                 implementation(project(":core:sync"))
                 implementation(project(":feature:gallery"))
@@ -99,8 +101,6 @@ kotlin {
         iosMain {
             dependsOn(nonAndroidMain)
         }
-        
-
         
         wasmJsMain {
             dependsOn(nonAndroidMain)

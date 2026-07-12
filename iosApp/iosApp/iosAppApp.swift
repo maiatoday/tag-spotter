@@ -2,14 +2,21 @@ import SwiftUI
 import SharedApp
 import ZIPFoundation
 import FirebaseCore
+import FirebaseAppCheck
 
 @main
 struct iosAppApp: App {
     init() {
+        // App Check Debug Setup
+        let providerFactory = AppCheckDebugProviderFactory()
+        AppCheck.setAppCheckProviderFactory(providerFactory)
+        
         FirebaseApp.configure()
         
+        let swiftAiService = SwiftFirebaseAiService()
         DiHelperKt.doInitKoin(platformModules: [
-            IosSecretsModuleKt.createIosSecretsModule()
+            IosSecretsModuleKt.createIosSecretsModule(),
+            IosAiModuleKt.createIosAiModule(aiService: swiftAiService)
         ])
         
         IosZipHelper.shared.unzipCallback = { zipFilePath, destDirPath in

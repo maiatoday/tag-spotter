@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		1C81D6F669B7BB6D2FFCCEB3 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 29B921159B398C69B267D234 /* ZIPFoundation */; };
+		24323778ABA0C668C758086B /* FirebaseVertexAI in Frameworks */ = {isa = PBXBuildFile; productRef = 50ACCF4584AEF1591438DC6B /* FirebaseVertexAI */; };
 		2C8D9EE12FDEA736006004E2 /* SharedApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2C8D9EE22FDEA736006004E2 /* SharedApp.framework */; };
 		2ECACC695940F13A4EDFB2D7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F7F4335A9FA704A52EB0C58D /* GoogleService-Info.plist */; };
 		379D4C6DBBA934A8EF44CDDE /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = A61EAF9635BFCCA5966D2AE0 /* FirebaseStorage */; };
 		445C052442747365B7CB2124 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 617043448F4869026C2F0BB4 /* FirebaseAuth */; };
+		56A46FB5D95B5B7AB587F7E2 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 7C125860575113558154A084 /* FirebaseAppCheck */; };
 		A825AC5F0531A8569219D47A /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = B6E18E1D8AEE3BF1FDA1E5E9 /* GoogleSignIn */; };
 		B7C4F6137AC8345E71E92063 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 84FCD721953CC33D9035BCCD /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
@@ -41,6 +43,8 @@
 				B7C4F6137AC8345E71E92063 /* FirebaseFirestore in Frameworks */,
 				379D4C6DBBA934A8EF44CDDE /* FirebaseStorage in Frameworks */,
 				A825AC5F0531A8569219D47A /* GoogleSignIn in Frameworks */,
+				24323778ABA0C668C758086B /* FirebaseVertexAI in Frameworks */,
+				56A46FB5D95B5B7AB587F7E2 /* FirebaseAppCheck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,6 +95,8 @@
 				84FCD721953CC33D9035BCCD /* FirebaseFirestore */,
 				A61EAF9635BFCCA5966D2AE0 /* FirebaseStorage */,
 				B6E18E1D8AEE3BF1FDA1E5E9 /* GoogleSignIn */,
+				50ACCF4584AEF1591438DC6B /* FirebaseVertexAI */,
+				7C125860575113558154A084 /* FirebaseAppCheck */,
 			);
 			productName = iosApp;
 			productReference = 2C8D9ECC2FDEA735006004E2 /* iosApp.app */;
@@ -427,10 +433,20 @@
 			package = BDD6BF8B7672CA51FA8BCF56 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
 		};
+		50ACCF4584AEF1591438DC6B /* FirebaseVertexAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7C4F1707FE80007C7DCEAE3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseVertexAI;
+		};
 		617043448F4869026C2F0BB4 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 7C4F1707FE80007C7DCEAE3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		7C125860575113558154A084 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7C4F1707FE80007C7DCEAE3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 		84FCD721953CC33D9035BCCD /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;
