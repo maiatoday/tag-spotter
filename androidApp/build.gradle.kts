@@ -124,6 +124,12 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
+  // Firebase
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.vertexai)
+  implementation(libs.firebase.appcheck)
+  implementation(libs.firebase.appcheck.debug)
+
   // Koin DI
   implementation(platform(libs.koin.bom))
   implementation(libs.koin.core)
