@@ -5,7 +5,7 @@ import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
+import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.*
@@ -255,7 +255,7 @@ class JvmSyncManager(
                             // Download the secure URL bytes
                             val downloadResponse = client.authenticatedClient.get(secureUrl)
                             if (downloadResponse.status.value == 200) {
-                                val bytes = downloadResponse.readRawBytes()
+                                val bytes = downloadResponse.readBytes()
                                 localThumbnailFile.parentFile?.mkdirs()
                                 localThumbnailFile.writeBytes(bytes)
                                 println("Downloaded and persisted remote thumbnail for ${image.uuid} to ${localThumbnailFile.absolutePath}")

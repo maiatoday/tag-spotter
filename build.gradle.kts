@@ -10,3 +10,29 @@ plugins {
   alias(libs.plugins.jetbrains.compose) apply false
   alias(libs.plugins.google.services) apply false
 }
+
+allprojects {
+    configurations.all {
+        if (name.contains("wasmJs", ignoreCase = true)) {
+            resolutionStrategy {
+                dependencySubstitution {
+                    substitute(module("io.coil-kt.coil3:coil-network-ktor2"))
+                        .using(module("io.coil-kt.coil3:coil-network-ktor3:3.4.0"))
+                }
+                eachDependency {
+                    if (requested.group == "io.ktor") {
+                        useVersion("3.0.3")
+                    }
+                }
+            }
+        } else {
+            resolutionStrategy {
+                eachDependency {
+                    if (requested.group == "io.ktor") {
+                        useVersion("2.3.12")
+                    }
+                }
+            }
+        }
+    }
+}
