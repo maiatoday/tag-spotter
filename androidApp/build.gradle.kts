@@ -170,6 +170,10 @@ dependencies {
 
 configurations.all {
     resolutionStrategy {
+        dependencySubstitution {
+            substitute(module("io.coil-kt.coil3:coil-network-ktor3"))
+                .using(module("io.coil-kt.coil3:coil-network-ktor2:3.4.0"))
+        }
         eachDependency {
             if (requested.group == "io.ktor") {
                 useVersion("2.3.12")
