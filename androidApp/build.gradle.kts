@@ -167,3 +167,14 @@ dependencies {
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+
+configurations.all {
+    resolutionStrategy {
+        eachDependency {
+            if (requested.group == "io.ktor") {
+                useVersion("2.3.12")
+            }
+        }
+    }
+}
+
