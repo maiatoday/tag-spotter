@@ -17,8 +17,16 @@ class FakePhotoProcessor : PhotoProcessor {
     var createThumbnailFromUriCalledWith: String? = null
     var extractMetadataFromUriCalledWith: String? = null
 
+    var tempCameraFileException: Exception? = null
+    var saveImageException: Exception? = null
+    var extractMetadataException: Exception? = null
+    var writeBytesToFileResult: Boolean = true
+    var writeBytesCalled: Boolean = false
+    var writeBytesPath: String? = null
+
     override suspend fun saveImageToPublicGallery(filePath: String): String? {
         saveImageCalledWith = filePath
+        saveImageException?.let { throw it }
         return saveToPublicResult
     }
 
@@ -34,10 +42,12 @@ class FakePhotoProcessor : PhotoProcessor {
 
     override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? {
         extractMetadataFromUriCalledWith = uriString
+        extractMetadataException?.let { throw it }
         return metadataResult
     }
 
     override fun createTempCameraFile(): TempFileDetails {
+        tempCameraFileException?.let { throw it }
         return tempCameraFileResult
     }
 
@@ -51,6 +61,8 @@ class FakePhotoProcessor : PhotoProcessor {
     }
 
     override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean {
-        return true
+        writeBytesCalled = true
+        writeBytesPath = filePath
+        return writeBytesToFileResult
     }
 }

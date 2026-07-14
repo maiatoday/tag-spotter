@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import app.cash.turbine.test
 import net.maiatoday.tagspotter.core.location.FakeLocationProvider
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.Spot
@@ -285,22 +286,21 @@ class GalleryViewModelTest {
         }
         repository.setSpots(starredSpots + spotDetails1 + spotDetails2)
 
-        var limitExceededEmitted = false
-        backgroundScope.launch(testDispatcher) {
-            viewModel.uiEvent.collect { event ->
-                if (event is GalleryViewModel.UiEvent.StarLimitExceeded) {
-                    limitExceededEmitted = true
-                }
+        viewModel.uiEvent.test {
+            // Try to bulk star both (should fail due to 100 limit)
+            completed = false
+            viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = true) {
+                completed = true
             }
+            assertEquals(false, completed)
+            
+            // Verify limit exceeded emitted
+            val event = awaitItem()
+            assertTrue(event is GalleryViewModel.UiEvent.StarLimitExceeded)
+            
+            cancelAndConsumeRemainingEvents()
         }
-
-        // Try to bulk star both (should fail due to 100 limit)
-        completed = false
-        viewModel.bulkUpdateStarred(listOf(1L, 2L), isStarred = true) {
-            completed = true
-        }
-        assertEquals(false, completed)
-        assertTrue(limitExceededEmitted)
+        
         assertEquals(false, viewModel.spots.value.find { it.spot.id == 1L }?.spot?.isStarred)
         assertEquals(false, viewModel.spots.value.find { it.spot.id == 2L }?.spot?.isStarred)
     }
@@ -388,15 +388,145 @@ class GalleryViewModelTest {
         assertEquals(1, viewModel.spots.value.size)
         assertEquals(2L, viewModel.spots.value[0].spot.id)
     }
+
+    @Test
+    fun syncNow_callsSyncManager() = runTest {
+        var syncCalled = false
+        val customSyncManager = object : FakeSyncManager() {
+            override suspend fun syncNow() {
+                syncCalled = true
+            }
+        }
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        viewModel.syncNow()
+        assertTrue(syncCalled)
+    }
+
+    @Test
+    fun sharePack_successCallsOnSuccessWithCode() = runTest {
+        val spot1 = Spot(id = 1L, latitude = 1.0, longitude = 2.0, createdAt = 1000L, description = "A", tags = emptyList(), category = "graffiti", status = "active")
+        val spotDetails1 = SpotDetails(spot1, emptyList(), emptyList())
+        repository.setSpots(listOf(spotDetails1))
+
+        var sharedTitle = ""
+        val customSyncManager = object : FakeSyncManager() {
+            override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String {
+                sharedTitle = title
+                return "PACK123"
+            }
+        }
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        
+        backgroundScope.launch(testDispatcher) {
+            viewModel.spots.collect {}
+        }
+
+        var returnedCode: String? = null
+        viewModel.sharePack("My Pack", "Desc", "Author", listOf(1L), onSuccess = { returnedCode = it }, onError = {})
+        
+        assertEquals("PACK123", returnedCode)
+        assertEquals("My Pack", sharedTitle)
+    }
+
+    @Test
+    fun importPackByCode_successCallsOnSuccess() = runTest {
+        val expectedPack = net.maiatoday.tagspotter.core.model.SharedPack("packId", "title", "author", "desc", emptyList())
+        val customSyncManager = object : FakeSyncManager() {
+            override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack {
+                return expectedPack
+            }
+        }
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        
+        var returnedPack: net.maiatoday.tagspotter.core.model.SharedPack? = null
+        viewModel.importPackByCode("code", onSuccess = { returnedPack = it }, onError = {})
+        
+        assertEquals(expectedPack, returnedPack)
+    }
+
+    @Test
+    fun saveImportedPack_savesToRepository() = runTest {
+        val sharedPack = net.maiatoday.tagspotter.core.model.SharedPack("packId", "title", "author", "desc", emptyList())
+        var saveCalled = false
+        val customSyncManager = object : FakeSyncManager() {
+            override suspend fun saveImportedPack(pack: net.maiatoday.tagspotter.core.model.SharedPack) {
+                saveCalled = true
+            }
+        }
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        
+        backgroundScope.launch(testDispatcher) {
+            viewModel.loadedPacks.collect {}
+        }
+
+        var successCalled = false
+        viewModel.saveImportedPack(sharedPack, onSuccess = { successCalled = true }, onError = {})
+        
+        assertTrue(saveCalled)
+        assertTrue(successCalled)
+        assertEquals(1, viewModel.loadedPacks.value.size)
+        assertEquals("packId", viewModel.loadedPacks.value[0].packId)
+    }
+
+    @Test
+    fun deleteSpots_removesFromRepository() = runTest {
+        val spot1 = Spot(id = 1L, latitude = 1.0, longitude = 2.0, createdAt = 1000L, description = "A", tags = emptyList(), category = "graffiti", status = "active")
+        val spotDetails1 = SpotDetails(spot1, emptyList(), emptyList())
+        repository.setSpots(listOf(spotDetails1))
+
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        backgroundScope.launch(testDispatcher) {
+            viewModel.spots.collect {}
+        }
+
+        assertEquals(1, viewModel.spots.value.size)
+
+        var completed = false
+        viewModel.deleteSpots(listOf(1L), onCompleted = { completed = true })
+        
+        assertTrue(completed)
+        assertTrue(viewModel.spots.value.isEmpty())
+    }
+
+    @Test
+    fun unloadPack_deletesFromRepository() = runTest {
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        
+        backgroundScope.launch(testDispatcher) {
+            viewModel.loadedPacks.collect {}
+        }
+
+        val loadedPack = net.maiatoday.tagspotter.core.model.LoadedPack("packId", "title", "author", "desc", 0L, 0L)
+        repository.saveLoadedPack(loadedPack)
+        assertEquals(1, viewModel.loadedPacks.value.size)
+        
+        var completed = false
+        viewModel.unloadPack("packId", onCompleted = { completed = true })
+        
+        assertTrue(completed)
+        assertTrue(viewModel.loadedPacks.value.isEmpty())
+    }
+
+    @Test
+    fun setLocationFilter_GPS_resolvesCurrentLocation() = runTest {
+        locationProvider.locationToReturn = net.maiatoday.tagspotter.core.location.LocationData(45.1111, 9.2222, false)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        
+        viewModel.setLocationFilter(FilterCenter.GPS(0.0, 0.0), 1000.0)
+        
+        val center = viewModel.activeFilterCenter.value as FilterCenter.GPS
+        assertEquals(45.1111, center.latitude, 0.0001)
+        assertEquals(9.2222, center.longitude, 0.0001)
+    }
 }
 
-class FakeSyncManager : SyncManager {
+open class FakeSyncManager : SyncManager {
     override val isSyncing = kotlinx.coroutines.flow.MutableStateFlow(false)
-    override suspend fun syncNow() {}
+    open override suspend fun syncNow() {}
     override fun startRealtimeSync(userId: String) {}
     override fun stopRealtimeSync() {}
-    override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String = ""
-    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack = error("not implemented")
-    override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {}
+    open override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String = ""
+    open override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack = error("not implemented")
+    open override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {}
 }
 

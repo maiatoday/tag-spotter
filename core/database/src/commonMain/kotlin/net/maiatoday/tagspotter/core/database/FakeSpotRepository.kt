@@ -164,7 +164,14 @@ class FakeSpotRepository : SpotRepository {
         return spotsMap.values.count { it.spot.isStarred }
     }
 
+    var loadTestDataCalled = false
+    var unloadTestDataCalled = false
+    var importPackCountToReturn = 0
+    var importedPackFilePath: String? = null
+    var importPackException: Throwable? = null
+
     override suspend fun loadTestData() {
+        loadTestDataCalled = true
         val now = epochMillis()
         val spot1 = Spot(
             id = 9001L,
@@ -233,6 +240,7 @@ class FakeSpotRepository : SpotRepository {
     }
 
     override suspend fun unloadTestData() {
+        unloadTestDataCalled = true
         spotsMap.remove(9001L)
         spotsMap.remove(9002L)
         spotsMap.remove(9003L)
@@ -246,7 +254,9 @@ class FakeSpotRepository : SpotRepository {
         currentPhotographerName: String,
         createThumbnail: suspend (String) -> String?
     ): Int {
-        return 0
+        importedPackFilePath = packFilePath
+        importPackException?.let { throw it }
+        return importPackCountToReturn
     }
 
     override suspend fun saveSpotDetails(spotDetails: SpotDetails): Long {

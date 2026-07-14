@@ -44,6 +44,10 @@ javafx = "21.0.1"
 firebase-kotlin-sdk = "2.1.0"
 google-services = "4.4.2"
 firebase-bom = "33.5.1"
+kover = "0.9.8"
+turbine = "1.2.1"
+
+
 
 [libraries]
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
@@ -121,6 +125,7 @@ ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-conte
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
 imagepickerkmp = { module = "io.github.ismoy:imagepickerkmp", version.ref = "imagepickerkmp" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 javafx-swing = { module = "org.openjfx:javafx-swing", version.ref = "javafx" }
 javafx-web = { module = "org.openjfx:javafx-web", version.ref = "javafx" }
 firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "firebase-kotlin-sdk" }
@@ -141,3 +146,4 @@ android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "composePlugin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

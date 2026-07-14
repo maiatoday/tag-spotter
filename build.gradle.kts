@@ -9,6 +9,7 @@ plugins {
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.jetbrains.compose) apply false
   alias(libs.plugins.google.services) apply false
+  alias(libs.plugins.kover)
 }
 
 allprojects {
@@ -35,4 +36,27 @@ allprojects {
             }
         }
     }
+}
+
+subprojects {
+    apply(plugin = "org.jetbrains.kotlinx.kover")
+}
+
+dependencies {
+    kover(project(":androidApp"))
+    kover(project(":core:model"))
+    kover(project(":core:photo"))
+    kover(project(":core:location"))
+    kover(project(":core:database"))
+    kover(project(":core:sync"))
+    kover(project(":core:settings"))
+    kover(project(":core:ai"))
+    kover(project(":core:ui"))
+    kover(project(":feature:gallery"))
+    kover(project(":feature:map"))
+    kover(project(":feature:detail"))
+    kover(project(":feature:settings"))
+    kover(project(":feature:main"))
+    kover(project(":wear"))
+    kover(project(":desktopApp"))
 }

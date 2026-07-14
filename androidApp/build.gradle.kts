@@ -158,6 +158,7 @@ dependencies {
   testRuntimeOnly(libs.junit.jupiter.engine)
   testRuntimeOnly(libs.junit.platform.launcher)
   testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.turbine)
 
   // Instrumented tests: jUnit rules and runners
   androidTestImplementation(libs.androidx.test.core)

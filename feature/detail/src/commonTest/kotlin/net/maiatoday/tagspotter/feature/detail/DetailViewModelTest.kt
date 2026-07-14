@@ -10,6 +10,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import app.cash.turbine.test
+import kotlinx.coroutines.flow.first
 
 import net.maiatoday.tagspotter.core.ai.AiSuggestion
 import net.maiatoday.tagspotter.core.ai.FakeAiRecognitionService
@@ -511,22 +513,21 @@ class DetailViewModelTest {
             wearSyncManager = wearSyncManager
         )
 
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.wikiSearchState.collect {}
+        viewModel.wikiSearchState.test {
+            assertEquals(WikiSearchState.Idle, awaitItem())
+
+            // Trigger Wikipedia search on spot with empty title
+            viewModel.searchWikipediaForSpot()
+
+            // Should return Error state indicating description is empty
+            val state = awaitItem()
+            assertTrue(state is WikiSearchState.Error)
+            assertEquals(
+                "No title logged. Please set a title/description first.",
+                state.message
+            )
+            cancelAndConsumeRemainingEvents()
         }
-
-        assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
-
-        // Trigger Wikipedia search on spot with empty title
-        viewModel.searchWikipediaForSpot()
-
-        // Should return Error state indicating description is empty
-        val state = viewModel.wikiSearchState.value
-        assertTrue(state is WikiSearchState.Error)
-        assertEquals(
-            "No title logged. Please set a title/description first.",
-            state.message
-        )
     }
 
     @Test
@@ -557,22 +558,21 @@ class DetailViewModelTest {
             wearSyncManager = wearSyncManager
         )
 
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.spotDetails.collect {}
+        viewModel.wikiSearchState.test {
+            assertEquals(WikiSearchState.Idle, awaitItem())
+
+            // Trigger Wikipedia search
+            viewModel.searchWikipediaForSpot()
+
+            // Verification: should set error to missing key since API key is empty
+            val state = awaitItem()
+            assertTrue(state is WikiSearchState.Error)
+            assertEquals(
+                "Missing Gemini API Key. Please configure it in Settings.",
+                state.message
+            )
+            cancelAndConsumeRemainingEvents()
         }
-
-        assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
-
-        // Trigger Wikipedia search
-        viewModel.searchWikipediaForSpot()
-
-        // Verification: should set error to missing key since API key is empty
-        val state = viewModel.wikiSearchState.value
-        assertTrue(state is WikiSearchState.Error)
-        assertEquals(
-            "Missing Gemini API Key. Please configure it in Settings.",
-            state.message
-        )
     }
 
     @Test
@@ -638,6 +638,123 @@ class DetailViewModelTest {
         // Reset
         viewModel.resetWikiSearchState()
         assertEquals(WikiSearchState.Idle, viewModel.wikiSearchState.value)
+    }
+
+    @Test
+    fun identifyArtist_ResponseStoppedException_setsSafetyBlocked() = runTest {
+        class ResponseStoppedException : Exception("stopped")
+        aiRecognitionService.identifyArtistException = ResponseStoppedException()
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        
+        viewModel.identifyArtist("path")
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.aiState.value is AiState.Error.SafetyBlocked)
+    }
+
+    @Test
+    fun identifyArtist_ServerException_setsQuotaExceeded() = runTest {
+        class ServerException : Exception("quota")
+        aiRecognitionService.identifyArtistException = ServerException()
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        
+        viewModel.identifyArtist("path")
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.aiState.value is AiState.Error.QuotaExceeded)
+    }
+
+    @Test
+    fun identifyArtist_InvalidAPIKeyException_setsInvalidKey() = runTest {
+        class InvalidAPIKeyException : Exception("API key")
+        aiRecognitionService.identifyArtistException = InvalidAPIKeyException()
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        
+        viewModel.identifyArtist("path")
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.aiState.value is AiState.Error.InvalidKey)
+    }
+
+    @Test
+    fun identifyArtist_noConnectionException_setsGenericError() = runTest {
+        aiRecognitionService.identifyArtistException = Exception("Unable to resolve host")
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        
+        viewModel.identifyArtist("path")
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.aiState.value as AiState.Error.Generic
+        assertTrue(state.message.contains("No internet connection"))
+    }
+
+    @Test
+    fun draftModeUpdates_correctlyPropagatesToDraftDetails() = runTest {
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+        
+        viewModel.updateStatus("archived")
+        viewModel.updateCategory("sculpture")
+        viewModel.updateArtists(listOf("Banksy"))
+        viewModel.updatePhotographer("Me")
+        viewModel.updateTags(listOf("street"))
+        viewModel.updateLocation(10.0, 20.0)
+        viewModel.updateDescription("Desc")
+        viewModel.updateArtworkDate("2024")
+        
+        val spot = viewModel.spotDetails.value?.spot
+        assertNotNull(spot)
+        assertEquals("archived", spot.status)
+        assertEquals("sculpture", spot.category)
+        assertEquals(listOf("Banksy"), spot.artists)
+        assertEquals("Me", spot.photographer)
+        assertEquals(listOf("street"), spot.tags)
+        assertEquals(10.0, spot.latitude)
+        assertEquals(20.0, spot.longitude)
+        assertEquals("Desc", spot.description)
+        assertEquals("2024", spot.artworkDate)
+    }
+
+    @Test
+    fun addAndDeleteImage_draftMode_worksCorrectly() = runTest {
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+        
+        viewModel.addImage("p1", "t1", 100L)
+        assertEquals(1, viewModel.spotDetails.value?.images?.size)
+        
+        val image = viewModel.spotDetails.value!!.images[0]
+        assertEquals("p1", image.imagePath)
+        
+        viewModel.updateImageRating(image, 5L)
+        assertEquals(5L, viewModel.spotDetails.value!!.images[0].rating)
+
+        viewModel.deleteImage(image)
+        assertTrue(viewModel.spotDetails.value!!.images.isEmpty())
+    }
+
+    @Test
+    fun saveSpot_draftMode_savesMultipleImages() = runTest {
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+        
+        viewModel.addImage("p1", "t1", 100L)
+        viewModel.addImage("p2", "t2", 200L)
+        
+        var savedId: Long? = null
+        viewModel.saveSpot { savedId = it }
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(savedId)
+        val savedSpot = repository.getSpotById(savedId!!).first()
+        assertNotNull(savedSpot)
+        assertEquals(2, savedSpot?.images?.size)
     }
 }
 

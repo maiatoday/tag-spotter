@@ -3,6 +3,7 @@ package net.maiatoday.tagspotter.core.photo
 import kotlin.test.Test
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertEquals
 
 class ExifMetadataParserTest {
 
@@ -13,10 +14,16 @@ class ExifMetadataParserTest {
     }
 
     @Test
-    fun testFakePhotoProcessor() {
+    fun testFakePhotoProcessorExceptionSimulations() {
         val fake = FakePhotoProcessor()
-        assertNull(fake.decodeScaledBitmapResult)
-        fake.decodeScaledBitmapResult = byteArrayOf(1, 2, 3)
-        assertTrue(fake.decodeScaledBitmapResult!!.contentEquals(byteArrayOf(1, 2, 3)))
+        fake.tempCameraFileException = RuntimeException("Camera disconnected")
+        
+        try {
+            fake.createTempCameraFile()
+            assertTrue(false, "Should have thrown exception")
+        } catch (e: Exception) {
+            assertTrue(e is RuntimeException)
+            assertEquals("Camera disconnected", e.message)
+        }
     }
 }

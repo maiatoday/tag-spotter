@@ -190,6 +190,12 @@ class DetailViewModel(
             return
         }
 
+        val apiKey = secretsProvider.getGeminiApiKey()
+        if (apiKey.isBlank()) {
+            _wikiSearchState.value = WikiSearchState.Error("Missing Gemini API Key. Please configure it in Settings.")
+            return
+        }
+
         viewModelScope.launch {
             _wikiSearchState.value = WikiSearchState.Searching
             try {

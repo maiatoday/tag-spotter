@@ -17,8 +17,10 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+import app.cash.turbine.test
 
 import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
@@ -112,26 +114,24 @@ class MainViewModelTest {
         locationProvider.locationToReturn = LocationData(45.4642, 9.1900, false)
         viewModel.updateLocationPermission(true)
 
-        val eventsList = mutableListOf<MainEvent>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.events.toList(eventsList)
+        viewModel.events.test {
+            viewModel.handleCameraCaptureSuccess()
+
+            // Verify that loading was toggled and temp file was deleted
+            assertEquals("temp_path", photoProcessor.deleteFileCalledWith)
+            assertEquals("temp_path", photoProcessor.saveImageCalledWith)
+            assertFalse(viewModel.uiState.value.isLoading)
+
+            // Verify emitted event
+            val event = awaitItem() as MainEvent.PhotoProcessed
+            assertEquals("public_uri", event.imagePath)
+            assertEquals("thumb_path", event.thumbnailPath)
+            assertEquals(45.4642, event.latitude, 0.0001)
+            assertEquals(9.1900, event.longitude, 0.0001)
+            assertFalse(event.isFallback)
+            
+            cancelAndConsumeRemainingEvents()
         }
-
-        viewModel.handleCameraCaptureSuccess()
-
-        // Verify that loading was toggled and temp file was deleted
-        assertEquals("temp_path", photoProcessor.deleteFileCalledWith)
-        assertEquals("temp_path", photoProcessor.saveImageCalledWith)
-        assertFalse(viewModel.uiState.value.isLoading)
-
-        // Verify emitted event
-        assertEquals(1, eventsList.size)
-        val event = eventsList[0] as MainEvent.PhotoProcessed
-        assertEquals("public_uri", event.imagePath)
-        assertEquals("thumb_path", event.thumbnailPath)
-        assertEquals(45.4642, event.latitude, 0.0001)
-        assertEquals(9.1900, event.longitude, 0.0001)
-        assertFalse(event.isFallback)
     }
 
     @Test
@@ -147,24 +147,22 @@ class MainViewModelTest {
 
         photoProcessor.metadataResult = PhotoMetadata(45.4642, 9.1900, 123456789L)
 
-        val eventsList = mutableListOf<MainEvent>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.events.toList(eventsList)
+        viewModel.events.test {
+            viewModel.handlePhotoPicked("some_uri")
+
+            assertFalse(viewModel.uiState.value.isLoading)
+
+            // Verify emitted event
+            val event = awaitItem() as MainEvent.PhotoProcessed
+            assertEquals("some_uri", event.imagePath)
+            assertEquals("thumb_path", event.thumbnailPath)
+            assertEquals(45.4642, event.latitude, 0.0001)
+            assertEquals(9.1900, event.longitude, 0.0001)
+            assertFalse(event.isFallback)
+            assertEquals(123456789L, event.captureTime)
+            
+            cancelAndConsumeRemainingEvents()
         }
-
-        viewModel.handlePhotoPicked("some_uri")
-
-        assertFalse(viewModel.uiState.value.isLoading)
-
-        // Verify emitted event
-        assertEquals(1, eventsList.size)
-        val event = eventsList[0] as MainEvent.PhotoProcessed
-        assertEquals("some_uri", event.imagePath)
-        assertEquals("thumb_path", event.thumbnailPath)
-        assertEquals(45.4642, event.latitude, 0.0001)
-        assertEquals(9.1900, event.longitude, 0.0001)
-        assertFalse(event.isFallback)
-        assertEquals(123456789L, event.captureTime)
     }
 
     @Test
@@ -182,19 +180,17 @@ class MainViewModelTest {
         locationProvider.locationToReturn = LocationData(45.4642, 9.1900, true)
         viewModel.updateLocationPermission(true)
 
-        val eventsList = mutableListOf<MainEvent>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.events.toList(eventsList)
+        viewModel.events.test {
+            viewModel.handlePhotoPicked("some_uri")
+
+            // Verify fallback coordinates
+            val event = awaitItem() as MainEvent.PhotoProcessed
+            assertEquals(45.4642, event.latitude, 0.0001)
+            assertEquals(9.1900, event.longitude, 0.0001)
+            assertTrue(event.isFallback)
+            
+            cancelAndConsumeRemainingEvents()
         }
-
-        viewModel.handlePhotoPicked("some_uri")
-
-        // Verify fallback coordinates
-        assertEquals(1, eventsList.size)
-        val event = eventsList[0] as MainEvent.PhotoProcessed
-        assertEquals(45.4642, event.latitude, 0.0001)
-        assertEquals(9.1900, event.longitude, 0.0001)
-        assertTrue(event.isFallback)
     }
 
     @Test
@@ -216,5 +212,157 @@ class MainViewModelTest {
 
         viewModel.updateShowTestData(true)
         assertTrue(viewModel.showTestData.value)
+        assertTrue(spotRepository.loadTestDataCalled)
+
+        viewModel.updateShowTestData(false)
+        assertFalse(viewModel.showTestData.value)
+        assertTrue(spotRepository.unloadTestDataCalled)
+    }
+
+    @Test
+    fun prepareCameraCapture_onException_emitsErrorEvent() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        photoProcessor.tempCameraFileException = Exception("Camera fail")
+
+        viewModel.events.test {
+            val uri = viewModel.prepareCameraCapture()
+            assertNull(uri)
+            val event = awaitItem() as MainEvent.ShowError
+            assertEquals("Failed to prepare camera file.", event.message)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun writePhotoBytes_callsPhotoProcessor() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        val bytes = byteArrayOf(1, 2, 3)
+        var called = false
+        photoProcessor.writeBytesToFileResult = true
+        
+        val success = viewModel.writePhotoBytes(bytes, "path")
+        assertTrue(success)
+        assertEquals("path", photoProcessor.writeBytesPath)
+        assertTrue(photoProcessor.writeBytesCalled)
+    }
+
+    @Test
+    fun handleCameraCaptureSuccess_onResultNull_emitsError() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        photoProcessor.tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
+        viewModel.prepareCameraCapture()
+        
+        // Make public uri return null to trigger save failure
+        photoProcessor.saveToPublicResult = null
+
+        viewModel.events.test {
+            viewModel.handleCameraCaptureSuccess()
+            val event = awaitItem() as MainEvent.ShowError
+            assertEquals("Error saving captured photo.", event.message)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun handleCameraCaptureSuccess_onException_emitsError() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        photoProcessor.tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
+        viewModel.prepareCameraCapture()
+        photoProcessor.saveImageException = Exception("Disk full")
+
+        viewModel.events.test {
+            viewModel.handleCameraCaptureSuccess()
+            val event = awaitItem() as MainEvent.ShowError
+            assertEquals("Failed to process captured photo.", event.message)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun handlePhotoPicked_onException_emitsError() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        photoProcessor.extractMetadataException = Exception("Metadata fail")
+
+        viewModel.events.test {
+            viewModel.handlePhotoPicked("some_uri")
+            val event = awaitItem() as MainEvent.ShowError
+            assertEquals("Failed to process gallery photo.", event.message)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun importPack_onSuccess_callsOnSuccess() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        spotRepository.importPackCountToReturn = 5
+        
+        var successCount: Int? = null
+        viewModel.importPack("pack.zip", "files", "cache", onSuccess = { successCount = it }, onError = {})
+        testScheduler.advanceUntilIdle()
+        
+        assertEquals(5, successCount)
+        assertEquals("pack.zip", spotRepository.importedPackFilePath)
+    }
+
+    @Test
+    fun importPack_onError_callsOnError() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        spotRepository.importPackException = Exception("Import failed")
+        
+        var caught: Throwable? = null
+        viewModel.importPack("pack.zip", "files", "cache", onSuccess = {}, onError = { caught = it })
+        testScheduler.advanceUntilIdle()
+        
+        assertNotNull(caught)
+        assertEquals("Import failed", caught?.message)
     }
 }
