@@ -2,9 +2,21 @@ package net.maiatoday.tagspotter.feature.gallery.res
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import net.maiatoday.tagspotter.core.database.SpotRepository
+import net.maiatoday.tagspotter.core.database.WasmSpotRepository
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
-class WasmJsGalleryPlatformHelper : GalleryPlatformHelper {
+@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+private fun webTriggerFileInput(
+    onSuccess: (String, String) -> Unit,
+    onError: (String) -> Unit
+): Unit = js("window.webTriggerFileInput(onSuccess, onError)")
+
+class WasmJsGalleryPlatformHelper : GalleryPlatformHelper, KoinComponent {
+    private val repository: SpotRepository by inject()
+
     override fun showToast(message: String) {
         println("Toast: $message")
     }
@@ -13,7 +25,7 @@ class WasmJsGalleryPlatformHelper : GalleryPlatformHelper {
     override fun rememberLauncher(
         onExportReady: (uriString: String) -> Unit
     ): () -> Unit {
-        return remember { { onExportReady("dummy") } }
+        return remember { { onExportReady("web_export") } }
     }
 
     override fun exportPack(
@@ -23,7 +35,12 @@ class WasmJsGalleryPlatformHelper : GalleryPlatformHelper {
         onSuccess: () -> Unit,
         onError: (Throwable) -> Unit
     ) {
-        onSuccess()
+        try {
+            (repository as? WasmSpotRepository)?.exportPackData()
+            onSuccess()
+        } catch (e: Exception) {
+            onError(e)
+        }
     }
 
     override fun getRoute(spots: List<SpotDetails>) {
@@ -48,7 +65,19 @@ class WasmJsGalleryPlatformHelper : GalleryPlatformHelper {
     override fun rememberImportLauncher(
         onPackPicked: (pathString: String) -> Unit
     ): () -> Unit {
-        return remember { {} }
+        return remember {
+            {
+                webTriggerFileInput(
+                    onSuccess = { spotsJson, imagesJsonMap ->
+                        (repository as? WasmSpotRepository)?.importPackData(spotsJson, imagesJsonMap)
+                        onPackPicked("web_imported")
+                    },
+                    onError = { errMsg ->
+                        println("Import error: $errMsg")
+                    }
+                )
+            }
+        }
     }
 
     override fun getFilesDir(): String = ""

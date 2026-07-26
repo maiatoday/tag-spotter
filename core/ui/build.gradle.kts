@@ -36,6 +36,7 @@ kotlin {
                 
                 // Coil
                 implementation(libs.coil.compose)
+                implementation(libs.coil.network)
                 
                 // Lifecycle
                 implementation(libs.androidx.lifecycle.runtime.compose)

@@ -3,11 +3,22 @@ package net.maiatoday.tagspotter.core.database
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
 import net.maiatoday.tagspotter.core.model.generateUuid
+
+@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+private fun webSaveSpotsMetadata(jsonString: String): Unit = js("window.webSaveSpotsMetadata(jsonString)")
+@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+private fun webLoadSpotsMetadata(): String = js("window.webLoadSpotsMetadata()")
+@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+private fun webExportPackZip(spotsJson: String, imagesDataJson: String): Unit = js("window.webExportPackZip(spotsJson, imagesDataJson)")
 
 class WasmSpotRepository : SpotRepository {
     override var activeUid: String? = null
@@ -15,6 +26,130 @@ class WasmSpotRepository : SpotRepository {
     private var nextSpotId = 1L
     private var nextImageId = 1L
     private var nextNoteId = 1L
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        prettyPrint = false
+        isLenient = true
+    }
+
+    init {
+        try {
+            val savedJson = webLoadSpotsMetadata()
+            if (savedJson.isNotEmpty()) {
+                val list = json.decodeFromString(ListSerializer(SpotDetails.serializer()), savedJson)
+                val map = list.associateBy { it.spot.id }
+                spotsFlow.value = map
+                nextSpotId = (map.keys.maxOrNull() ?: 0L) + 1L
+                nextImageId = (list.flatMap { it.images }.map { it.id }.maxOrNull() ?: 0L) + 1L
+                nextNoteId = (list.flatMap { it.notes }.map { it.id }.maxOrNull() ?: 0L) + 1L
+            }
+        } catch (e: Exception) {
+            println("Error loading spots from web localStorage: ${e.message}")
+        }
+    }
+
+    private fun persistToLocalStorage() {
+        try {
+            val list = spotsFlow.value.values.toList()
+            val jsonStr = json.encodeToString(ListSerializer(SpotDetails.serializer()), list)
+            webSaveSpotsMetadata(jsonStr)
+        } catch (e: Exception) {
+            println("Error saving spots to web localStorage: ${e.message}")
+        }
+    }
+
+    fun exportPackData() {
+        try {
+            val list = spotsFlow.value.values.toList()
+            val backupWrapper = net.maiatoday.tagspotter.core.model.BackupWrapper(backupVersion = 2, spots = list)
+            val jsonStr = json.encodeToString(net.maiatoday.tagspotter.core.model.BackupWrapper.serializer(), backupWrapper)
+            val imagesMap = mutableMapOf<String, String>()
+            list.forEach { detail ->
+                detail.images.forEach { img ->
+                    if (img.imagePath.isNotEmpty()) {
+                        val imgFileName = img.imagePath.substringAfterLast('/')
+                        if (imgFileName.isNotEmpty()) {
+                            imagesMap["images/$imgFileName"] = img.imagePath
+                        }
+                    }
+                    if (img.thumbnailPath.isNotEmpty()) {
+                        val thumbFileName = img.thumbnailPath.substringAfterLast('/')
+                        if (thumbFileName.isNotEmpty()) {
+                            imagesMap["thumbnails/$thumbFileName"] = img.thumbnailPath
+                        }
+                    }
+                }
+            }
+            val imagesJson = json.encodeToString(MapSerializer(String.serializer(), String.serializer()), imagesMap)
+            webExportPackZip(jsonStr, imagesJson)
+        } catch (e: Exception) {
+            println("Error exporting web backup pack: ${e.message}")
+        }
+    }
+
+    fun importPackData(spotsJson: String, imagesJsonMap: String): Int {
+        return try {
+            val list: List<SpotDetails> = try {
+                val wrapper = json.decodeFromString(net.maiatoday.tagspotter.core.model.BackupWrapper.serializer(), spotsJson)
+                wrapper.spots
+            } catch (e: Exception) {
+                try {
+                    json.decodeFromString(ListSerializer(SpotDetails.serializer()), spotsJson)
+                } catch (ex: Exception) {
+                    println("Failed to parse spots.json: ${ex.message}")
+                    emptyList()
+                }
+            }
+
+            val imagesMap: Map<String, String> = try {
+                json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), imagesJsonMap)
+            } catch (e: Exception) {
+                emptyMap()
+            }
+
+            val current = spotsFlow.value.toMutableMap()
+            var importedCount = 0
+
+            list.forEach { detail ->
+                val updatedImages = detail.images.map { img ->
+                    val imgFileName = img.imagePath.substringAfterLast('/')
+                    val thumbFileName = img.thumbnailPath.substringAfterLast('/')
+
+                    // Lookup full image data URL
+                    val resolvedImagePath = imagesMap["images/$imgFileName"]
+                        ?: imagesMap.entries.find { it.key.startsWith("images/") && (it.key.endsWith(imgFileName) || (img.uuid.isNotEmpty() && it.key.contains(img.uuid))) }?.value
+                        ?: if (img.imagePath.startsWith("data:") || img.imagePath.startsWith("http")) img.imagePath else ""
+
+                    // Lookup thumbnail data URL
+                    val resolvedThumbPath = imagesMap["thumbnails/$thumbFileName"]
+                        ?: imagesMap.entries.find { it.key.startsWith("thumbnails/") && (it.key.endsWith(thumbFileName) || (img.uuid.isNotEmpty() && it.key.contains(img.uuid))) }?.value
+                        ?: imagesMap["images/$imgFileName"]
+                        ?: resolvedImagePath
+                        ?: if (img.thumbnailPath.startsWith("data:") || img.thumbnailPath.startsWith("http")) img.thumbnailPath else ""
+
+                    img.copy(
+                        imagePath = resolvedImagePath,
+                        thumbnailPath = resolvedThumbPath
+                    )
+                }
+                val updatedDetail = detail.copy(images = updatedImages)
+
+                val existing = current.values.find { it.spot.uuid == detail.spot.uuid }
+                val spotId = existing?.spot?.id ?: nextSpotId++
+                val finalDetail = updatedDetail.copy(spot = updatedDetail.spot.copy(id = spotId))
+                current[spotId] = finalDetail
+                importedCount++
+            }
+
+            spotsFlow.value = current
+            persistToLocalStorage()
+            importedCount
+        } catch (e: Exception) {
+            println("Error importing web backup pack: ${e.message}")
+            0
+        }
+    }
 
     override fun getAllSpots(): Flow<List<SpotDetails>> {
         return spotsFlow.map { it.values.toList().sortedByDescending { detail -> detail.spot.createdAt } }
@@ -58,6 +193,7 @@ class WasmSpotRepository : SpotRepository {
         }
         val details = SpotDetails(newSpot, images, emptyList())
         spotsFlow.value = spotsFlow.value + (spotId to details)
+        persistToLocalStorage()
         return spotId
     }
 
@@ -79,6 +215,7 @@ class WasmSpotRepository : SpotRepository {
         val updatedImages = current.images + newImage
         val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = updatedSpot, images = updatedImages))
+        persistToLocalStorage()
         return imgId
     }
 
@@ -97,6 +234,7 @@ class WasmSpotRepository : SpotRepository {
         val updatedNotes = current.notes + newNote
         val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = updatedSpot, notes = updatedNotes))
+        persistToLocalStorage()
         return noteId
     }
 
@@ -106,6 +244,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(status = status, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun updateSpotCategory(spotId: Long, category: String) {
@@ -114,6 +253,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(category = category, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun updateSpotArtists(spotId: Long, artists: List<String>) {
@@ -122,6 +262,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(artists = artists, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun updateSpotPhotographer(spotId: Long, photographer: String) {
@@ -130,6 +271,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(photographer = photographer, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun updateSpotTags(spotId: Long, tags: List<String>) {
@@ -138,6 +280,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(tags = tags, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun updateSpotLocation(spotId: Long, latitude: Double, longitude: Double) {
@@ -146,6 +289,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(latitude = latitude, longitude = longitude, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun updateSpotDescription(spotId: Long, description: String) {
@@ -154,10 +298,12 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(description = description, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun deleteSpot(spotDetails: SpotDetails) {
         spotsFlow.value = spotsFlow.value - spotDetails.spot.id
+        persistToLocalStorage()
     }
 
     override fun getRecentCustomTags(predefinedTags: Set<String>): Flow<List<String>> {
@@ -208,6 +354,7 @@ class WasmSpotRepository : SpotRepository {
 
     override suspend fun unloadTestData() {
         spotsFlow.value = spotsFlow.value - 9001L - 9002L - 9003L
+        persistToLocalStorage()
     }
 
     override suspend fun importPack(
@@ -231,6 +378,7 @@ class WasmSpotRepository : SpotRepository {
         }
         val finalDetails = SpotDetails(updatedSpot, updatedImages, updatedNotes)
         spotsFlow.value = spotsFlow.value + (spotId to finalDetails)
+        persistToLocalStorage()
         return spotId
     }
 
@@ -249,6 +397,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(isStarred = isStarred, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun getStarredSpots(): List<Spot> {
@@ -265,6 +414,7 @@ class WasmSpotRepository : SpotRepository {
         val updatedImages = current.images.map { it.copy(isMain = it.id == imageId) }
         val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(spot = updatedSpot, images = updatedImages))
+        persistToLocalStorage()
     }
 
     override suspend fun deleteImage(image: SpotImage) {
@@ -273,6 +423,7 @@ class WasmSpotRepository : SpotRepository {
         val updatedImages = current.images.filter { it.id != image.id }
         val updatedSpot = current.spot.copy(lastEditedAt = now, isSynced = false)
         spotsFlow.value = spotsFlow.value + (image.spotId to current.copy(spot = updatedSpot, images = updatedImages))
+        persistToLocalStorage()
     }
 
     override suspend fun updateImageRating(imageId: Long, rating: Long) {
@@ -292,6 +443,7 @@ class WasmSpotRepository : SpotRepository {
                 details
             }
         }
+        persistToLocalStorage()
     }
 
     override suspend fun updateSpotArtworkDate(spotId: Long, artworkDate: String) {
@@ -300,6 +452,7 @@ class WasmSpotRepository : SpotRepository {
         spotsFlow.value = spotsFlow.value + (spotId to current.copy(
             spot = current.spot.copy(artworkDate = artworkDate, lastEditedAt = now, isSynced = false)
         ))
+        persistToLocalStorage()
     }
 
     override suspend fun deleteNote(noteId: Long) {
@@ -316,6 +469,7 @@ class WasmSpotRepository : SpotRepository {
                 details
             }
         }
+        persistToLocalStorage()
     }
 
     override suspend fun updateNote(noteId: Long, noteText: String) {
@@ -335,6 +489,7 @@ class WasmSpotRepository : SpotRepository {
                 details
             }
         }
+        persistToLocalStorage()
     }
 
     override suspend fun getUnsyncedSpots(): List<SpotDetails> {
@@ -350,6 +505,7 @@ class WasmSpotRepository : SpotRepository {
                 details
             }
         }
+        persistToLocalStorage()
     }
 
     override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
@@ -372,6 +528,7 @@ class WasmSpotRepository : SpotRepository {
         
         val updatedDetails = SpotDetails(spotToSave, imagesToSave, notesToSave)
         spotsFlow.value = spotsFlow.value + (finalSpotId to updatedDetails)
+        persistToLocalStorage()
     }
 
     override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {}
@@ -414,6 +571,7 @@ class WasmSpotRepository : SpotRepository {
             currentMap[nextId] = SpotDetails(updatedSpot, updatedImages, updatedNotes)
         }
         spotsFlow.value = currentMap
+        persistToLocalStorage()
     }
 
     override suspend fun deleteLoadedPack(packId: String) {
@@ -421,6 +579,6 @@ class WasmSpotRepository : SpotRepository {
         loadedPacksFlow.value = loadedPacksMap.values.toList()
         
         spotsFlow.value = spotsFlow.value.filterValues { it.spot.parentPackId != packId }
+        persistToLocalStorage()
     }
 }
-

@@ -17,6 +17,16 @@ actual fun rememberToastLauncher(): ToastLauncher {
 }
 
 actual fun formatImageModel(imagePath: String, thumbnailPath: String): Any {
-    val path = thumbnailPath.ifEmpty { imagePath }
+    val thumb = thumbnailPath.trim()
+    val img = imagePath.trim()
+
+    if (thumb.startsWith("data:") || thumb.startsWith("http://") || thumb.startsWith("https://")) {
+        return thumb
+    }
+    if (img.startsWith("data:") || img.startsWith("http://") || img.startsWith("https://")) {
+        return img
+    }
+
+    val path = thumb.ifEmpty { img }
     return resolveLocalPath(path)
 }
