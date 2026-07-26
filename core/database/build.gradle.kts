@@ -8,8 +8,8 @@ plugins {
 kotlin {
     android {
         namespace = "net.maiatoday.tagspotter.core.database"
-        compileSdk = 37
-        minSdk = 29
+        compileSdk = libs.versions.androidCompileSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
         
         withHostTest { }
     }
@@ -17,6 +17,7 @@ kotlin {
     jvm()
     iosSimulatorArm64()
     iosArm64()
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
         browser()
     }
@@ -38,8 +39,8 @@ kotlin {
             }
         }
         
-        val nonWebMain by creating {
-            dependsOn(commonMain.get())
+        val nonWebMain = create("nonWebMain") {
+            dependsOn(getByName("commonMain"))
             dependencies {
                 implementation(project(":core:photo"))
                 implementation(project(":core:location"))
@@ -70,11 +71,11 @@ kotlin {
             dependsOn(nonWebMain)
         }
         
-        val iosSimulatorArm64Main by getting {
+        getByName("iosSimulatorArm64Main") {
             dependsOn(iosMain.get())
         }
         
-        val iosArm64Main by getting {
+        getByName("iosArm64Main") {
             dependsOn(iosMain.get())
         }
         wasmJsMain {
@@ -83,11 +84,11 @@ kotlin {
             }
         }
         
-        val nonWebTest by creating {
-            dependsOn(commonTest.get())
+        val nonWebTest = create("nonWebTest") {
+            dependsOn(getByName("commonTest"))
         }
         
-        val androidHostTest by getting {
+        getByName("androidHostTest") {
             dependsOn(nonWebTest)
             dependencies {
                 implementation(libs.androidx.test.core)
@@ -98,19 +99,19 @@ kotlin {
             }
         }
         
-        val jvmTest by getting {
+        getByName("jvmTest") {
             dependsOn(nonWebTest)
         }
         
-        val iosTest by creating {
+        val iosTest = create("iosTest") {
             dependsOn(nonWebTest)
         }
         
-        val iosSimulatorArm64Test by getting {
+        getByName("iosSimulatorArm64Test") {
             dependsOn(iosTest)
         }
         
-        val iosArm64Test by getting {
+        getByName("iosArm64Test") {
             dependsOn(iosTest)
         }
     }

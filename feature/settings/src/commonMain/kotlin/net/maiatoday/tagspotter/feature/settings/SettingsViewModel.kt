@@ -15,12 +15,16 @@ import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+import net.maiatoday.tagspotter.core.ai.AiRecognitionService
+
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val spotRepository: SpotRepository,
     private val authService: AuthService,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val aiRecognitionService: AiRecognitionService
 ) : ViewModel() {
+    val isAiSupported: Boolean = aiRecognitionService.isSupported
 
     init {
         viewModelScope.launch {

@@ -807,59 +807,59 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // AI Settings Card
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp)
+                // AI Settings Card (Only shown when AI features are supported on this platform)
+                if (viewModel.isAiSupported) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     ) {
-                        Text(
-                            text = stringResource(SettingsRes.string.artist_id_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(SettingsRes.string.artist_id_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(20.dp)
                         ) {
                             Text(
-                                text = stringResource(SettingsRes.string.enable_recognition_title),
-                                style = MaterialTheme.typography.bodyLarge,
+                                text = stringResource(SettingsRes.string.artist_id_title),
+                                style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold
                             )
-                            Switch(
-                                checked = artistRecognitionEnabled,
-                                onCheckedChange = { isChecked ->
-                                    viewModel.updateArtistRecognitionEnabled(isChecked)
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                    uncheckedThumbColor = Color.Gray,
-                                    uncheckedTrackColor = Color.DarkGray
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(SettingsRes.string.artist_id_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stringResource(SettingsRes.string.enable_recognition_title),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Medium
                                 )
-                            )
+                                Switch(
+                                    checked = artistRecognitionEnabled,
+                                    onCheckedChange = { isChecked ->
+                                        viewModel.updateArtistRecognitionEnabled(isChecked)
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                        uncheckedThumbColor = Color.Gray,
+                                        uncheckedTrackColor = Color.DarkGray
+                                    )
+                                )
+                            }
                         }
-
-
                     }
                 }
             }

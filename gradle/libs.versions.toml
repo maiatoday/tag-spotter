@@ -1,5 +1,8 @@
 [versions]
-androidGradlePlugin = "9.2.1"
+androidGradlePlugin = "9.1.0"
+androidCompileSdk = "37"
+androidMinSdk = "29"
+androidTargetSdk = "37"
 androidxCore = "1.19.0"
 androidxLifecycle = "2.10.0"
 androidxActivity = "1.13.0"

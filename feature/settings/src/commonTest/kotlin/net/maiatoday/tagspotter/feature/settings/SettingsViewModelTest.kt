@@ -153,7 +153,7 @@ class SettingsViewModelTest {
 
     @Test
     fun getAndSetPreferencesWorkCorrectly() = runTest {
-        val viewModel = SettingsViewModel(settingsRepository, spotRepository, authService, syncManager)
+        val viewModel = SettingsViewModel(settingsRepository, spotRepository, authService, syncManager, net.maiatoday.tagspotter.core.ai.UnsupportedAiRecognitionService())
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
         backgroundScope.launch(testDispatcher) {
@@ -202,7 +202,7 @@ class SettingsViewModelTest {
 
     @Test
     fun authAndSyncIntegrationWorksCorrectly() = runTest {
-        val viewModel = SettingsViewModel(settingsRepository, spotRepository, authService, syncManager)
+        val viewModel = SettingsViewModel(settingsRepository, spotRepository, authService, syncManager, net.maiatoday.tagspotter.core.ai.UnsupportedAiRecognitionService())
 
         backgroundScope.launch(testDispatcher) {
             viewModel.currentUser.collect {}
@@ -244,7 +244,7 @@ class SettingsViewModelTest {
 
     @Test
     fun forcedSyncTriggersSyncNow() = runTest {
-        val viewModel = SettingsViewModel(settingsRepository, spotRepository, authService, syncManager)
+        val viewModel = SettingsViewModel(settingsRepository, spotRepository, authService, syncManager, net.maiatoday.tagspotter.core.ai.UnsupportedAiRecognitionService())
         assertFalse(syncManager.syncNowCalled)
         viewModel.syncNow()
         assertTrue(syncManager.syncNowCalled)

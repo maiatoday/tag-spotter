@@ -17,7 +17,7 @@ kotlin {
         binaries.executable()
     }
     sourceSets {
-        val wasmJsMain by getting {
+        wasmJsMain {
             dependencies {
                 implementation(project(":feature:main"))
                 implementation(project(":core:database"))

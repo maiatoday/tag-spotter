@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "net.maiatoday.tagspotter.wear"
-    compileSdk = 37
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "net.maiatoday.tagspotter"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0.0"
     }

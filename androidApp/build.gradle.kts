@@ -9,11 +9,11 @@ plugins {
 
 android {
     namespace = "net.maiatoday.tagspotter"
-    compileSdk = 37
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
     defaultConfig {
         applicationId = "net.maiatoday.tagspotter"
-        minSdk = 29
-        targetSdk = 36
+        minSdk = libs.versions.androidMinSdk.get().toInt()
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 10
         versionName = "0.0.10"
         testInstrumentationRunner = "net.maiatoday.tagspotter.TagSpotterTestRunner"
@@ -79,9 +79,6 @@ android {
     }
 }
 
-kotlin {
-    jvmToolchain(21)
-}
 
 dependencies {
   // Modules
@@ -169,17 +166,4 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
-configurations.all {
-    resolutionStrategy {
-        dependencySubstitution {
-            substitute(module("io.coil-kt.coil3:coil-network-ktor3"))
-                .using(module("io.coil-kt.coil3:coil-network-ktor2:3.4.0"))
-        }
-        eachDependency {
-            if (requested.group == "io.ktor") {
-                useVersion("2.3.12")
-            }
-        }
-    }
-}
 

@@ -26,7 +26,21 @@ class WasmJsGalleryPlatformHelper : GalleryPlatformHelper {
         onSuccess()
     }
 
-    override fun getRoute(spots: List<SpotDetails>) {}
+    override fun getRoute(spots: List<SpotDetails>) {
+        if (spots.isEmpty()) return
+        val destinationSpot = spots.last().spot
+        val waypointSpots = spots.dropLast(1)
+        val base = "https://www.google.com/maps/dir/?api=1"
+        val destParam = "&destination=${destinationSpot.latitude},${destinationSpot.longitude}"
+        val waypointsParam = if (waypointSpots.isNotEmpty()) {
+            "&waypoints=" + waypointSpots.joinToString("|") { "${it.spot.latitude},${it.spot.longitude}" }
+        } else {
+            ""
+        }
+        val travelModeParam = "&travelmode=walking"
+        val url = base + destParam + waypointsParam + travelModeParam
+        kotlinx.browser.window.open(url, "_blank")
+    }
 
     override fun shareKml(spots: List<SpotDetails>) {}
 

@@ -14,6 +14,10 @@ plugins {
 
 allprojects {
     configurations.all {
+        resolutionStrategy {
+            force("org.jetbrains.skiko:skiko:0.144.6")
+            force("org.jetbrains.skiko:skiko-awt:0.144.6")
+        }
         if (name.contains("wasmJs", ignoreCase = true)) {
             resolutionStrategy {
                 dependencySubstitution {
@@ -28,6 +32,10 @@ allprojects {
             }
         } else {
             resolutionStrategy {
+                dependencySubstitution {
+                    substitute(module("io.coil-kt.coil3:coil-network-ktor3"))
+                        .using(module("io.coil-kt.coil3:coil-network-ktor2:3.4.0"))
+                }
                 eachDependency {
                     if (requested.group == "io.ktor") {
                         useVersion("2.3.12")
@@ -43,20 +51,20 @@ subprojects {
 }
 
 dependencies {
-    kover(project(":androidApp"))
-    kover(project(":core:model"))
-    kover(project(":core:photo"))
-    kover(project(":core:location"))
-    kover(project(":core:database"))
-    kover(project(":core:sync"))
-    kover(project(":core:settings"))
-    kover(project(":core:ai"))
-    kover(project(":core:ui"))
-    kover(project(":feature:gallery"))
-    kover(project(":feature:map"))
-    kover(project(":feature:detail"))
-    kover(project(":feature:settings"))
-    kover(project(":feature:main"))
-    kover(project(":wear"))
-    kover(project(":desktopApp"))
+    kover(dependencies.project(":androidApp"))
+    kover(dependencies.project(":core:model"))
+    kover(dependencies.project(":core:photo"))
+    kover(dependencies.project(":core:location"))
+    kover(dependencies.project(":core:database"))
+    kover(dependencies.project(":core:sync"))
+    kover(dependencies.project(":core:settings"))
+    kover(dependencies.project(":core:ai"))
+    kover(dependencies.project(":core:ui"))
+    kover(dependencies.project(":feature:gallery"))
+    kover(dependencies.project(":feature:map"))
+    kover(dependencies.project(":feature:detail"))
+    kover(dependencies.project(":feature:settings"))
+    kover(dependencies.project(":feature:main"))
+    kover(dependencies.project(":wear"))
+    kover(dependencies.project(":desktopApp"))
 }

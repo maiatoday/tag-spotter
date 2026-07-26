@@ -9,8 +9,8 @@ kotlin {
     applyDefaultHierarchyTemplate()
     android {
         namespace = "net.maiatoday.tagspotter.core.sync"
-        compileSdk = 37
-        minSdk = 29
+        compileSdk = libs.versions.androidCompileSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
         
         withHostTest { }
     }
@@ -41,8 +41,8 @@ kotlin {
             }
         }
         
-        val nonWebMain by creating {
-            dependsOn(commonMain.get())
+        val nonWebMain = create("nonWebMain") {
+            dependsOn(getByName("commonMain"))
             dependencies {
                 implementation(libs.firebase.auth)
                 implementation(libs.firebase.firestore)

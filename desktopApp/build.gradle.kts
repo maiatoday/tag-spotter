@@ -8,7 +8,7 @@ kotlin {
     jvm()
     
     sourceSets {
-        val jvmMain by getting {
+        val commonMain = getByName("commonMain") {
             dependencies {
                 implementation(project(":feature:main"))
                 implementation(project(":core:database"))
@@ -21,11 +21,16 @@ kotlin {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
-                implementation(compose.desktop.currentOs)
                 
                 implementation(libs.koin.core)
-                implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.androidx.lifecycle.viewmodel)
+            }
+        }
+        val jvmMain = getByName("jvmMain") {
+            dependsOn(commonMain)
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.kotlinx.coroutines.swing)
             }
         }
     }

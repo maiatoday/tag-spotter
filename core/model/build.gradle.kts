@@ -9,8 +9,8 @@ kotlin {
     applyDefaultHierarchyTemplate()
     android {
         namespace = "net.maiatoday.tagspotter.core.model"
-        compileSdk = 37
-        minSdk = 29
+        compileSdk = libs.versions.androidCompileSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
         withHostTest { }
     }
     jvm()

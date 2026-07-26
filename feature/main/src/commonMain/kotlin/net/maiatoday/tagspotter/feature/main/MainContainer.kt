@@ -381,10 +381,11 @@ fun MainContainer(
             if (isLandscape) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     NavigationRail(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ) {
                         Spacer(modifier = Modifier.weight(1f))
+                        val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                         NavigationRailItem(
                             selected = selectedTab == Tab.Gallery,
                             onClick = { selectedTab = Tab.Gallery },
@@ -393,7 +394,7 @@ fun MainContainer(
                                     Icon(
                                         imageVector = Icons.Default.PhotoLibrary,
                                         contentDescription = stringResource(MainRes.string.content_desc_gallery_tab),
-                                        tint = if (selectedTab == Tab.Gallery) MaterialTheme.colorScheme.primary else Color.Gray
+                                        tint = if (selectedTab == Tab.Gallery) MaterialTheme.colorScheme.primary else unselectedColor
                                     )
                                     if (selectedTab == Tab.Gallery) {
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -411,12 +412,12 @@ fun MainContainer(
                                     }
                                 }
                             },
-                            label = { Text(stringResource(MainRes.string.tab_gallery_label)) },
+                            label = { Text(stringResource(MainRes.string.tab_gallery_label), fontWeight = FontWeight.SemiBold) },
                             colors = NavigationRailItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = Color.Gray,
+                                unselectedIconColor = unselectedColor,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedTextColor = Color.Gray,
+                                unselectedTextColor = unselectedColor,
                                 indicatorColor = Color.Transparent
                             )
                         )
@@ -428,7 +429,7 @@ fun MainContainer(
                                     Icon(
                                         imageVector = Icons.Default.Map,
                                         contentDescription = stringResource(MainRes.string.content_desc_maps_tab),
-                                        tint = if (selectedTab == Tab.Map) MaterialTheme.colorScheme.secondary else Color.Gray
+                                        tint = if (selectedTab == Tab.Map) MaterialTheme.colorScheme.secondary else unselectedColor
                                     )
                                     if (selectedTab == Tab.Map) {
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -446,12 +447,12 @@ fun MainContainer(
                                     }
                                 }
                             },
-                            label = { Text(stringResource(MainRes.string.tab_maps_label)) },
+                            label = { Text(stringResource(MainRes.string.tab_maps_label), fontWeight = FontWeight.SemiBold) },
                             colors = NavigationRailItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.secondary,
-                                unselectedIconColor = Color.Gray,
+                                unselectedIconColor = unselectedColor,
                                 selectedTextColor = MaterialTheme.colorScheme.secondary,
-                                unselectedTextColor = Color.Gray,
+                                unselectedTextColor = unselectedColor,
                                 indicatorColor = Color.Transparent
                             )
                         )

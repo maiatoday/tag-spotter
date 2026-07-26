@@ -53,7 +53,25 @@ class JvmGalleryPlatformHelper : GalleryPlatformHelper {
     }
 
     override fun getRoute(spots: List<SpotDetails>) {
-        println("Routing on JVM. Spot count: ${spots.size}")
+        if (spots.isEmpty()) return
+        val destinationSpot = spots.last().spot
+        val waypointSpots = spots.dropLast(1)
+        val base = "https://www.google.com/maps/dir/?api=1"
+        val destParam = "&destination=${destinationSpot.latitude},${destinationSpot.longitude}"
+        val waypointsParam = if (waypointSpots.isNotEmpty()) {
+            "&waypoints=" + waypointSpots.joinToString("|") { "${it.spot.latitude},${it.spot.longitude}" }
+        } else {
+            ""
+        }
+        val travelModeParam = "&travelmode=walking"
+        val url = base + destParam + waypointsParam + travelModeParam
+        try {
+            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(java.net.URI(url))
+            }
+        } catch (e: Exception) {
+            println("Failed to open browser for route: ${e.message}")
+        }
     }
 
     override fun shareKml(spots: List<SpotDetails>) {

@@ -7,11 +7,10 @@ plugins {
 }
 
 kotlin {
-    applyDefaultHierarchyTemplate()
     android {
         namespace = "net.maiatoday.tagspotter.feature.main"
-        compileSdk = 37
-        minSdk = 29
+        compileSdk = libs.versions.androidCompileSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
         
         androidResources {
             enable = true
@@ -83,7 +82,7 @@ kotlin {
             }
         }
         
-        val nonAndroidMain by creating {
+        val nonAndroidMain = create("nonAndroidMain") {
             dependsOn(commonMain.get())
         }
         
@@ -100,6 +99,14 @@ kotlin {
         
         iosMain {
             dependsOn(nonAndroidMain)
+        }
+
+        getByName("iosSimulatorArm64Main") {
+            dependsOn(iosMain.get())
+        }
+
+        getByName("iosArm64Main") {
+            dependsOn(iosMain.get())
         }
         
         wasmJsMain {

@@ -9,8 +9,8 @@ kotlin {
     applyDefaultHierarchyTemplate()
     android {
         namespace = "net.maiatoday.tagspotter.feature.settings"
-        compileSdk = 37
-        minSdk = 29
+        compileSdk = libs.versions.androidCompileSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
         
         androidResources {
             enable = true
@@ -35,6 +35,7 @@ kotlin {
                 implementation(project(":core:settings"))
                 implementation(project(":core:ui"))
                 implementation(project(":core:sync"))
+                implementation(project(":core:ai"))
                 
                 implementation(compose.runtime)
                 implementation(compose.foundation)
