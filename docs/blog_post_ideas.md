@@ -106,3 +106,14 @@ jcmd 48314 GC.run && jcmd 48314 GC.heap_info
 # region size 4096K, 1 young (4096K), 0 survivors (0K)
 # (Settled Heap = 15.4 MB - 97.3% memory reduction from JavaFX 567.2 MB baseline!)
 ```
+
+---
+
+### 🌐 Web (WasmJS) Browser Persistence & Pack (.ts_pack) Import Architecture
+
+For Post #4's web target section:
+1. **`localStorage` State Synchronization**: `WasmSpotRepository` automatically serializes Kotlin model objects into JSON and syncs `spotsFlow` to browser `localStorage` on every add/edit/delete operation.
+2. **Client-Side JSZip Backup Packs**: Exporting and importing `.ts_pack` archives happens entirely in browser memory via JSZip interop.
+3. **Data URL Asset Mapping**: Zip entries for `thumbnails/` and `images/` are dynamically parsed into base64 data URLs (`data:image/...`), preserving image fidelity across offline browser sessions without server dependencies.
+4. **Resilient Remote Fallback**: `formatImageModel` validates local file existence before selecting local paths, gracefully falling back to remote Firebase Storage URLs (`https://firebasestorage.googleapis.com/...`) for shared cloud spots.
+
