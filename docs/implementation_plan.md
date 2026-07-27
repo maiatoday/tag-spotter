@@ -107,6 +107,7 @@ Repeat profiling to compile comparative data for **Blog Post #4**:
    - Validate target metric: **<60MB RAM footprint (>80% reduction)**, zero grid misalignment, and 60fps fluid map interaction.
 2. **Compile Comparative Benchmark Table**:
    - Save metrics into a markdown table comparing JavaFX WebView vs Compose Skia Native across RAM, startup time, and FPS.
+   - For technical methodology and platform-specific profiling toolsuites (Xcode Instruments, Chrome DevTools, NMT), consult [Compose Performance Profiling Guide](file:///Users/maia/workspace/maiatoday/tag-spotter/docs/compose_performance_profiling_guide.md).
 
 ---
 

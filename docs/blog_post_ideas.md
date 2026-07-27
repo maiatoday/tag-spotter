@@ -29,6 +29,8 @@ This article walks through profiling tools for each target—with a focus on rep
 | **iOS (Simulator)** | **Process RAM & CPU Usage** | `ps -o rss,pcpu -p <pid>` | Tracks RSS memory in MB during map panning |
 | **Web (WasmJS)** | **Wasm Heap & FPS** | Browser DevTools / `browser_subagent` | Captures WebGL canvas render frames and memory footprint |
 
+*For full deep-dive details on Compose performance assessment methodology, recomposition profiling, and platform toolsuites (Instruments, Chrome DevTools, NMT), see [Compose Performance Profiling Guide](file:///Users/maia/workspace/maiatoday/tag-spotter/docs/compose_performance_profiling_guide.md).*
+
 ---
 
 ## 📖 Article Outline Strategy
