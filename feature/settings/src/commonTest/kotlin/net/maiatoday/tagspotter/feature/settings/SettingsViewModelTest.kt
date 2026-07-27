@@ -236,10 +236,49 @@ class SettingsViewModelTest {
         assertEquals("email_uid", viewModel.currentUser.value?.uid)
         assertEquals("email_uid", syncManager.startRealtimeSyncCalledWith)
 
-        // 5. Syncing Reactive State
+        // 5. Email Sign-Up
+        callbackSuccess = false
+        viewModel.signUpWithEmailAndPassword("new@user.com", "password") { result ->
+            callbackSuccess = result.isSuccess
+        }
+        assertTrue(authService.signUpWithEmailCalled)
+        assertTrue(callbackSuccess)
+
+        // 6. Password Reset
+        var resetSuccess = false
+        viewModel.sendPasswordResetEmail("user@test.com") { result ->
+            resetSuccess = result.isSuccess
+        }
+        assertTrue(resetSuccess)
+
+        // 7. Syncing Reactive State
         assertFalse(viewModel.isSyncing.value)
         syncManager.setSyncing(true)
         assertTrue(viewModel.isSyncing.value)
+    }
+
+    @Test
+    fun artistRecognitionAndOfflineSpotsWork() = runTest {
+        val viewModel = SettingsViewModel(
+            settingsRepository,
+            spotRepository,
+            authService,
+            syncManager,
+            net.maiatoday.tagspotter.core.ai.UnsupportedAiRecognitionService()
+        )
+
+        backgroundScope.launch(testDispatcher) { viewModel.artistRecognitionEnabled.collect {} }
+
+        assertFalse(viewModel.isAiSupported)
+        assertTrue(viewModel.artistRecognitionEnabled.value)
+
+        viewModel.updateArtistRecognitionEnabled(false)
+        assertFalse(viewModel.artistRecognitionEnabled.value)
+
+        // Test sign in and adopt offline spots
+        viewModel.signInWithGoogle()
+        viewModel.adoptOfflineSpots(backup = true)
+        assertEquals("google_uid", spotRepository.activeUid)
     }
 
     @Test

@@ -38,6 +38,7 @@ kotlin {
                 implementation(kotlin("test"))
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.multiplatform.settings.test)
+                implementation(libs.turbine)
             }
         }
         

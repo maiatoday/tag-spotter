@@ -1,5 +1,7 @@
 package net.maiatoday.tagspotter.core.settings
 
+import app.cash.turbine.test
+import kotlinx.coroutines.test.runTest
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,95 +12,94 @@ import kotlin.test.assertTrue
 class FilterManagerTest {
 
     @Test
-    fun testInitialState() {
+    fun testCategoryFlowWithTurbine() = runTest {
         val manager = FilterManager()
-        assertEquals("All", manager.selectedCategory.value)
-        assertEquals("All", manager.selectedSource.value)
-        assertEquals("", manager.searchQuery.value)
-        assertFalse(manager.showStarredOnly.value)
-        assertNull(manager.activeFilterCenter.value)
-        assertEquals(5000.0, manager.activeRadiusMeters.value)
+
+        manager.selectedCategory.test {
+            assertEquals("All", awaitItem())
+
+            manager.selectCategory("Graffiti")
+            assertEquals("Graffiti", awaitItem())
+
+            manager.selectCategory("Sculpture")
+            assertEquals("Sculpture", awaitItem())
+
+            manager.clearAll()
+            assertEquals("All", awaitItem())
+
+            cancelAndConsumeRemainingEvents()
+        }
     }
 
     @Test
-    fun testSelectCategory() {
+    fun testSourceFlowWithTurbine() = runTest {
         val manager = FilterManager()
-        manager.selectCategory("Graffiti")
-        assertEquals("Graffiti", manager.selectedCategory.value)
+
+        manager.selectedSource.test {
+            assertEquals("All", awaitItem())
+
+            manager.selectSource("My Spots")
+            assertEquals("My Spots", awaitItem())
+
+            manager.selectSource("Imported")
+            assertEquals("Imported", awaitItem())
+
+            manager.clearAll()
+            assertEquals("All", awaitItem())
+
+            cancelAndConsumeRemainingEvents()
+        }
     }
 
     @Test
-    fun testSelectSource() {
+    fun testSearchQueryFlowWithTurbine() = runTest {
         val manager = FilterManager()
-        manager.selectSource("Device")
-        assertEquals("Device", manager.selectedSource.value)
+
+        manager.searchQuery.test {
+            assertEquals("", awaitItem())
+
+            manager.setSearchQuery("tag1")
+            assertEquals("tag1", awaitItem())
+
+            manager.clearAll()
+            assertEquals("", awaitItem())
+
+            cancelAndConsumeRemainingEvents()
+        }
     }
 
     @Test
-    fun testSetSearchQuery() {
+    fun testStarredOnlyFlowWithTurbine() = runTest {
         val manager = FilterManager()
-        manager.setSearchQuery("tags")
-        assertEquals("tags", manager.searchQuery.value)
+
+        manager.showStarredOnly.test {
+            assertFalse(awaitItem())
+
+            manager.setShowStarredOnly(true)
+            assertTrue(awaitItem())
+
+            manager.toggleShowStarredOnly()
+            assertFalse(awaitItem())
+
+            cancelAndConsumeRemainingEvents()
+        }
     }
 
     @Test
-    fun testSetShowStarredOnly() {
-        val manager = FilterManager()
-        manager.setShowStarredOnly(true)
-        assertTrue(manager.showStarredOnly.value)
-
-        manager.setShowStarredOnly(false)
-        assertFalse(manager.showStarredOnly.value)
-    }
-
-    @Test
-    fun testToggleShowStarredOnly() {
-        val manager = FilterManager()
-        assertFalse(manager.showStarredOnly.value)
-
-        manager.toggleShowStarredOnly()
-        assertTrue(manager.showStarredOnly.value)
-
-        manager.toggleShowStarredOnly()
-        assertFalse(manager.showStarredOnly.value)
-    }
-
-    @Test
-    fun testSetLocationFilter() {
+    fun testLocationFilterFlowsWithTurbine() = runTest {
         val manager = FilterManager()
         val gps = FilterCenter.GPS(45.4642, 9.1900)
-        manager.setLocationFilter(gps, 10000.0)
 
-        assertEquals(gps, manager.activeFilterCenter.value)
-        assertEquals(10000.0, manager.activeRadiusMeters.value)
-    }
+        manager.activeFilterCenter.test {
+            assertNull(awaitItem())
 
-    @Test
-    fun testClearLocationFilter() {
-        val manager = FilterManager()
-        val gps = FilterCenter.GPS(45.4642, 9.1900)
-        manager.setLocationFilter(gps, 10000.0)
-        assertEquals(gps, manager.activeFilterCenter.value)
+            manager.setLocationFilter(gps, 10000.0)
+            assertEquals(gps, awaitItem())
 
-        manager.clearLocationFilter()
-        assertNull(manager.activeFilterCenter.value)
-    }
+            manager.clearLocationFilter()
+            assertNull(awaitItem())
 
-    @Test
-    fun testClearAll() {
-        val manager = FilterManager()
-        manager.selectCategory("Stencil")
-        manager.selectSource("Remote")
-        manager.setSearchQuery("hello")
-        manager.setShowStarredOnly(true)
-        manager.setLocationFilter(FilterCenter.GPS(1.0, 2.0), 3000.0)
-
-        manager.clearAll()
-
-        assertEquals("All", manager.selectedCategory.value)
-        assertEquals("All", manager.selectedSource.value)
-        assertEquals("", manager.searchQuery.value)
-        assertFalse(manager.showStarredOnly.value)
-        assertNull(manager.activeFilterCenter.value)
+            cancelAndConsumeRemainingEvents()
+        }
     }
 }

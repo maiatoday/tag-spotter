@@ -58,4 +58,20 @@ class LocationUtilsTest {
         assertEquals("5km", LocationUtils.getRadiusLabel(5000.0))
         assertEquals("50km", LocationUtils.getRadiusLabel(50000.0))
     }
+
+    @Test
+    fun testFilterCenterDisplayNames() {
+        val gps = FilterCenter.GPS(45.0, 9.0)
+        assertEquals("Near Me", gps.displayName)
+        assertEquals(45.0, gps.latitude)
+        assertEquals(9.0, gps.longitude)
+
+        val home = FilterCenter.HomeCity("Milan", 45.4642, 9.1899)
+        assertEquals("Home (Milan)", home.displayName)
+        assertEquals("Milan", home.cityName)
+
+        val focus = FilterCenter.FocusCity("London", 51.5074, -0.1278)
+        assertEquals("London", focus.displayName)
+        assertEquals("London", focus.cityName)
+    }
 }

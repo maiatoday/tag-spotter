@@ -518,6 +518,34 @@ class GalleryViewModelTest {
         assertEquals(45.1111, center.latitude, 0.0001)
         assertEquals(9.2222, center.longitude, 0.0001)
     }
+
+    @Test
+    fun sourceFilteringWithTurbine() = runTest {
+        val spot1 = Spot(id = 1L, latitude = 1.0, longitude = 2.0, createdAt = 1000L, description = "A", tags = emptyList(), category = "graffiti", status = "active", isImported = false)
+        val spot2 = Spot(id = 2L, latitude = 3.0, longitude = 4.0, createdAt = 2000L, description = "B", tags = emptyList(), category = "sculpture", status = "active", isImported = true)
+        repository.setSpots(listOf(SpotDetails(spot1, emptyList(), emptyList()), SpotDetails(spot2, emptyList(), emptyList())))
+
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+
+        viewModel.spots.test {
+            assertEquals(2, awaitItem().size)
+
+            viewModel.selectSource("My Spots")
+            val mySpots = awaitItem()
+            assertEquals(1, mySpots.size)
+            assertEquals(1L, mySpots[0].spot.id)
+
+            viewModel.selectSource("Imported")
+            val importedSpots = awaitItem()
+            assertEquals(1, importedSpots.size)
+            assertEquals(2L, importedSpots[0].spot.id)
+
+            viewModel.selectSource("All")
+            assertEquals(2, awaitItem().size)
+
+            cancelAndConsumeRemainingEvents()
+        }
+    }
 }
 
 open class FakeSyncManager : SyncManager {
