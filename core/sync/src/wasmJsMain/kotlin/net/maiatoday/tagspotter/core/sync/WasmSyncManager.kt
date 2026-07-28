@@ -36,6 +36,8 @@ external fun webStorageGetDownloadUrl(
     imageUuid: String,
     onSuccess: (String) -> Unit,
     onFailure: (String) -> Unit
+)
+
 external fun webFirestoreDeleteSpot(
     userId: String,
     spotUuid: String,
@@ -128,15 +130,16 @@ class WasmSyncManager(
                     coroutineScope.launch {
                         try {
                             val cloudDetail = Json.decodeFromString(SpotDetails.serializer(), spotJson)
-                            val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail)
                             val localSpots = repository.getAllSpots().first()
-                            val localMatch = localSpots.find { it.spot.uuid == resolvedDetail.spot.uuid }
+                            val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
+                            val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail, localMatch)
 
                             if (localMatch == null) {
                                 repository.saveSyncedSpot(resolvedDetail)
                             } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
                                        resolvedDetail.images.size != localMatch.images.size ||
-                                       resolvedDetail.notes.size != localMatch.notes.size) {
+                                       resolvedDetail.notes.size != localMatch.notes.size ||
+                                       localMatch.images.any { it.thumbnailPath != resolvedDetail.images.find { r -> r.uuid == it.uuid }?.thumbnailPath }) {
                                 repository.saveSyncedSpot(resolvedDetail)
                             }
                         } catch (e: Exception) {
@@ -226,9 +229,12 @@ class WasmSyncManager(
         }
     }
 
-    private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
+    private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails, localMatch: SpotDetails? = null): SpotDetails {
         val updatedImages = cloudDetail.images.map { image ->
-            if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+            val existingLocalImage = localMatch?.images?.find { it.uuid == image.uuid }
+            val existingHttpUrl = if (existingLocalImage?.thumbnailPath?.startsWith("http") == true) existingLocalImage.thumbnailPath else ""
+
+            if (image.uuid.isNotEmpty() && !image.thumbnailPath.startsWith("http") && !image.thumbnailPath.startsWith("data:")) {
                 try {
                     val downloadUrl = suspendCancellableCoroutine<String> { continuation ->
                         webStorageGetDownloadUrl(
@@ -236,19 +242,35 @@ class WasmSyncManager(
                             imageUuid = image.uuid,
                             onSuccess = { url -> if (continuation.isActive) continuation.resume(url) },
                             onFailure = { err ->
-                                println("Failed to resolve WASM remote thumbnail: $err")
+                                println("Failed to resolve WASM remote thumbnail for ${image.uuid}: $err")
                                 if (continuation.isActive) continuation.resume("")
                             }
                         )
                     }
                     if (downloadUrl.isNotEmpty()) {
-                        image.copy(thumbnailPath = downloadUrl)
+                        image.copy(
+                            thumbnailPath = downloadUrl,
+                            imagePath = if (image.imagePath.isEmpty() || (!image.imagePath.startsWith("http") && !image.imagePath.startsWith("data:"))) downloadUrl else image.imagePath
+                        )
+                    } else if (existingHttpUrl.isNotEmpty()) {
+                        image.copy(
+                            thumbnailPath = existingHttpUrl,
+                            imagePath = if (image.imagePath.isEmpty() || (!image.imagePath.startsWith("http") && !image.imagePath.startsWith("data:"))) existingHttpUrl else image.imagePath
+                        )
                     } else {
-                        image
+                        val fallbackUrl = "https://firebasestorage.googleapis.com/v0/b/tagspotter-d58b1.firebasestorage.app/o/users%2F$userId%2Fthumbnails%2F${image.uuid}.jpg?alt=media"
+                        image.copy(
+                            thumbnailPath = fallbackUrl,
+                            imagePath = if (image.imagePath.isEmpty() || (!image.imagePath.startsWith("http") && !image.imagePath.startsWith("data:"))) fallbackUrl else image.imagePath
+                        )
                     }
                 } catch (e: Exception) {
                     println("Error resolving remote thumbnail for ${image.uuid}: ${e.message}")
-                    image
+                    if (existingHttpUrl.isNotEmpty()) {
+                        image.copy(thumbnailPath = existingHttpUrl)
+                    } else {
+                        image
+                    }
                 }
             } else {
                 image

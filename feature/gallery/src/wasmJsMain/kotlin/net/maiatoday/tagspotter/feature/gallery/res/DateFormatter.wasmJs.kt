@@ -4,6 +4,7 @@ package net.maiatoday.tagspotter.feature.gallery.res
 private fun formatJsDate(timestamp: Double, pattern: String): String = js("""
     (function(ts, pat) {
         var d = new Date(ts);
+        if (isNaN(d.getTime())) return "";
         var monthsShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         var monthsFull = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         
@@ -11,29 +12,28 @@ private fun formatJsDate(timestamp: Double, pattern: String): String = js("""
         var min = d.getMinutes();
         var minutes = min < 10 ? '0' + min : '' + min;
         var ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-        var hoursStr = hours < 10 ? '0' + hours : '' + hours;
+        var h12 = hours % 12;
+        h12 = h12 ? h12 : 12;
+        var hoursStr = h12 < 10 ? '0' + h12 : '' + h12;
         
         var day = d.getDate();
         var dayStr = day < 10 ? '0' + day : '' + day;
-        
-        var res = pat;
-        if (res.indexOf("MMMM") !== -1) {
-            res = res.replace("MMMM", monthsFull[d.getMonth()]);
-        } else if (res.indexOf("MMM") !== -1) {
-            res = res.replace("MMM", monthsShort[d.getMonth()]);
-        } else if (res.indexOf("MM") !== -1) {
-            var m = d.getMonth() + 1;
-            var mStr = m < 10 ? '0' + m : '' + m;
-            res = res.replace("MM", mStr);
-        }
-        res = res.replace("dd", dayStr);
-        res = res.replace("yyyy", "" + d.getFullYear());
-        res = res.replace("hh", hoursStr);
-        res = res.replace("mm", minutes);
-        res = res.replace("a", ampm);
-        return res;
+        var monthNum = d.getMonth() + 1;
+        var monthStr = monthNum < 10 ? '0' + monthNum : '' + monthNum;
+
+        return pat.replace(/MMMM|MMM|MM|dd|yyyy|hh|mm|\ba\b|a/g, function(match) {
+            switch (match) {
+                case 'MMMM': return monthsFull[d.getMonth()];
+                case 'MMM': return monthsShort[d.getMonth()];
+                case 'MM': return monthStr;
+                case 'dd': return dayStr;
+                case 'yyyy': return '' + d.getFullYear();
+                case 'hh': return hoursStr;
+                case 'mm': return minutes;
+                case 'a': return ampm;
+                default: return match;
+            }
+        });
     })(timestamp, pattern)
 """)
 

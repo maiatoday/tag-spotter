@@ -1,5 +1,6 @@
 package net.maiatoday.tagspotter.core.sync
 
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
@@ -118,12 +119,48 @@ class JvmSyncManager(
             unsyncedSpots.forEach { localDetail ->
                 val uuid = localDetail.spot.uuid
                 
+                // Upload thumbnail attachments if any and if local FIRST
+                val sanitizedImages = localDetail.images.map { image ->
+                    val path = image.thumbnailPath.ifEmpty { image.imagePath }
+                    var resolvedUrl = if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+                    
+                    if (path.isNotEmpty() && !path.startsWith("http")) {
+                        try {
+                            val bytes = readBytesFromFile(path)
+                            if (bytes != null) {
+                                val objectPath = "users/$userId/thumbnails/${image.uuid}.jpg"
+                                val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
+                                val storageUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o?uploadType=media&name=$encodedPath"
+                                val storageResponse = client.authenticatedClient.post(storageUrl) {
+                                    contentType(ContentType.Image.JPEG)
+                                    setBody(bytes)
+                                }
+                                if (storageResponse.status.value in 200..299) {
+                                    resolvedUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/users%2F$userId%2Fthumbnails%2F${image.uuid}.jpg?alt=media"
+                                } else {
+                                    println("Storage upload failed for ${image.uuid}: ${storageResponse.bodyAsText()}")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("Failed to upload thumbnail ${image.uuid}: ${e.message}")
+                        }
+                    }
+                    
+                    val finalUrl = if (resolvedUrl.isNotEmpty()) resolvedUrl else "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/users%2F$userId%2Fthumbnails%2F${image.uuid}.jpg?alt=media"
+                    image.copy(
+                        thumbnailPath = if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else finalUrl,
+                        imagePath = if (image.imagePath.startsWith("http")) image.imagePath else finalUrl
+                    )
+                }
+
+                val detailToPush = localDetail.copy(images = sanitizedImages)
+                
                 // Convert SpotDetails to standard JSON, then to Firestore structured value format
-                val jsonElement = client.jsonConfig.encodeToJsonElement(SpotDetails.serializer(), localDetail)
+                val jsonElement = client.jsonConfig.encodeToJsonElement(SpotDetails.serializer(), detailToPush)
                 val firestoreFields = jsonElement.jsonObject.toFirestoreValue()["mapValue"]?.jsonObject?.get("fields")?.jsonObject 
                     ?: throw Exception("Invalid firestore serialization map fields")
 
-                // Upload local metadata to Firestore
+                // Upload local metadata with sanitized HTTPS URLs to Firestore
                 val docUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/users/$userId/spots/$uuid"
                 val patchResponse = client.authenticatedClient.patch(docUrl) {
                     contentType(ContentType.Application.Json)
@@ -136,11 +173,18 @@ class JvmSyncManager(
                     println("Failed to push spot metadata for $uuid: ${patchResponse.bodyAsText()}")
                 }
 
-                // Upload thumbnail attachments if any and if local
+                // Mark as successfully synced locally
+                repository.markSpotAsSynced(uuid)
+            }
+
+            // Ensure all local spots with local image files have uploaded their thumbnails/images to Firebase Storage
+            val allLocalSpots = repository.getAllSpots().first()
+            allLocalSpots.forEach { localDetail ->
                 localDetail.images.forEach { image ->
-                    if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                    val path = image.thumbnailPath.ifEmpty { image.imagePath }
+                    if (path.isNotEmpty() && !path.startsWith("http")) {
                         try {
-                            val bytes = readBytesFromFile(image.thumbnailPath)
+                            val bytes = readBytesFromFile(path)
                             if (bytes != null) {
                                 val objectPath = "users/$userId/thumbnails/${image.uuid}.jpg"
                                 val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
@@ -149,7 +193,9 @@ class JvmSyncManager(
                                     contentType(ContentType.Image.JPEG)
                                     setBody(bytes)
                                 }
-                                if (storageResponse.status.value !in 200..299) {
+                                if (storageResponse.status.value in 200..299) {
+                                    println("Successfully uploaded thumbnail/image to Storage for ${image.uuid}")
+                                } else {
                                     println("Storage upload failed for ${image.uuid}: ${storageResponse.bodyAsText()}")
                                 }
                             }
@@ -158,9 +204,6 @@ class JvmSyncManager(
                         }
                     }
                 }
-
-                // Mark as successfully synced locally
-                repository.markSpotAsSynced(uuid)
             }
 
             // 2. Pull stage: fetch remote spots and apply Last-Write-Wins

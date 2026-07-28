@@ -159,7 +159,8 @@ class NonWebSyncManager(
                                     repository.saveSyncedSpot(resolvedDetail)
                                 } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
                                            resolvedDetail.images.size != localMatch.images.size ||
-                                           resolvedDetail.notes.size != localMatch.notes.size) {
+                                           resolvedDetail.notes.size != localMatch.notes.size ||
+                                           localMatch.images.any { it.thumbnailPath != resolvedDetail.images.find { r -> r.uuid == it.uuid }?.thumbnailPath }) {
                                     platformLog(TAG, "Realtime: Updating existing spot to sync edits or heal missing items: ${resolvedDetail.spot.uuid}")
                                     repository.saveSyncedSpot(resolvedDetail)
                                 }
