@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import app.cash.turbine.test
 
+import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,32 @@ class FakeAuthService : AuthService {
     override suspend fun signInWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
     override suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
     override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = Result.success(Unit)
-    override suspend fun signOut() {}
+    override suspend fun signOut() {
+        _currentUserFlow.value = null
+    }
+
+    fun setUser(user: FirebaseUserWrapper?) {
+        _currentUserFlow.value = user
+    }
+}
+
+class FakeSyncManager : SyncManager {
+    private val _isSyncing = MutableStateFlow(false)
+    override val isSyncing = _isSyncing.asStateFlow()
+    var startRealtimeSyncUser: String? = null
+    var stopRealtimeSyncCalled = false
+
+    override suspend fun syncNow() {}
+    override fun startRealtimeSync(userId: String) {
+        startRealtimeSyncUser = userId
+    }
+    override fun stopRealtimeSync() {
+        stopRealtimeSyncCalled = true
+    }
+    override suspend fun deleteSpot(uuid: String) {}
+    override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<net.maiatoday.tagspotter.core.model.SpotDetails>): String = "CODE"
+    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack = error("Not implemented")
+    override suspend fun saveImportedPack(pack: net.maiatoday.tagspotter.core.model.SharedPack) {}
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -51,6 +77,7 @@ class MainViewModelTest {
     private val locationProvider = FakeLocationProvider()
     private val photoProcessor = FakePhotoProcessor()
     private val authService = FakeAuthService()
+    private val syncManager = FakeSyncManager()
 
     @Test
     fun updateLocationPermission_updatesState() = runTest {
@@ -60,6 +87,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -80,6 +108,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -104,6 +133,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -142,6 +172,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -173,6 +204,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -201,6 +233,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
 
@@ -227,6 +260,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
         photoProcessor.tempCameraFileException = Exception("Camera fail")
@@ -248,6 +282,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
         val bytes = byteArrayOf(1, 2, 3)
@@ -268,6 +303,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
         photoProcessor.tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
@@ -292,6 +328,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
         photoProcessor.tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
@@ -314,6 +351,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
         photoProcessor.extractMetadataException = Exception("Metadata fail")
@@ -334,6 +372,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
         spotRepository.importPackCountToReturn = 5
@@ -354,6 +393,7 @@ class MainViewModelTest {
             settingsRepository,
             spotRepository,
             authService,
+            syncManager,
             UnconfinedTestDispatcher(testScheduler)
         )
         spotRepository.importPackException = Exception("Import failed")
@@ -364,5 +404,29 @@ class MainViewModelTest {
         
         assertNotNull(caught)
         assertEquals("Import failed", caught?.message)
+    }
+
+    @Test
+    fun currentUserFlow_triggersRealtimeSync() = runTest {
+        authService.setUser(FirebaseUserWrapper("user_123", "user@test.com", "Test User"))
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            syncManager,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("user_123", spotRepository.activeUid)
+        assertEquals("user_123", syncManager.startRealtimeSyncUser)
+
+        authService.signOut()
+        testScheduler.advanceUntilIdle()
+
+        assertNull(spotRepository.activeUid)
+        assertTrue(syncManager.stopRealtimeSyncCalled)
     }
 }

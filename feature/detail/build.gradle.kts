@@ -37,6 +37,7 @@ kotlin {
                 implementation(project(":core:ai"))
                 implementation(project(":core:ui"))
                 implementation(project(":core:location"))
+                implementation(project(":core:sync"))
                 
                 implementation(compose.runtime)
                 implementation(compose.foundation)

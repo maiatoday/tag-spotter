@@ -24,6 +24,7 @@ import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.ai.AiRecognitionService
 import net.maiatoday.tagspotter.core.ai.AiSuggestion
 import net.maiatoday.tagspotter.core.location.WearSyncManager
+import net.maiatoday.tagspotter.core.sync.SyncManager
 
 class DetailViewModel(
     private val spotId: Long,
@@ -32,6 +33,7 @@ class DetailViewModel(
     private val aiRecognitionService: AiRecognitionService,
     private val secretsProvider: SecretsProvider,
     private val wearSyncManager: WearSyncManager,
+    private val syncManager: SyncManager,
     draftImagePath: String? = null,
     draftThumbnailPath: String? = null,
     draftLatitude: Double? = null,
@@ -454,6 +456,7 @@ class DetailViewModel(
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.deleteSpot(spotDetails)
+                syncManager.deleteSpot(spotDetails.spot.uuid)
                 onDeleted()
             }
         }

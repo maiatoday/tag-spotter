@@ -146,10 +146,12 @@ class NonWebSyncManager(
                     .collect { querySnapshot ->
                         platformLog(TAG, "Received realtime snapshot update with ${querySnapshot.documents.size} documents")
                         val localSpots = repository.getAllSpots().first()
+                        val remoteUuids = mutableSetOf<String>()
                         querySnapshot.documents.forEach { doc ->
                             try {
                                 val cloudDetail = doc.data(SpotDetails.serializer())
                                 val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail)
+                                remoteUuids.add(resolvedDetail.spot.uuid)
                                 val localMatch = localSpots.find { it.spot.uuid == resolvedDetail.spot.uuid }
 
                                 if (localMatch == null) {
@@ -163,6 +165,14 @@ class NonWebSyncManager(
                                 }
                             } catch (e: Exception) {
                                 platformLogError(TAG, "Error parsing real-time spot document from doc ID: ${doc.id}", e)
+                            }
+                        }
+
+                        // Remove local synced spots that were deleted remotely
+                        localSpots.filter { it.spot.ownerUid == userId && it.spot.isSynced }.forEach { localSpot ->
+                            if (localSpot.spot.uuid !in remoteUuids) {
+                                platformLog(TAG, "Spot ${localSpot.spot.uuid} deleted remotely; removing locally.")
+                                repository.deleteSpot(localSpot)
                             }
                         }
                     }
@@ -181,6 +191,16 @@ class NonWebSyncManager(
         realtimeJob?.cancel()
         realtimeJob = null
         activeUserId = null
+    }
+
+    override suspend fun deleteSpot(uuid: String) {
+        val userId = activeUserId ?: return
+        try {
+            firestore?.collection("users")?.document(userId)?.collection("spots")?.document(uuid)?.delete()
+            platformLog(TAG, "Deleted remote spot $uuid from Firestore")
+        } catch (e: Exception) {
+            platformLogError(TAG, "Error deleting remote spot $uuid from Firestore", e)
+        }
     }
 
     private fun generateShareCode(): String {

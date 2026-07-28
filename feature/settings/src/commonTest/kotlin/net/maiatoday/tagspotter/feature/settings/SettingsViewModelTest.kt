@@ -103,6 +103,8 @@ class FakeSyncManager : SyncManager {
         stopRealtimeSyncCalled = true
     }
 
+    override suspend fun deleteSpot(uuid: String) {}
+
     override suspend fun sharePack(
         title: String,
         description: String,

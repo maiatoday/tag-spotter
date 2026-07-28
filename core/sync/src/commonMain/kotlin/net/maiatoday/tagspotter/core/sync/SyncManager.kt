@@ -9,6 +9,7 @@ interface SyncManager {
     suspend fun syncNow()
     fun startRealtimeSync(userId: String)
     fun stopRealtimeSync()
+    suspend fun deleteSpot(uuid: String)
 
     suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String
     suspend fun importPackByCode(code: String): SharedPack

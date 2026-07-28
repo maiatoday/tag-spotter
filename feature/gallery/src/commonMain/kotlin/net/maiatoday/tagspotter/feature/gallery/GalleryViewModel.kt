@@ -301,6 +301,7 @@ class GalleryViewModel(
             ids.forEach { id ->
                 allSpots.find { it.spot.id == id }?.let { detail ->
                     repository.deleteSpot(detail)
+                    syncManager.deleteSpot(detail.spot.uuid)
                 }
             }
             onCompleted()

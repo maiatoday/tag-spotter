@@ -49,6 +49,7 @@ class DetailViewModelTest {
     private val aiRecognitionService = FakeAiRecognitionService()
     private val secretsProvider = FakeSecretsProvider()
     private val wearSyncManager = FakeWearSyncManager()
+    private val syncManager = FakeSyncManager()
 
     @Test
     fun loadSpotDetailsAndUpdatesWorkCorrectly() = runTest {
@@ -74,7 +75,8 @@ class DetailViewModelTest {
             settingsRepository,
             aiRecognitionService,
             secretsProvider,
-            wearSyncManager
+            wearSyncManager,
+            syncManager
         )
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
@@ -194,7 +196,8 @@ class DetailViewModelTest {
             settingsRepository,
             aiRecognitionService,
             secretsProvider,
-            wearSyncManager
+            wearSyncManager,
+            syncManager
         )
 
         // Collect StateFlow in backgroundScope
@@ -239,7 +242,8 @@ class DetailViewModelTest {
             settingsRepository,
             aiRecognitionService,
             secretsProvider,
-            wearSyncManager
+            wearSyncManager,
+            syncManager
         )
 
         // Collect spotDetails StateFlow in backgroundScope
@@ -301,7 +305,8 @@ class DetailViewModelTest {
             settingsRepository,
             aiRecognitionService,
             secretsProvider,
-            wearSyncManager
+            wearSyncManager,
+            syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -328,7 +333,8 @@ class DetailViewModelTest {
             settingsRepository,
             aiRecognitionService,
             secretsProvider,
-            wearSyncManager
+            wearSyncManager,
+            syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -364,7 +370,8 @@ class DetailViewModelTest {
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -386,7 +393,8 @@ class DetailViewModelTest {
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -426,7 +434,8 @@ class DetailViewModelTest {
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -482,7 +491,8 @@ class DetailViewModelTest {
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -510,7 +520,8 @@ class DetailViewModelTest {
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         viewModel.wikiSearchState.test {
@@ -555,7 +566,8 @@ class DetailViewModelTest {
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         viewModel.wikiSearchState.test {
@@ -599,7 +611,8 @@ class DetailViewModelTest {
             settingsRepository = settingsRepository,
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
-            wearSyncManager = wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -624,7 +637,8 @@ class DetailViewModelTest {
             settingsRepository,
             aiRecognitionService,
             secretsProvider,
-            wearSyncManager
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -644,7 +658,7 @@ class DetailViewModelTest {
     fun identifyArtist_ResponseStoppedException_setsSafetyBlocked() = runTest {
         class ResponseStoppedException : Exception("stopped")
         aiRecognitionService.identifyArtistException = ResponseStoppedException()
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -656,7 +670,7 @@ class DetailViewModelTest {
     fun identifyArtist_ServerException_setsQuotaExceeded() = runTest {
         class ServerException : Exception("quota")
         aiRecognitionService.identifyArtistException = ServerException()
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -668,7 +682,7 @@ class DetailViewModelTest {
     fun identifyArtist_InvalidAPIKeyException_setsInvalidKey() = runTest {
         class InvalidAPIKeyException : Exception("API key")
         aiRecognitionService.identifyArtistException = InvalidAPIKeyException()
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -679,7 +693,7 @@ class DetailViewModelTest {
     @Test
     fun identifyArtist_noConnectionException_setsGenericError() = runTest {
         aiRecognitionService.identifyArtistException = Exception("Unable to resolve host")
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -690,7 +704,7 @@ class DetailViewModelTest {
 
     @Test
     fun draftModeUpdates_correctlyPropagatesToDraftDetails() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
@@ -719,7 +733,7 @@ class DetailViewModelTest {
 
     @Test
     fun addAndDeleteImage_draftMode_worksCorrectly() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
@@ -739,7 +753,7 @@ class DetailViewModelTest {
 
     @Test
     fun saveSpot_draftMode_savesMultipleImages() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
@@ -761,4 +775,15 @@ class DetailViewModelTest {
 private class FakeWearSyncManager : WearSyncManager {
     override fun shareSpotToWatch(spotDetails: SpotDetails) {}
     override fun sendSpotPhoto(spotId: Long, imagePath: String) {}
+}
+
+private class FakeSyncManager : net.maiatoday.tagspotter.core.sync.SyncManager {
+    override val isSyncing = kotlinx.coroutines.flow.MutableStateFlow(false)
+    override suspend fun syncNow() {}
+    override fun startRealtimeSync(userId: String) {}
+    override fun stopRealtimeSync() {}
+    override suspend fun deleteSpot(uuid: String) {}
+    override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String = ""
+    override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack = error("not implemented")
+    override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {}
 }

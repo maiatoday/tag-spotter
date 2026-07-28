@@ -47,6 +47,7 @@ class MainViewModel(
     private val settingsRepository: SettingsRepository,
     private val spotRepository: SpotRepository,
     private val authService: net.maiatoday.tagspotter.core.sync.AuthService,
+    private val syncManager: net.maiatoday.tagspotter.core.sync.SyncManager,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
 
@@ -54,6 +55,11 @@ class MainViewModel(
         viewModelScope.launch {
             authService.currentUserFlow.collect { user ->
                 spotRepository.activeUid = user?.uid
+                if (user != null) {
+                    syncManager.startRealtimeSync(user.uid)
+                } else {
+                    syncManager.stopRealtimeSync()
+                }
             }
         }
     }

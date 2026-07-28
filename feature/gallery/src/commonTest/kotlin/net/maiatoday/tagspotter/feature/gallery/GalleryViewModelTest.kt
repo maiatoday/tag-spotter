@@ -553,6 +553,7 @@ open class FakeSyncManager : SyncManager {
     open override suspend fun syncNow() {}
     override fun startRealtimeSync(userId: String) {}
     override fun stopRealtimeSync() {}
+    open override suspend fun deleteSpot(uuid: String) {}
     open override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String = ""
     open override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack = error("not implemented")
     open override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {}

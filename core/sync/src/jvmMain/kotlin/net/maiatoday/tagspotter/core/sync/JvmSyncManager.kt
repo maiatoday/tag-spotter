@@ -173,6 +173,7 @@ class JvmSyncManager(
                 val documents = responseJson["documents"]?.jsonArray
                 if (documents != null) {
                     val localSpots = repository.getAllSpots().first()
+                    val remoteUuids = mutableSetOf<String>()
                     documents.forEach { docElement ->
                         try {
                             val docObj = docElement.jsonObject
@@ -182,6 +183,7 @@ class JvmSyncManager(
                                 val standardJsonObj = JsonObject(standardFields)
                                 val cloudDetail = client.jsonConfig.decodeFromJsonElement(SpotDetails.serializer(), standardJsonObj)
                                 val updatedCloudDetail = resolveRemoteThumbnails(userId, cloudDetail)
+                                remoteUuids.add(updatedCloudDetail.spot.uuid)
                                 
                                 val localMatch = localSpots.find { it.spot.uuid == updatedCloudDetail.spot.uuid }
                                 if (localMatch == null) {
@@ -196,6 +198,14 @@ class JvmSyncManager(
                             println("Error parsing pulled spot: ${e.message}")
                         }
                     }
+
+                    // Remove local synced spots that were deleted remotely
+                    localSpots.filter { it.spot.ownerUid == userId && it.spot.isSynced }.forEach { localSpot ->
+                        if (localSpot.spot.uuid !in remoteUuids) {
+                            println("Spot ${localSpot.spot.uuid} was deleted remotely; removing locally.")
+                            repository.deleteSpot(localSpot)
+                        }
+                    }
                 }
             } else if (getResponse.status.value == 404) {
                 println("No spots collection found in Firestore yet (404).")
@@ -207,6 +217,21 @@ class JvmSyncManager(
             println("Error during JvmSyncManager syncNow: ${e.message}")
         } finally {
             _isSyncing.value = false
+        }
+    }
+
+    override suspend fun deleteSpot(uuid: String) {
+        val userId = activeUserId ?: return
+        try {
+            val docUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/users/$userId/spots/$uuid"
+            val response = client.authenticatedClient.delete(docUrl)
+            if (response.status.value in 200..299) {
+                println("Successfully deleted remote spot $uuid from Firestore")
+            } else {
+                println("Failed to delete remote spot $uuid from Firestore: ${response.status.value}")
+            }
+        } catch (e: Exception) {
+            println("Error deleting remote spot $uuid: ${e.message}")
         }
     }
 

@@ -23,6 +23,7 @@ val detailModule = module {
             aiRecognitionService = get(),
             secretsProvider = get(),
             wearSyncManager = get(),
+            syncManager = get(),
             draftImagePath = draft?.imagePath,
             draftThumbnailPath = draft?.thumbnailPath,
             draftLatitude = draft?.latitude,

@@ -36,6 +36,11 @@ external fun webStorageGetDownloadUrl(
     imageUuid: String,
     onSuccess: (String) -> Unit,
     onFailure: (String) -> Unit
+external fun webFirestoreDeleteSpot(
+    userId: String,
+    spotUuid: String,
+    onSuccess: () -> Unit,
+    onFailure: (String) -> Unit
 )
 
 class WasmSyncManager(
@@ -154,6 +159,18 @@ class WasmSyncManager(
     override fun stopRealtimeSync() {
         activeUserId = null
         isListening = false
+    }
+
+    override suspend fun deleteSpot(uuid: String) {
+        val userId = activeUserId ?: return
+        suspendCancellableCoroutine { continuation ->
+            webFirestoreDeleteSpot(
+                userId = userId,
+                spotUuid = uuid,
+                onSuccess = { continuation.resume(Unit) },
+                onFailure = { continuation.resume(Unit) }
+            )
+        }
     }
 
     private fun generateShareCode(): String {
