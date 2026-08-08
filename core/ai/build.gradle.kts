@@ -43,7 +43,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(project.dependencies.platform(libs.firebase.bom))
-            implementation(libs.firebase.vertexai)
+            implementation(libs.firebase.ai)
             implementation(libs.firebase.appcheck)
         }
         

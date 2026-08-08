@@ -1,7 +1,5 @@
 package net.maiatoday.tagspotter.feature.detail
 
-import net.maiatoday.tagspotter.core.database.epochMillis
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -10,20 +8,19 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
-import net.maiatoday.tagspotter.core.settings.SecretsProvider
-import net.maiatoday.tagspotter.core.settings.SettingsRepository
+import net.maiatoday.tagspotter.core.ai.AiRecognitionService
+import net.maiatoday.tagspotter.core.ai.AiSuggestion
+import net.maiatoday.tagspotter.core.database.SpotRepository
+import net.maiatoday.tagspotter.core.database.epochMillis
+import net.maiatoday.tagspotter.core.location.WearSyncManager
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
-import net.maiatoday.tagspotter.core.database.SpotRepository
-import net.maiatoday.tagspotter.core.ai.AiRecognitionService
-import net.maiatoday.tagspotter.core.ai.AiSuggestion
-import net.maiatoday.tagspotter.core.location.WearSyncManager
+import net.maiatoday.tagspotter.core.settings.SecretsProvider
+import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.sync.SyncManager
 
 class DetailViewModel(

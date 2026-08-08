@@ -2,10 +2,10 @@ package net.maiatoday.tagspotter.core.ai
 
 import android.graphics.BitmapFactory
 import com.google.firebase.Firebase
-import com.google.firebase.vertexai.vertexAI
-import com.google.firebase.vertexai.type.content
-import com.google.firebase.vertexai.type.generationConfig
-import com.google.firebase.vertexai.type.Schema
+import com.google.firebase.ai.*
+import com.google.firebase.ai.type.content
+import com.google.firebase.ai.type.generationConfig
+import com.google.firebase.ai.type.Schema
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
@@ -39,8 +39,8 @@ class AndroidFirebaseAiService(
 
         val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size) ?: return null
 
-        // 2. Initialize Firebase Vertex AI with responseSchema
-        val model = Firebase.vertexAI.generativeModel(
+        // 2. Initialize Firebase AI Logic with responseSchema
+        val model = Firebase.ai.generativeModel(
             modelName = "gemini-2.5-flash",
             generationConfig = generationConfig {
                 responseMimeType = "application/json"
@@ -156,7 +156,7 @@ class AndroidFirebaseAiService(
         category: String,
         artists: List<String>
     ): String? {
-        val model = Firebase.vertexAI.generativeModel(
+        val model = Firebase.ai.generativeModel(
             modelName = "gemini-2.5-flash",
             generationConfig = generationConfig {
                 responseMimeType = "application/json"

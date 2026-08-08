@@ -7,6 +7,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import kotlin.time.Duration.Companion.milliseconds
 
 class NonWebSyncManager(
     private val repository: SpotRepository
@@ -51,7 +52,7 @@ class NonWebSyncManager(
         if (currentFirestore == null || currentStorage == null) {
             platformLog(TAG, "Skipping real sync on Desktop JVM (Simulating successful mock sync)")
             _isSyncing.value = true
-            delay(1000)
+            delay(1000.milliseconds)
             _isSyncing.value = false
             return
         }

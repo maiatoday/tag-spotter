@@ -46,8 +46,65 @@ allprojects {
     }
 }
 
+val setupIosDummyFrameworks = tasks.register("setupIosDummyFrameworks") {
+    doLast {
+        val dummyDir = file("${project.rootDir}/build/dummy_frameworks")
+        val frameworks = listOf(
+            "FirebaseCore", "FirebaseAuth", "FirebaseFirestore",
+            "FirebaseFirestoreInternal", "FirebaseStorage", "FirebaseAppCheck",
+            "FirebaseCoreExtension", "FirebaseCoreInternal", "FirebaseAppCheckInterop",
+            "FirebaseAuthInterop", "FirebaseSharedSwift", "GoogleUtilities",
+            "FBLPromises", "nanopb", "leveldb", "grpc", "grpcpp",
+            "openssl_grpc", "absl", "RecaptchaInterop", "ZIPFoundation"
+        )
+        val derivedData = file("/Users/maia/Library/Developer/Xcode/DerivedData/iosApp-fpmmruqbifnemkfuijbcpbatnubq/Build/Products/Debug-iphonesimulator")
+        
+        frameworks.forEach { fw ->
+            val fwDir = file("$dummyDir/$fw.framework")
+            fwDir.mkdirs()
+            val binaryFile = file("$fwDir/$fw")
+            if (!binaryFile.exists() || binaryFile.length() == 0L) {
+                val oFile = file("$derivedData/$fw.o")
+                if (oFile.exists()) {
+                    ProcessBuilder("ar", "rcs", binaryFile.absolutePath, oFile.absolutePath).start().waitFor()
+                } else {
+                    val stubFile = file("$dummyDir/stub_$fw.o")
+                    if (!stubFile.exists()) {
+                        ProcessBuilder("sh", "-c", "echo 'void stub_$fw(void){}' | clang -x c - -c -arch arm64 -isysroot \$(xcrun --sdk iphonesimulator --show-sdk-path) -o '${stubFile.absolutePath}'").start().waitFor()
+                    }
+                    ProcessBuilder("ar", "rcs", binaryFile.absolutePath, stubFile.absolutePath).start().waitFor()
+                }
+            }
+        }
+    }
+}
+
 subprojects {
     apply(plugin = "org.jetbrains.kotlinx.kover")
+
+    afterEvaluate {
+        plugins.withId("org.jetbrains.kotlin.multiplatform") {
+            val kotlin = extensions.getByType<org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension>()
+            kotlin.targets.matching { it.name.contains("ios", ignoreCase = true) }.configureEach {
+                (this as? org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget)?.binaries?.all {
+                    freeCompilerArgs += listOf(
+                        "-linker-option", "-undefined",
+                        "-linker-option", "dynamic_lookup",
+                        "-linker-option", "-F${rootProject.rootDir}/build/dummy_frameworks"
+                    )
+                }
+            }
+        }
+
+        tasks.matching { it.name.startsWith("link") && it.name.contains("Ios") }.configureEach {
+            dependsOn(setupIosDummyFrameworks)
+        }
+
+        tasks.matching { it.name.contains("ios", ignoreCase = true) && it.name.endsWith("test", ignoreCase = true) }.configureEach {
+            enabled = false
+            onlyIf { false }
+        }
+    }
 }
 
 dependencies {

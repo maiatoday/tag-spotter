@@ -28,7 +28,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.Test
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
 
@@ -766,9 +765,9 @@ class DetailViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertNotNull(savedId)
-        val savedSpot = repository.getSpotById(savedId!!).first()
+        val savedSpot = repository.getSpotById(savedId).first()
         assertNotNull(savedSpot)
-        assertEquals(2, savedSpot?.images?.size)
+        assertEquals(2, savedSpot.images.size)
     }
 }
 

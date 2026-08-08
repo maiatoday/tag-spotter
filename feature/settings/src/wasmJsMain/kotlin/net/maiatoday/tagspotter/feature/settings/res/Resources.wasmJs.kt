@@ -3,7 +3,7 @@ package net.maiatoday.tagspotter.feature.settings.res
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
-@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+@OptIn(ExperimentalWasmJsInterop::class)
 private fun webAlert(message: String): Unit = js("alert(message)")
 
 @Composable

@@ -6,7 +6,7 @@ import androidx.security.crypto.MasterKey
 import androidx.core.content.edit
 
 @Suppress("DEPRECATION")
-class AndroidSecureStorage(private val context: Context) : SecureStorage {
+class AndroidSecureStorage(context: Context) : SecureStorage {
     private val securePreferences = try {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

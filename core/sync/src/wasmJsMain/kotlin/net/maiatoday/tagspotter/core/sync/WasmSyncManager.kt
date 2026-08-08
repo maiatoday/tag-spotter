@@ -69,7 +69,7 @@ class WasmSyncManager(
                 val jsonString = Json.encodeToString(SpotDetails.serializer(), localDetail)
 
                 // Save metadata to Firestore
-                val saveSuccess = suspendCancellableCoroutine<Boolean> { continuation ->
+                val saveSuccess = suspendCancellableCoroutine { continuation ->
                     webFirestoreSaveSpot(
                         userId = userId,
                         spotUuid = uuid,
@@ -91,7 +91,7 @@ class WasmSyncManager(
                             } else {
                                 image.thumbnailPath
                             }
-                            suspendCancellableCoroutine<Unit> { continuation ->
+                            suspendCancellableCoroutine { continuation ->
                                 webStorageUploadThumbnail(
                                     userId = userId,
                                     imageUuid = image.uuid,
@@ -236,7 +236,7 @@ class WasmSyncManager(
 
             if (image.uuid.isNotEmpty() && !image.thumbnailPath.startsWith("http") && !image.thumbnailPath.startsWith("data:")) {
                 try {
-                    val downloadUrl = suspendCancellableCoroutine<String> { continuation ->
+                    val downloadUrl = suspendCancellableCoroutine { continuation ->
                         webStorageGetDownloadUrl(
                             userId = userId,
                             imageUuid = image.uuid,

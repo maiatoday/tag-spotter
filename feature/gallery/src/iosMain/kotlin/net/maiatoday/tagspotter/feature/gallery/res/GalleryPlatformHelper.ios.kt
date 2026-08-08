@@ -21,7 +21,7 @@ class IosGalleryPlatformHelper : GalleryPlatformHelper {
 
     private class DocumentPickerDelegate(
         private val onPicked: (String) -> Unit
-    ) : NSObject(), platform.UIKit.UIDocumentPickerDelegateProtocol {
+    ) : NSObject(), UIDocumentPickerDelegateProtocol {
         override fun documentPicker(controller: UIDocumentPickerViewController, didPickDocumentsAtURLs: List<*>) {
             val url = didPickDocumentsAtURLs.firstOrNull() as? platform.Foundation.NSURL
             url?.path?.let { onPicked(it) }
@@ -57,11 +57,11 @@ class IosGalleryPlatformHelper : GalleryPlatformHelper {
             )
             
             val url = platform.Foundation.NSURL.fileURLWithPath(uriString)
-            val activityController = platform.UIKit.UIActivityViewController(
+            val activityController = UIActivityViewController(
                 activityItems = listOf(url),
                 applicationActivities = null
             )
-            val window = platform.UIKit.UIApplication.sharedApplication.windows.firstOrNull() as? platform.UIKit.UIWindow
+            val window = UIApplication.sharedApplication.windows.firstOrNull() as? UIWindow
             val rootViewController = window?.rootViewController
             
             activityController.popoverPresentationController?.sourceView = rootViewController?.view
@@ -101,7 +101,7 @@ class IosGalleryPlatformHelper : GalleryPlatformHelper {
                     asCopy = true
                 )
                 picker.delegate = delegate
-                val window = UIApplication.sharedApplication.windows.firstOrNull() as? platform.UIKit.UIWindow
+                val window = UIApplication.sharedApplication.windows.firstOrNull() as? UIWindow
                 val rootViewController = window?.rootViewController
                 rootViewController?.presentViewController(picker, animated = true, completion = null)
             }

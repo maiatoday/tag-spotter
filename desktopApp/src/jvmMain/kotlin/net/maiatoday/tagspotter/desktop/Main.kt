@@ -1,7 +1,7 @@
 package net.maiatoday.tagspotter.desktop
 
+import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.res.useResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -53,7 +53,7 @@ fun main() =
             // Taskbar isn't supported or failed to set icon
         }
 
-        val icon = useResource("icon.png") { loadImageBitmap(it) }
+        val icon = useResource("icon.png") { it.readAllBytes().decodeToImageBitmap() }
 
         Window(
             onCloseRequest = ::exitApplication,

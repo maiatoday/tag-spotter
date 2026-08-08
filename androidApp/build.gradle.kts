@@ -123,7 +123,7 @@ dependencies {
 
   // Firebase
   implementation(platform(libs.firebase.bom))
-  implementation(libs.firebase.vertexai)
+  implementation(libs.firebase.ai)
   implementation(libs.firebase.appcheck)
   implementation(libs.firebase.appcheck.debug)
 

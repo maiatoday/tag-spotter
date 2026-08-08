@@ -22,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
@@ -59,8 +58,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.maiatoday.tagspotter.feature.settings.res.SettingsRes
-import net.maiatoday.tagspotter.feature.settings.res.stringResource
 import net.maiatoday.tagspotter.feature.settings.res.rememberToastLauncher
+import net.maiatoday.tagspotter.feature.settings.res.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 class SettingsStrings(

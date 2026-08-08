@@ -5,11 +5,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
-import platform.MapKit.*
 import platform.CoreLocation.CLLocationCoordinate2DMake
-import platform.darwin.NSObject
+import platform.MapKit.MKAnnotationProtocol
+import platform.MapKit.MKAnnotationView
+import platform.MapKit.MKCircle
+import platform.MapKit.MKCircleRenderer
+import platform.MapKit.MKCoordinateRegionMakeWithDistance
+import platform.MapKit.MKMapView
+import platform.MapKit.MKMapViewDelegateProtocol
+import platform.MapKit.MKOverlayProtocol
+import platform.MapKit.MKOverlayRenderer
+import platform.MapKit.MKPinAnnotationView
+import platform.MapKit.MKPointAnnotation
+import platform.MapKit.addOverlay
+import platform.MapKit.overlays
+import platform.MapKit.removeOverlays
 import platform.UIKit.UIColor
-import platform.CoreLocation.CLLocation
+import platform.darwin.NSObject
 
 @Composable
 actual fun SpotMapView(

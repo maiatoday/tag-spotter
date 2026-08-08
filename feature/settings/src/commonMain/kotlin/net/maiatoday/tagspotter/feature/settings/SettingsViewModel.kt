@@ -22,7 +22,7 @@ class SettingsViewModel(
     private val spotRepository: SpotRepository,
     private val authService: AuthService,
     private val syncManager: SyncManager,
-    private val aiRecognitionService: AiRecognitionService
+    aiRecognitionService: AiRecognitionService
 ) : ViewModel() {
     val isAiSupported: Boolean = aiRecognitionService.isSupported
 

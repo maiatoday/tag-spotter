@@ -14,10 +14,10 @@ import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import kotlin.time.Duration.Companion.milliseconds
 
 fun JsonElement.toFirestoreValue(): JsonObject {
-    val element = this
-    return when (element) {
+    return when (val element = this) {
         is JsonNull -> buildJsonObject { put("nullValue", JsonNull) }
         is JsonPrimitive -> {
             if (element.isString) {
@@ -146,7 +146,7 @@ class JvmSyncManager(
                         }
                     }
                     
-                    val finalUrl = if (resolvedUrl.isNotEmpty()) resolvedUrl else "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/users%2F$userId%2Fthumbnails%2F${image.uuid}.jpg?alt=media"
+                    val finalUrl = resolvedUrl.ifEmpty { "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/users%2F$userId%2Fthumbnails%2F${image.uuid}.jpg?alt=media" }
                     image.copy(
                         thumbnailPath = if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else finalUrl,
                         imagePath = if (image.imagePath.startsWith("http")) image.imagePath else finalUrl
@@ -288,7 +288,7 @@ class JvmSyncManager(
                 } catch (e: Exception) {
                     println("Realtime polling sync error: ${e.message}")
                 }
-                delay(10000)
+                delay(10000.milliseconds)
             }
         }
     }

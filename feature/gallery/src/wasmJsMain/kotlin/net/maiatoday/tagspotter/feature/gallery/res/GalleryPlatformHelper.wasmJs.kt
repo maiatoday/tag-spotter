@@ -8,7 +8,7 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+@OptIn(ExperimentalWasmJsInterop::class)
 private fun webTriggerFileInput(
     onSuccess: (String, String) -> Unit,
     onError: (String) -> Unit

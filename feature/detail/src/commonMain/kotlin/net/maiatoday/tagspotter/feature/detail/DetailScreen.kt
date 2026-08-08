@@ -1,6 +1,5 @@
 package net.maiatoday.tagspotter.feature.detail
 
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

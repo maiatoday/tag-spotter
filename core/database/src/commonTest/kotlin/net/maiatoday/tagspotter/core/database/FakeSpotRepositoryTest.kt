@@ -4,8 +4,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import net.maiatoday.tagspotter.core.model.LoadedPack
 import net.maiatoday.tagspotter.core.model.Spot
-import net.maiatoday.tagspotter.core.model.SpotDetails
-import net.maiatoday.tagspotter.core.model.SpotImage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

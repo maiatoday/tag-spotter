@@ -50,9 +50,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.model.SpotImage
 
-
-
-
 @Composable
 fun DetailPhotoTimeline(
     sortedImages: List<SpotImage>,

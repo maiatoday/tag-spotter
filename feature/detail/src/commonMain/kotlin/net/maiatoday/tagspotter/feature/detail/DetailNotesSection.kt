@@ -65,9 +65,6 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import net.maiatoday.tagspotter.core.model.SpotNote
 
-
-
-
 @Composable
 fun DetailNotesSection(
     sortedNotes: List<SpotNote>,
