@@ -28,6 +28,8 @@ android {
         }
         val apiKey = localProperties.getProperty("gemini.api.key") ?: ""
         buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+        val appCheckDebugToken = localProperties.getProperty("firebase.appcheck.debug_token") ?: ""
+        buildConfigField("String", "APP_CHECK_DEBUG_TOKEN", "\"$appCheckDebugToken\"")
     }
 
     buildTypes {

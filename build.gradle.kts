@@ -18,31 +18,6 @@ allprojects {
             force("org.jetbrains.skiko:skiko:0.144.6")
             force("org.jetbrains.skiko:skiko-awt:0.144.6")
         }
-        if (name.contains("wasmJs", ignoreCase = true)) {
-            resolutionStrategy {
-                dependencySubstitution {
-                    substitute(module("io.coil-kt.coil3:coil-network-ktor2"))
-                        .using(module("io.coil-kt.coil3:coil-network-ktor3:3.4.0"))
-                }
-                eachDependency {
-                    if (requested.group == "io.ktor") {
-                        useVersion("3.0.3")
-                    }
-                }
-            }
-        } else {
-            resolutionStrategy {
-                dependencySubstitution {
-                    substitute(module("io.coil-kt.coil3:coil-network-ktor3"))
-                        .using(module("io.coil-kt.coil3:coil-network-ktor2:3.4.0"))
-                }
-                eachDependency {
-                    if (requested.group == "io.ktor") {
-                        useVersion("2.3.12")
-                    }
-                }
-            }
-        }
     }
 }
 

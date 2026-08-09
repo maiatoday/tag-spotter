@@ -54,7 +54,7 @@ kotlin {
                 
                 // Koin
                 implementation(libs.koin.core)
-                implementation("io.insert-koin:koin-compose-viewmodel:4.2.1")
+                implementation(libs.koin.compose.viewmodel)
             }
         }
         
@@ -98,14 +98,14 @@ kotlin {
         val androidHostTest by getting {
             dependsOn(nonAndroidTest)
             dependencies {
-                implementation("io.insert-koin:koin-test:4.2.1")
+                implementation(libs.koin.test)
             }
         }
         
         val jvmTest by getting {
             dependsOn(nonAndroidTest)
             dependencies {
-                implementation("io.insert-koin:koin-test:4.2.1")
+                implementation(libs.koin.test)
             }
         }
         

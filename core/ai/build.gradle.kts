@@ -55,7 +55,7 @@ kotlin {
         
         iosMain {
             dependencies {
-                implementation("io.ktor:ktor-client-darwin:2.3.12")
+                implementation("io.ktor:ktor-client-darwin:${libs.versions.ktor.get()}")
             }
         }
         

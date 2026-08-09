@@ -38,6 +38,9 @@ open class TagSpotterApplication : Application() {
         
         // Initialize Firebase and App Check using the Debug provider
         Firebase.initialize(this)
+        if (BuildConfig.APP_CHECK_DEBUG_TOKEN.isNotEmpty()) {
+            System.setProperty("com.google.firebase.appcheck.debug.store.token", BuildConfig.APP_CHECK_DEBUG_TOKEN)
+        }
         FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
             DebugAppCheckProviderFactory.getInstance()
         )

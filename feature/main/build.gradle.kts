@@ -68,7 +68,7 @@ kotlin {
                 
                 // Koin
                 implementation(libs.koin.core)
-                implementation("io.insert-koin:koin-compose-viewmodel:4.2.1")
+                implementation(libs.koin.compose.viewmodel)
 
                 // ImagePickerKMP
                 implementation(libs.imagepickerkmp)

@@ -41,7 +41,7 @@ class AndroidFirebaseAiService(
 
         // 2. Initialize Firebase AI Logic with responseSchema
         val model = Firebase.ai.generativeModel(
-            modelName = "gemini-2.5-flash",
+            modelName = "gemini-3.6-flash",
             generationConfig = generationConfig {
                 responseMimeType = "application/json"
                 responseSchema = Schema.obj(
@@ -157,7 +157,7 @@ class AndroidFirebaseAiService(
         artists: List<String>
     ): String? {
         val model = Firebase.ai.generativeModel(
-            modelName = "gemini-2.5-flash",
+            modelName = "gemini-3.6-flash",
             generationConfig = generationConfig {
                 responseMimeType = "application/json"
                 responseSchema = Schema.obj(

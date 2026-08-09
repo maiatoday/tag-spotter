@@ -47,7 +47,7 @@ kotlin {
                 implementation(libs.androidx.lifecycle.runtime.compose)
                 
                 implementation(libs.koin.core)
-                implementation("io.insert-koin:koin-compose-viewmodel:4.2.1")
+                implementation(libs.koin.compose.viewmodel)
             }
         }
         
