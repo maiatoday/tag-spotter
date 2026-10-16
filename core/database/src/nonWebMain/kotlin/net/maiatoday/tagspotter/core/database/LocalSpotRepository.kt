@@ -384,7 +384,15 @@ class LocalSpotRepository(
         spotDetails.images.forEach { image ->
             val existingImage = spotDao.getImageByUuid(image.uuid)
             val imageToInsert = if (existingImage != null) {
-                image.copy(id = existingImage.id, spotId = finalSpotId, ownerUid = activeUid)
+                val localThumbExists = photoProcessor.fileExists(existingImage.thumbnailPath)
+                val localImageExists = photoProcessor.fileExists(existingImage.imagePath)
+                image.copy(
+                    id = existingImage.id,
+                    spotId = finalSpotId,
+                    ownerUid = activeUid,
+                    thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else image.thumbnailPath,
+                    imagePath = if (localImageExists) existingImage.imagePath else image.imagePath
+                )
             } else {
                 image.copy(id = 0L, spotId = finalSpotId, ownerUid = activeUid)
             }

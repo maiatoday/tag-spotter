@@ -56,6 +56,11 @@ class FakePhotoProcessor : PhotoProcessor {
         return deleteFileResult
     }
 
+    var fileExistsResult: Boolean = true
+    override fun fileExists(filePath: String): Boolean {
+        return fileExistsResult
+    }
+
     override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? {
         return decodeScaledBitmapResult
     }

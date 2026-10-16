@@ -107,6 +107,16 @@ class RealPhotoProcessor : PhotoProcessor {
         }
     }
 
+    override fun fileExists(filePath: String): Boolean {
+        if (filePath.isEmpty() || filePath.startsWith("http") || filePath.startsWith("content://")) return false
+        return try {
+            val cleanPath = cleanUriPath(filePath)
+            FileSystem.SYSTEM.exists(cleanPath.toPath())
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? = withContext(Dispatchers.Default) {
         try {
             val cleanPath = cleanUriPath(imagePath)

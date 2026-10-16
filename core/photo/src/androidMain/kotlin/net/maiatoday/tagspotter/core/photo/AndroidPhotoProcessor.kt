@@ -83,6 +83,24 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
         }
     }
 
+    override fun fileExists(filePath: String): Boolean {
+        if (filePath.isEmpty() ||
+            filePath.startsWith("content://") ||
+            filePath.startsWith("android.resource://") ||
+            filePath.startsWith("http://") ||
+            filePath.startsWith("https://")
+        ) {
+            return false
+        }
+        val cleanPath = if (filePath.startsWith("file://")) filePath.removePrefix("file://") else filePath
+        return try {
+            val file = File(cleanPath)
+            file.exists() && file.isFile
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? = withContext(Dispatchers.IO) {
         val bitmap = decodeScaledBitmapToAndroidBitmap(imagePath, maxDimension) ?: return@withContext null
         val stream = java.io.ByteArrayOutputStream()

@@ -18,6 +18,7 @@ interface PhotoProcessor {
     suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata?
     fun createTempCameraFile(): TempFileDetails
     fun deleteFile(filePath: String): Boolean
+    fun fileExists(filePath: String): Boolean
     suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray?
     suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean
 }
