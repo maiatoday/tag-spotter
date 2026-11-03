@@ -16,14 +16,253 @@
 
     <script>
         const firebaseConfig = {
-    apiKey: "AIzaSy_MockWebApiKeyForCompilation",
-    authDomain: "tagspotter-mock-id.firebaseapp.com",
-    projectId: "tagspotter-mock-id",
-    storageBucket: "tagspotter-mock-id.firebasestorage.app",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:46b766a08df2171476926e"
-  };
+            apiKey: "AIzaSy_MockWebApiKeyForCompilation",
+            authDomain: "tagspotter-mock-id.firebaseapp.com",
+            projectId: "tagspotter-mock-id",
+            storageBucket: "tagspotter-mock-id.firebasestorage.app",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:46b766a08df2171476926e"
+        };
+        firebase.initializeApp(firebaseConfig);
 
+        // --- Prevent harmless Fetch AbortError from crashing Compose WASM UI ---
+        function isAbortError(err) {
+            if (!err) return false;
+            const str = String(err) + " " + (err.name || "") + " " + (err.message || "") + " " + (err.stack || "");
+            return str.indexOf("AbortError") !== -1 || str.indexOf("BodyStreamBuffer was aborted") !== -1;
+        }
+
+        window.addEventListener('unhandledrejection', function(event) {
+            if (isAbortError(event.reason)) {
+                console.warn("Muffled harmless Ktor fetch abort:", event.reason);
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        });
+
+        window.addEventListener('error', function(event) {
+            if (isAbortError(event.error) || isAbortError(event.message)) {
+                console.warn("Muffled harmless Ktor fetch abort:", event.error || event.message);
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        });
+
+        // --- Firebase JS Web Helpers for Kotlin/Wasm Interop ---
+
+        window.webAuthListenState = function(onUserChanged, onNoUser) {
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) {
+                    onUserChanged(user.uid, user.email || "", user.displayName || "");
+                } else {
+                    onNoUser();
+                }
+            });
+        };
+
+        window.webAuthSignInWithGoogle = function(onSuccess, onFailure) {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider)
+                .then(() => onSuccess())
+                .catch((err) => onFailure(err.message));
+        };
+
+        window.webAuthSignInWithEmail = function(email, password, onSuccess, onFailure) {
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then(() => onSuccess())
+                .catch((err) => onFailure(err.message));
+        };
+
+        window.webAuthSignUpWithEmail = function(email, password, onSuccess, onFailure) {
+            firebase.auth().createUserWithEmailAndPassword(email, password)
+                .then(() => onSuccess())
+                .catch((err) => onFailure(err.message));
+        };
+
+        window.webAuthSignOut = function(onSuccess, onFailure) {
+            firebase.auth().signOut()
+                .then(() => onSuccess())
+                .catch((err) => onFailure(err.message));
+        };
+
+        window.webFirestoreSaveSpot = function(userId, spotUuid, spotJson, onSuccess, onFailure) {
+            try {
+                const data = JSON.parse(spotJson);
+                firebase.firestore().collection("users").doc(userId).collection("spots").doc(spotUuid)
+                    .set(data)
+                    .then(() => onSuccess())
+                    .catch((err) => onFailure(err.message));
+            } catch (e) {
+                onFailure(e.message);
+            }
+        };
+
+        window.webFirestoreDeleteSpot = function(userId, spotUuid, onSuccess, onFailure) {
+            try {
+                firebase.firestore().collection("users").doc(userId).collection("spots").doc(spotUuid)
+                    .delete()
+                    .then(() => onSuccess())
+                    .catch((err) => onFailure(err.message));
+            } catch (e) {
+                onFailure(e.message);
+            }
+        };
+
+        window.webFirestoreListenSpots = function(userId, onUpdate, onNoChange) {
+            firebase.firestore().collection("users").doc(userId).collection("spots")
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === "added" || change.type === "modified") {
+                            onUpdate(JSON.stringify(change.doc.data()));
+                        }
+                    });
+                }, (err) => {
+                    console.error("Web listen error:", err.message);
+                });
+        };
+
+        window.webStorageUploadThumbnail = function(userId, imageUuid, base64Data, onSuccess, onFailure) {
+            firebase.storage().ref("users/" + userId + "/thumbnails/" + imageUuid + ".jpg")
+                .putString(base64Data, "base64", { contentType: "image/jpeg" })
+                .then(() => onSuccess())
+                .catch((err) => onFailure(err.message));
+        };
+
+        window.webStorageGetDownloadUrl = function(userId, imageUuid, onSuccess, onFailure) {
+            console.log("[FirebaseStorage] Resolving download URL for user:", userId, "imageUuid:", imageUuid);
+            const thumbRef = firebase.storage().ref("users/" + userId + "/thumbnails/" + imageUuid + ".jpg");
+            thumbRef.getDownloadURL()
+                .then((url) => {
+                    console.log("[FirebaseStorage] Successfully resolved thumbnail URL for", imageUuid, ":", url);
+                    onSuccess(url);
+                })
+                .catch((err) => {
+                    const imgRef = firebase.storage().ref("users/" + userId + "/images/" + imageUuid + ".jpg");
+                    imgRef.getDownloadURL()
+                        .then((url) => {
+                            console.log("[FirebaseStorage] Successfully resolved fallback image URL for", imageUuid, ":", url);
+                            onSuccess(url);
+                        })
+                        .catch((err2) => {
+                            console.warn("[FirebaseStorage] Failed to resolve URL for", imageUuid, ":", err.message);
+                            onFailure(err.message);
+                        });
+                });
+        };
+    </script>
+
+    <!-- JSZip Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script>
+        // --- Web LocalStorage & Persistence Helpers ---
+        window.webSaveSpotsMetadata = function(jsonString) {
+            try {
+                localStorage.setItem("tagspotter_spots_v1", jsonString);
+            } catch (e) {
+                console.error("LocalStorage save error:", e);
+            }
+        };
+
+        window.webLoadSpotsMetadata = function() {
+            try {
+                return localStorage.getItem("tagspotter_spots_v1") || "";
+            } catch (e) {
+                console.error("LocalStorage load error:", e);
+                return "";
+            }
+        };
+
+        // --- JSZip Pack Export & Import Helpers ---
+        window.webExportPackZip = function(spotsJson, imagesDataJson) {
+            try {
+                const zip = new JSZip();
+                zip.file("spots.json", spotsJson);
+                
+                let imagesMap = {};
+                if (imagesDataJson) {
+                    try { imagesMap = JSON.parse(imagesDataJson); } catch (e) {}
+                }
+                
+                const imgFolder = zip.folder("images");
+                for (const [filename, base64OrUrl] of Object.entries(imagesMap)) {
+                    if (base64OrUrl && base64OrUrl.includes("base64,")) {
+                        const base64Data = base64OrUrl.split("base64,")[1];
+                        imgFolder.file(filename, base64Data, { base64: true });
+                    }
+                }
+                
+                zip.generateAsync({ type: "blob", mimeType: "application/octet-stream" }).then(function(content) {
+                    const packBlob = new Blob([content], { type: "application/octet-stream" });
+                    const url = URL.createObjectURL(packBlob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "tagspotter_backup.ts_pack";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            } catch (e) {
+                console.error("Export pack error:", e);
+            }
+        };
+
+        window.webTriggerFileInput = function(onFileReadSuccess, onError) {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".ts_pack,.zip,.json,application/octet-stream,application/x-tagspotter-pack,*/*";
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                if (file.name.endsWith(".json")) {
+                    reader.onload = function(evt) {
+                        onFileReadSuccess(evt.target.result, "{}");
+                    };
+                    reader.readAsText(file);
+                } else {
+                    reader.onload = function(evt) {
+                        JSZip.loadAsync(evt.target.result).then(function(zip) {
+                            const spotsFile = zip.file("spots.json");
+                            if (!spotsFile) {
+                                onError("No spots.json found inside the backup pack archive.");
+                                return;
+                            }
+                            spotsFile.async("string").then(function(spotsJson) {
+                                const imagePromises = [];
+                                const imagesFolder = zip.folder("images");
+                                const imageMap = {};
+                                
+                                zip.forEach(function(relativePath, zipEntry) {
+                                    const cleanPath = relativePath.replace(/^\.\//, "");
+                                    const lowerPath = cleanPath.toLowerCase();
+                                    if (!zipEntry.dir && (lowerPath.startsWith("images/") || lowerPath.startsWith("thumbnails/"))) {
+                                        const p = zipEntry.async("base64").then(function(b64) {
+                                            const mime = lowerPath.endsWith(".png") ? "image/png" : (lowerPath.endsWith(".webp") ? "image/webp" : "image/jpeg");
+                                            const dataUrl = "data:" + mime + ";base64," + b64;
+                                            imageMap[cleanPath] = dataUrl;
+                                            // Also map lowerPath in case case-sensitivity differs
+                                            imageMap[lowerPath] = dataUrl;
+                                        });
+                                        imagePromises.push(p);
+                                    }
+                                });
+                                
+                                Promise.all(imagePromises).then(function() {
+                                    onFileReadSuccess(spotsJson, JSON.stringify(imageMap));
+                                });
+                            });
+                        }).catch(function(err) {
+                            onError("Failed to unzip pack archive: " + err.message);
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            };
+            input.click();
+        };
     </script>
 </head>
 <body>

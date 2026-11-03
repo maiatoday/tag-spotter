@@ -8,7 +8,7 @@ class SwiftFirebaseAiService: NSObject, AiRecognitionService {
         return true
     }
     
-    private lazy var model = VertexAI.vertexAI().generativeModel(modelName: "gemini-3.6-flash")
+    private lazy var model = VertexAI.vertexAI().generativeModel(modelName: "gemini-3.8-flash")
     
     func identifyArtist(
         imagePath: String,

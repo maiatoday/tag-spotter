@@ -100,7 +100,7 @@ We will update the KMP core/shared layer to monitor API key availability in real
   class AndroidFirebaseAiService(
       private val photoProcessor: PhotoProcessor
   ) : AiRecognitionService {
-      private val model = Firebase.vertexAI.generativeModel("gemini-3.6-flash")
+      private val model = Firebase.vertexAI.generativeModel("gemini-3.8-flash")
       // Implement identifyArtist and searchWikipediaForSpot using the SDK
   }
   ```
@@ -122,7 +122,7 @@ We will update the KMP core/shared layer to monitor API key availability in real
   import Shared
   
   class SwiftFirebaseAiService: NSObject, AiRecognitionService {
-      private let model = VertexAI.vertexAI().generativeModel(modelName: "gemini-3.6-flash")
+      private let model = VertexAI.vertexAI().generativeModel(modelName: "gemini-3.8-flash")
       
       func identifyArtist(...) async throws -> AiSuggestion? {
           // Implement using Swift Firebase SDK
