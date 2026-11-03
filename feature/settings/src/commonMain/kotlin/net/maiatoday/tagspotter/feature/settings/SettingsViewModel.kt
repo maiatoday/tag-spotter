@@ -61,6 +61,13 @@ class SettingsViewModel(
             syncManager.syncNow()
         }
     }
+
+    fun forceBackupAllImages(onResult: ((Int) -> Unit)? = null) {
+        viewModelScope.launch {
+            val count = syncManager.forceBackupAllImages()
+            onResult?.invoke(count)
+        }
+    }
     val isGoogleSignInSupported: Boolean = authService.isGoogleSignInSupported
     fun signInWithGoogle(idToken: String? = null, onResult: ((Result<Unit>) -> Unit)? = null) {
         viewModelScope.launch {

@@ -11,6 +11,9 @@ interface SyncManager {
     fun stopRealtimeSync()
     suspend fun deleteSpot(uuid: String)
 
+    suspend fun forceBackupAllImages(): Int = 0
+    suspend fun forceBackupSpot(uuid: String): Int = 0
+
     suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String
     suspend fun importPackByCode(code: String): SharedPack
     suspend fun saveImportedPack(sharedPack: SharedPack)

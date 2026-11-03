@@ -459,6 +459,14 @@ class DetailViewModel(
         }
     }
 
+    fun forceBackupSpotImages(onResult: (Int) -> Unit) {
+        val details = spotDetails.value ?: return
+        viewModelScope.launch {
+            val count = syncManager.forceBackupSpot(details.spot.uuid)
+            onResult(count)
+        }
+    }
+
     fun saveSpot(onSaved: (Long) -> Unit) {
         val details = _draftDetails.value ?: return
         val firstImage = details.images.firstOrNull() ?: return

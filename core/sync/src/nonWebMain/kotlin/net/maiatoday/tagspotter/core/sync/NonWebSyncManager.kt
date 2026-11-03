@@ -5,6 +5,7 @@ import dev.gitlive.firebase.firestore.firestore
 import dev.gitlive.firebase.storage.storage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import kotlin.time.Duration.Companion.milliseconds
@@ -15,6 +16,7 @@ class NonWebSyncManager(
 
     private val _isSyncing = MutableStateFlow(false)
     override val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+    private val syncMutex = Mutex()
 
     private val firestore by lazy {
         try {
@@ -43,22 +45,20 @@ class NonWebSyncManager(
             platformLog(TAG, "syncNow early return: activeUserId is null")
             return
         }
-        if (_isSyncing.value) {
-            platformLog(TAG, "syncNow early return: already syncing")
-            return
-        }
-        val currentFirestore = firestore
-        val currentStorage = storage
-        if (currentFirestore == null || currentStorage == null) {
-            platformLog(TAG, "Skipping real sync on Desktop JVM (Simulating successful mock sync)")
-            _isSyncing.value = true
-            delay(1000.milliseconds)
-            _isSyncing.value = false
+        if (!syncMutex.tryLock()) {
+            platformLog(TAG, "syncNow early return: sync or backup already in progress")
             return
         }
         _isSyncing.value = true
 
         try {
+            val currentFirestore = firestore
+            val currentStorage = storage
+            if (currentFirestore == null || currentStorage == null) {
+                platformLog(TAG, "Skipping real sync on Desktop JVM (Simulating successful mock sync)")
+                delay(1000.milliseconds)
+                return
+            }
             // 1. Push stage: find all unsynced local spots
             val unsyncedSpots = repository.getUnsyncedSpots()
             platformLog(TAG, "Push stage: Found ${unsyncedSpots.size} unsynced local spots")
@@ -67,24 +67,43 @@ class NonWebSyncManager(
             unsyncedSpots.forEach { localDetail ->
                 val uuid = localDetail.spot.uuid
                 platformLog(TAG, "Pushing spot: $uuid")
-                
-                // Upload local metadata to Firestore
-                spotsCollection.document(uuid).set(SpotDetails.serializer(), localDetail)
 
-                // Upload thumbnail attachments if any and if local
-                localDetail.images.forEach { image ->
-                    if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                // Upload thumbnail attachments if local bytes are available, and obtain their remote download URLs
+                val updatedImages = localDetail.images.map { image ->
+                    val bytes = readBytesFromFile(image.thumbnailPath) ?: readBytesFromFile(image.imagePath)
+                    if (bytes != null) {
                         try {
-                            val bytes = readBytesFromFile(image.thumbnailPath)
-                            if (bytes != null) {
-                                platformLog(TAG, "Uploading thumbnail for image: ${image.uuid}")
-                                val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
-                                storageRef.putData(bytes.toFirebaseStorageData())
-                            }
+                            platformLog(TAG, "Uploading thumbnail for image: ${image.uuid}")
+                            val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                            storageRef.putData(bytes.toFirebaseStorageData())
+                            val downloadUrl = storageRef.getDownloadUrl()
+                            platformLog(TAG, "Uploaded thumbnail and got download URL: $downloadUrl")
+                            image.copy(thumbnailPath = downloadUrl)
                         } catch (e: Exception) {
                             platformLogError(TAG, "Failed to upload thumbnail ${image.uuid}", e)
+                            image
                         }
+                    } else if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                        try {
+                            val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                            val downloadUrl = storageRef.getDownloadUrl()
+                            image.copy(thumbnailPath = downloadUrl)
+                        } catch (e: Exception) {
+                            image
+                        }
+                    } else {
+                        image
                     }
+                }
+
+                val detailToPush = localDetail.copy(images = updatedImages)
+
+                // Upload metadata to Firestore
+                spotsCollection.document(uuid).set(SpotDetails.serializer(), detailToPush)
+
+                // Save any updated thumbnail URLs locally
+                if (updatedImages != localDetail.images) {
+                    repository.saveSpotDetails(detailToPush)
                 }
 
                 // Mark as successfully synced locally
@@ -110,7 +129,8 @@ class NonWebSyncManager(
                         repository.saveSyncedSpot(resolvedDetail)
                     } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
                                resolvedDetail.images.size != localMatch.images.size ||
-                               resolvedDetail.notes.size != localMatch.notes.size) {
+                               resolvedDetail.notes.size != localMatch.notes.size ||
+                               localMatch.images.any { it.thumbnailPath != resolvedDetail.images.find { r -> r.uuid == it.uuid }?.thumbnailPath }) {
                         platformLog(TAG, "Updating existing spot with newer remote edits or to heal missing items: ${resolvedDetail.spot.uuid}")
                         repository.saveSyncedSpot(resolvedDetail)
                     } else {
@@ -125,6 +145,7 @@ class NonWebSyncManager(
             platformLogError(TAG, "Error during syncNow", e)
         } finally {
             _isSyncing.value = false
+            syncMutex.unlock()
             platformLog(TAG, "syncNow completed")
         }
     }
@@ -205,6 +226,132 @@ class NonWebSyncManager(
         }
     }
 
+    override suspend fun forceBackupAllImages(): Int {
+        val userId = activeUserId ?: return 0
+        val currentFirestore = firestore ?: return 0
+        val currentStorage = storage ?: return 0
+        if (!syncMutex.tryLock()) {
+            platformLog(TAG, "forceBackupAllImages early return: sync or backup already in progress")
+            return 0
+        }
+        _isSyncing.value = true
+        var uploadedCount = 0
+
+        try {
+            val allSpots = repository.getAllSpots().first()
+            val spotsCollection = currentFirestore.collection("users").document(userId).collection("spots")
+
+            allSpots.forEach { localDetail ->
+                var spotModified = false
+                val updatedImages = localDetail.images.map { image ->
+                    val bytes = readBytesFromFile(image.thumbnailPath) ?: readBytesFromFile(image.imagePath)
+                    if (bytes != null) {
+                        try {
+                            platformLog(TAG, "Force backup: uploading thumbnail for image: ${image.uuid}")
+                            val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                            storageRef.putData(bytes.toFirebaseStorageData())
+                            val downloadUrl = storageRef.getDownloadUrl()
+                            platformLog(TAG, "Force backup: uploaded thumbnail, download URL: $downloadUrl")
+                            uploadedCount++
+                            spotModified = true
+                            image.copy(thumbnailPath = downloadUrl)
+                        } catch (e: Exception) {
+                            platformLogError(TAG, "Force backup failed for ${image.uuid}", e)
+                            image
+                        }
+                    } else if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                        try {
+                            val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                            val downloadUrl = storageRef.getDownloadUrl()
+                            spotModified = true
+                            image.copy(thumbnailPath = downloadUrl)
+                        } catch (e: Exception) {
+                            image
+                        }
+                    } else {
+                        image
+                    }
+                }
+
+                if (spotModified) {
+                    val detailToSave = localDetail.copy(images = updatedImages)
+                    spotsCollection.document(localDetail.spot.uuid).set(SpotDetails.serializer(), detailToSave)
+                    repository.saveSpotDetails(detailToSave)
+                    repository.markSpotAsSynced(localDetail.spot.uuid)
+                }
+            }
+        } catch (e: Exception) {
+            platformLogError(TAG, "Error during forceBackupAllImages", e)
+        } finally {
+            _isSyncing.value = false
+            syncMutex.unlock()
+        }
+        return uploadedCount
+    }
+
+    override suspend fun forceBackupSpot(uuid: String): Int {
+        val userId = activeUserId ?: return 0
+        val currentFirestore = firestore ?: return 0
+        val currentStorage = storage ?: return 0
+        if (!syncMutex.tryLock()) {
+            platformLog(TAG, "forceBackupSpot early return: sync or backup already in progress")
+            return 0
+        }
+        _isSyncing.value = true
+        var uploadedCount = 0
+
+        try {
+            val allSpots = repository.getAllSpots().first()
+            val localDetail = allSpots.find { it.spot.uuid == uuid }
+            if (localDetail != null) {
+                val spotsCollection = currentFirestore.collection("users").document(userId).collection("spots")
+                var spotModified = false
+                val updatedImages = localDetail.images.map { image ->
+                    val bytes = readBytesFromFile(image.thumbnailPath) ?: readBytesFromFile(image.imagePath)
+                    if (bytes != null) {
+                        try {
+                            platformLog(TAG, "Force backup spot: uploading thumbnail for image: ${image.uuid}")
+                            val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                            storageRef.putData(bytes.toFirebaseStorageData())
+                            val downloadUrl = storageRef.getDownloadUrl()
+                            platformLog(TAG, "Force backup spot: uploaded thumbnail, download URL: $downloadUrl")
+                            uploadedCount++
+                            spotModified = true
+                            image.copy(thumbnailPath = downloadUrl)
+                        } catch (e: Exception) {
+                            platformLogError(TAG, "Force backup failed for ${image.uuid}", e)
+                            image
+                        }
+                    } else if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                        try {
+                            val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                            val downloadUrl = storageRef.getDownloadUrl()
+                            spotModified = true
+                            image.copy(thumbnailPath = downloadUrl)
+                        } catch (e: Exception) {
+                            image
+                        }
+                    } else {
+                        image
+                    }
+                }
+
+                if (spotModified) {
+                    val detailToSave = localDetail.copy(images = updatedImages)
+                    spotsCollection.document(localDetail.spot.uuid).set(SpotDetails.serializer(), detailToSave)
+                    repository.saveSpotDetails(detailToSave)
+                    repository.markSpotAsSynced(localDetail.spot.uuid)
+                }
+            }
+        } catch (e: Exception) {
+            platformLogError(TAG, "Error during forceBackupSpot", e)
+        } finally {
+            _isSyncing.value = false
+            syncMutex.unlock()
+        }
+        return uploadedCount
+    }
+
     private fun generateShareCode(): String {
         val chars = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
         return (1..6).map { chars.random() }.joinToString("")
@@ -279,7 +426,7 @@ class NonWebSyncManager(
     private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
         val currentStorage = storage ?: return cloudDetail
         val updatedImages = cloudDetail.images.map { image ->
-            if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+            if (image.thumbnailPath.isEmpty() || !image.thumbnailPath.startsWith("http")) {
                 try {
                     val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
                     val downloadUrl = storageRef.getDownloadUrl()

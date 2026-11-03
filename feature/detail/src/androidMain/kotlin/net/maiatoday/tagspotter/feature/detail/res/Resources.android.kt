@@ -52,19 +52,19 @@ actual fun formatImageModel(imagePath: String, thumbnailPath: String): Any {
         }
     }
 
-    // 3. Check local content:// or android.resource:// URIs
-    if (rawThumb.startsWith("content://") || rawThumb.startsWith("android.resource://")) {
-        return rawThumb.toUri()
-    }
-    if (rawImg.startsWith("content://") || rawImg.startsWith("android.resource://")) {
-        return rawImg.toUri()
-    }
-
-    // 4. Check remote URLs or data URIs
+    // 3. Check remote URLs or data URIs
     if (rawThumb.startsWith("http://") || rawThumb.startsWith("https://") || rawThumb.startsWith("data:")) {
         return rawThumb.toUri()
     }
     if (rawImg.startsWith("http://") || rawImg.startsWith("https://") || rawImg.startsWith("data:")) {
+        return rawImg.toUri()
+    }
+
+    // 4. Check local content:// or android.resource:// URIs
+    if (rawThumb.startsWith("content://") || rawThumb.startsWith("android.resource://")) {
+        return rawThumb.toUri()
+    }
+    if (rawImg.startsWith("content://") || rawImg.startsWith("android.resource://")) {
         return rawImg.toUri()
     }
 

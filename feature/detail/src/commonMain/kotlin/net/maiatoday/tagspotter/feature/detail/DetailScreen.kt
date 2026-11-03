@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
@@ -580,6 +581,22 @@ fun DetailScreen(
                     if (!isCreationMode) {
                         val details = spotDetails
                         if (details != null) {
+                            IconButton(
+                                onClick = {
+                                    viewModel.forceBackupSpotImages { count ->
+                                        toastLauncher.showToast(
+                                            if (count > 0) "Uploaded $count photo(s) to cloud" else "Spot photos already backed up"
+                                        )
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudUpload,
+                                    contentDescription = "Backup Spot Photos",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
                             val isStarred = details.spot.isStarred
                             IconButton(
                                 onClick = {
