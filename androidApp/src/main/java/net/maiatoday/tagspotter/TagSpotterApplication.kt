@@ -12,6 +12,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.initialize
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import net.maiatoday.tagspotter.feature.main.initKoin
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
@@ -36,14 +37,21 @@ open class TagSpotterApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        // Initialize Firebase and App Check using the Debug provider
+        // Initialize Firebase and App Check
         Firebase.initialize(this)
-        if (BuildConfig.APP_CHECK_DEBUG_TOKEN.isNotEmpty()) {
-            System.setProperty("com.google.firebase.appcheck.debug.store.token", BuildConfig.APP_CHECK_DEBUG_TOKEN)
+        val appCheck = FirebaseAppCheck.getInstance()
+        if (BuildConfig.DEBUG) {
+            if (BuildConfig.APP_CHECK_DEBUG_TOKEN.isNotEmpty()) {
+                System.setProperty("com.google.firebase.appcheck.debug.store.token", BuildConfig.APP_CHECK_DEBUG_TOKEN)
+            }
+            appCheck.installAppCheckProviderFactory(
+                DebugAppCheckProviderFactory.getInstance()
+            )
+        } else {
+            appCheck.installAppCheckProviderFactory(
+                PlayIntegrityAppCheckProviderFactory.getInstance()
+            )
         }
-        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
-            DebugAppCheckProviderFactory.getInstance()
-        )
         
         initKoin(listOf(secretsModule, androidAiModule)).apply {
             androidContext(this@TagSpotterApplication)

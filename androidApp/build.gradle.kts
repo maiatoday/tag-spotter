@@ -128,6 +128,7 @@ dependencies {
   implementation(libs.firebase.ai)
   implementation(libs.firebase.appcheck)
   implementation(libs.firebase.appcheck.debug)
+  implementation(libs.firebase.appcheck.playintegrity)
 
   // Koin DI
   implementation(platform(libs.koin.bom))

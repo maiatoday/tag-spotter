@@ -7,8 +7,12 @@ import FirebaseAppCheck
 @main
 struct iosAppApp: App {
     init() {
-        // App Check Debug Setup
+        // App Check Provider Setup
+        #if DEBUG
         let providerFactory = AppCheckDebugProviderFactory()
+        #else
+        let providerFactory = AppAttestProviderFactory()
+        #endif
         AppCheck.setAppCheckProviderFactory(providerFactory)
         
         FirebaseApp.configure()
