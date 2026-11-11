@@ -1,5 +1,7 @@
 # Project Score Card: Tag Spotter Android App
 
+> **Last Edited (Committed):** 2026-05-30
+
 This document provides a thorough assessment of the **Tag Spotter** Android application codebase against official Android coding standards, modern architecture guidelines, local-first database design, and test coverage, as of May 2026.
 
 ---
@@ -226,7 +228,7 @@ There is **0% test coverage** for the real functionality of the application.
 ## 6. Functional Specification Discrepancies
 
 ### Image Optimization Mocked
-The product specifications in `project_brief.md` state:
+The product specifications in [2026-05-30-project-brief.md](2026-05-30-project-brief.md) state:
 > **Image Storage & Optimization:** Images are automatically scaled down to a maximum boundary of 1080p and compressed as JPEGs (80% quality) to save device space (reducing file sizes to ~300KB).
 
 However, in [ImageOptimizer.kt](file:///Users/maia/workspace/maiatoday/tag-spotter/app/src/main/java/com/example/tagspotter/utils/ImageOptimizer.kt), the optimization is completely missing:

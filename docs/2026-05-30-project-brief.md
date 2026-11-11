@@ -1,5 +1,7 @@
 # Tag Spotter - Project Brief & Specifications
 
+> **Last Edited (Committed):** 2026-05-30
+
 An Android application for city walkers to capture, tag, and geolocate graffiti art.
 
 ```
