@@ -90,3 +90,6 @@ abstract class TagAlongDatabase : RoomDatabase() {
 expect object TagAlongDatabaseConstructor : RoomDatabaseConstructor<TagAlongDatabase> {
     override fun initialize(): TagAlongDatabase
 }
+
+expect fun getTagAlongDatabaseBuilder(ctx: Any? = null): RoomDatabase.Builder<TagAlongDatabase>
+

@@ -3,6 +3,7 @@
 > **Project:** TagAlong Agentic Street Art Companion (Google ADK + A2UI + KMP)  
 > **Date:** 2026-11-11  
 > **Master Intent Document:** [a2ui-kmp-intent-document.md](a2ui-kmp-intent-document.md)  
+> **Phase 4 & More Document:** [a2ui-phase-4-and-more.md](a2ui-phase-4-and-more.md)  
 > **Workspace:** `/Users/maia/workspace/maiatoday/tag-spotter`
 
 ---
@@ -11,14 +12,15 @@
 
 ```mermaid
 flowchart LR
-    P1[Phase 1: Foundation<br><b>5 / 5 Done</b>] --> P2[Phase 2: Regression Gate<br><b>READY</b>]
-    P2 --> P3[Phase 3: TagAlong App<br><b>0 / 6 Done</b>]
+    P1[Phase 1: Foundation<br><b>5 / 5 Done</b>] --> P2[Phase 2: Regression Gate<br><b>PASSED</b>]
+    P2 --> P3[Phase 3: TagAlong App<br><b>6 / 6 Done</b>]
+    P3 --> P4[Phase 4: Component Reuse & Production Integration<br><b>Planned</b>]
 ```
 
-- **Current Active Phase:** **Phase 2 (Regression Gate)**
-- **Total Tasks:** 11 steps + 1 Regression Gate
-- **TagAlong Target Platforms:** Android + Desktop (JVM) *(Phase 1 preserves all existing Tag Spotter targets including iOS & Wasm)*
-- **Status:** 🟡 Ready for Phase 2
+- **Current Active Phase:** **Phase 4 (Production Integration & Shared UI Primitives)**
+- **Total Tasks:** Phase 1 (5) + Gate + Phase 3 (6) + Phase 4 (5)
+- **TagAlong Target Platforms:** Android + Desktop (JVM)
+- **Status:** 🟢 Phase 1, Phase 2, & Phase 3 Complete | 🟡 Phase 4 Planned
 
 ---
 
@@ -86,7 +88,7 @@ flowchart LR
 > [!CAUTION]
 > **Strict Gate:** No Phase 3 code or TagAlong module may be written until this gate passes completely.
 
-- [ ] **Tag Spotter Full Monorepo Regression Gate**
+- [x] **Tag Spotter Full Monorepo Regression Gate**
   - **Goal:** Prove Tag Spotter offline capture, CameraX, EXIF picker, single-shot AI tagging, and sync are 100% intact across all targets.
   - **Verification Commands:**
     ```bash
@@ -94,6 +96,7 @@ flowchart LR
     ./gradlew :androidApp:assembleDebug
     ./gradlew :desktopApp:assemble
     ```
+  - **Result:** ✅ Passed
 
 ---
 
@@ -101,35 +104,51 @@ flowchart LR
 
 | Status | Step ID | Task Name | Module | Prerequisite | Parallel? | Verification Command |
 | :---: | :--- | :--- | :--- | :--- | :---: | :--- |
-| ⏳ | **Step 3.1** | Monorepo Gradle & Module Skeletons | Root Gradle | Phase 2 Gate | Sequential | `./gradlew projects` |
-| ⏳ | **Step 3.2** | Neon A2UI Catalog & Dual Engine | `:core:a2ui` | Step 3.1 | 🔀 *Parallel with 3.4* | `./gradlew :core:a2ui:allTests` |
-| ⏳ | **Step 3.3** | Mock Desktop TagAlong Runner | `:tagalongApp:desktop` | Step 3.2 | Sequential after 3.2 | `./gradlew :tagalongApp:desktop:run` |
-| ⏳ | **Step 3.4** | Google ADK Agent & Street Art Tools | `:core:agent` | Step 3.1, Step 1.5 | 🔀 *Parallel with 3.2/3.3* | `./gradlew :core:agent:allTests` |
-| ⏳ | **Step 3.5** | End-to-End Chat & Map Sync | `:feature:tagalong` | Steps 3.2, 3.4 | Sequential | `./gradlew :feature:tagalong:allTests` |
-| ⏳ | **Step 3.6** | Android Dual-Engine App | `:tagalongApp:android` | Step 3.5 | Final | `./gradlew :tagalongApp:android:assembleDebug` |
+| ✅ | **Step 3.1** | Monorepo Gradle & Module Skeletons | Root Gradle | Phase 2 Gate | Sequential | `./gradlew projects :core:a2ui:assemble :core:agent:assemble :feature:tagalong:assemble :tagalongApp:desktop:assemble :tagalongApp:android:assembleDebug` |
+| ✅ | **Step 3.2** | Neon A2UI Catalog & Dual Engine | `:core:a2ui` | Step 3.1 | 🔀 *Parallel with 3.4* | `./gradlew :core:a2ui:allTests` (Passed ✅) |
+| ✅ | **Step 3.3** | Mock Desktop TagAlong Runner | `:tagalongApp:desktop` | Step 3.2 | Sequential after 3.2 | `./gradlew :tagalongApp:desktop:assemble :feature:tagalong:allTests` (Passed ✅) |
+| ✅ | **Step 3.4** | Google ADK Agent & Street Art Tools | `:core:agent` | Step 3.1, Step 1.5 | 🔀 *Parallel with 3.2/3.3* | `./gradlew :core:agent:allTests` (Passed ✅) |
+| ✅ | **Step 3.5** | End-to-End Chat & Map Sync | `:feature:tagalong` | Steps 3.2, 3.4 | Sequential | `./gradlew :feature:tagalong:allTests :tagalongApp:desktop:assemble` (Passed ✅) |
+| ✅ | **Step 3.6** | Android Dual-Engine App | `:tagalongApp:android` | Step 3.5 | Final | `./gradlew :tagalongApp:android:assembleDebug` (Passed ✅) |
 
 ### Detailed Phase 3 Checklist:
 
-- [ ] **Step 3.1: Monorepo Gradle Setup & Module Skeletons**
+- [x] **Step 3.1: Monorepo Gradle Setup & Module Skeletons**
   - **Goal:** Register `:core:a2ui`, `:core:agent`, `:feature:tagalong`, `:tagalongApp:desktop`, `:tagalongApp:android` in `settings.gradle.kts` targeting **Android + Desktop JVM** only.
-  - **Test:** `./gradlew projects :core:a2ui:assemble :core:agent:assemble :feature:tagalong:assemble`
+  - **Test:** `./gradlew projects :core:a2ui:assemble :core:agent:assemble :feature:tagalong:assemble :tagalongApp:desktop:assemble :tagalongApp:android:assembleDebug` (Passed ✅)
 
-- [ ] **Step 3.2: Neon Catalog & Dual-Engine Adapter**
+- [x] **Step 3.2: Neon Catalog & Dual-Engine Adapter**
   - **Goal:** Implement Full Urban Suite (`SpotCard`, `TourCard`, `ArtistBioCard`, `StyleQuizWidget`, `CommunityVotingCard`, `MapPinOverlayWidget`) with `A2UIRendererEngine` adapter (`a2ui-kmp` in `commonMain` + `androidx.a2ui` in `androidMain`).
-  - **Test:** `./gradlew :core:a2ui:allTests`
+  - **Test:** `./gradlew :core:a2ui:allTests` (Passed ✅)
 
-- [ ] **Step 3.3: Mock Desktop TagAlong Runner**
+- [x] **Step 3.3: Mock Desktop TagAlong Runner**
   - **Goal:** Standalone Desktop JVM runner rendering mock A2UI JSON fixtures with two-pane adaptive layout.
-  - **Test:** `./gradlew :tagalongApp:desktop:run`
+  - **Test:** `./gradlew :tagalongApp:desktop:assemble :feature:tagalong:allTests` (Passed ✅)
 
-- [ ] **Step 3.4: Google ADK Agent & Tools Engine**
+- [x] **Step 3.4: Google ADK Agent & Tools Engine**
   - **Goal:** Implement `@Tool` annotations with KSP for `getNearbySpots`, `generateWalkingTour`, `getArtistBio`, `identifyMuralByPhoto`, driving Gemini Flash (Firebase AI + App Check on Android; API Key via `SecretsProvider` on Desktop JVM).
-  - **Test:** `./gradlew :core:agent:allTests`
+  - **Test:** `./gradlew :core:agent:allTests` (Passed ✅)
 
-- [ ] **Step 3.5: End-to-End Multimodal Chat & Map Sync**
+- [x] **Step 3.5: End-to-End Multimodal Chat & Map Sync**
   - **Goal:** Connect chat stream, `TagAlongDatabase` conversation storage, mini map synchronization, and action callbacks (`onAction`).
-  - **Test:** `./gradlew :feature:tagalong:allTests`
+  - **Test:** `./gradlew :feature:tagalong:allTests :tagalongApp:desktop:assemble` (Passed ✅)
 
-- [ ] **Step 3.6: Android Dual-Engine App**
+- [x] **Step 3.6: Android Dual-Engine App**
   - **Goal:** Dual-engine runtime switcher in Android Dev Settings and Firebase App Check setup in `:tagalongApp:android`.
-  - **Test:** `./gradlew :tagalongApp:android:assembleDebug`
+  - **Test:** `./gradlew :tagalongApp:android:assembleDebug` (Passed ✅)
+
+---
+
+## 🚀 PHASE 4: Component Reuse, Production Integration & UX Features
+
+> Detailed specifications in [a2ui-phase-4-and-more.md](a2ui-phase-4-and-more.md).
+
+| Status | Step ID | Task Name | Module | Prerequisite | Parallel? | Verification Command |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- |
+| ⏳ | **Step 4.1** | Android Firebase & App Check Setup | `:tagalongApp:android` | Phase 3 | 🔀 *Parallel with 4.2* | `./gradlew :tagalongApp:android:assembleDebug` |
+| ⏳ | **Step 4.2** | Shared UI Primitives Consolidation | `:core:ui`, `:feature:detail` | Phase 3 | 🔀 *Parallel with 4.1* | `./gradlew :core:ui:allTests :feature:detail:allTests :core:a2ui:allTests` |
+| ⏳ | **Step 4.3** | Theme Toggle & New Conversation Controls | `:feature:tagalong`, Apps | Step 4.2 | 🔀 *Parallel with 4.4* | `./gradlew :feature:tagalong:allTests :tagalongApp:desktop:assemble` |
+| ⏳ | **Step 4.4** | Cross-App Deep Linking Contract | Core & App Shells | Steps 4.1, 4.2 | Sequential | Deep link intent tests |
+| ⏳ | **Step 4.5** | Agentic Spot Saving & Action Callbacks | `:feature:tagalong`, `:core:sync` | Step 4.2 | Sequential | `./gradlew :feature:tagalong:allTests` |
+| ⏳ | **Step 4.6** | Conversation History Drawer / Sheet | `:feature:tagalong`, `:core:database` | Step 4.3 | Sequential | `./gradlew :feature:tagalong:allTests` |
+| ⏳ | **Step 4.7** | Multi-App Regression Gate | Full Monorepo | Steps 4.1-4.6 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :tagalongApp:android:assembleDebug :desktopApp:assemble :tagalongApp:desktop:assemble` |

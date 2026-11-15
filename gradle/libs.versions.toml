@@ -1,6 +1,7 @@
 [versions]
 androidGradlePlugin = "9.3.1"
 androidCompileSdk = "37"
+androidCompileSdkMinor = "1"
 androidMinSdk = "29"
 androidTargetSdk = "37"
 androidxCore = "1.19.0"
@@ -48,6 +49,8 @@ kover = "0.9.9"
 turbine = "1.2.1"
 guava = "33.6.0-android"
 kotlinxSerializationJson = "1.11.0"
+adk = "0.2.0"
+a2ui = "1.0.0-alpha02"
 
 
 
@@ -131,6 +134,14 @@ firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
 firebase-appcheck = { group = "com.google.firebase", name = "firebase-appcheck", version.ref = "firebase-appcheck" }
 firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "firebase-appcheck" }
 firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity", version.ref = "firebase-appcheck" }
+google-adk-kotlin-core = { module = "com.google.adk:google-adk-kotlin-core", version.ref = "adk" }
+google-adk-kotlin-processor = { module = "com.google.adk:google-adk-kotlin-processor", version.ref = "adk" }
+google-adk-kotlin-firebase-android = { module = "com.google.adk:google-adk-kotlin-firebase-android", version.ref = "adk" }
+androidx-a2ui-model = { module = "androidx.a2ui:a2ui-model", version.ref = "a2ui" }
+androidx-a2ui-engine = { module = "androidx.a2ui:a2ui-engine", version.ref = "a2ui" }
+androidx-a2ui-compose-runtime = { module = "androidx.a2ui.compose:compose-runtime", version.ref = "a2ui" }
+androidx-a2ui-compose-ui = { module = "androidx.a2ui.compose:compose-ui", version.ref = "a2ui" }
+androidx-compose-material3-a2ui = { module = "androidx.compose.material3:material3-a2ui", version.ref = "a2ui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

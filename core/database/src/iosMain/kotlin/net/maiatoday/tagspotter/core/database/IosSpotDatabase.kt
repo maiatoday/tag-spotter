@@ -24,6 +24,20 @@ actual fun getDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<SpotDatabase> {
     )
 }
 
+actual fun getTagAlongDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<TagAlongDatabase> {
+    val documentDirectory = NSFileManager.defaultManager.URLForDirectory(
+        directory = NSDocumentDirectory,
+        inDomain = NSUserDomainMask,
+        appropriateForURL = null,
+        create = true,
+        error = null
+    )
+    val dbFilePath = documentDirectory?.path + "/tagalong_database.db"
+    return Room.databaseBuilder<TagAlongDatabase>(
+        name = dbFilePath
+    )
+}
+
 actual val platformDatabaseModule: Module = module {
     single {
         getDatabaseBuilder()
@@ -34,6 +48,15 @@ actual val platformDatabaseModule: Module = module {
     }
     single { get<SpotDatabase>().spotDao() }
     single<SpotRepository> { LocalSpotRepository(get(), get()) }
+
+    single {
+        getTagAlongDatabaseBuilder()
+            .setDriver(BundledSQLiteDriver())
+            .fallbackToDestructiveMigration(true)
+            .build()
+    }
+    single { get<TagAlongDatabase>().chatDao() }
+    single<ChatRepository> { RoomChatRepository(get()) }
 }
 
 actual fun epochMillis(): Long = platform.posix.time(null) * 1000L

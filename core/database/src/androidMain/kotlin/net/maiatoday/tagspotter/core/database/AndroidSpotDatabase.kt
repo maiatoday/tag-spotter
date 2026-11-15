@@ -17,6 +17,15 @@ actual fun getDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<SpotDatabase> {
     )
 }
 
+actual fun getTagAlongDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<TagAlongDatabase> {
+    val context = ctx as? Context ?: throw IllegalArgumentException("Context must be provided on Android")
+    val dbFile = context.getDatabasePath("tagalong_database")
+    return Room.databaseBuilder<TagAlongDatabase>(
+        context = context.applicationContext,
+        name = dbFile.absolutePath
+    )
+}
+
 actual val platformDatabaseModule: Module = module {
     single {
         getDatabaseBuilder(androidContext())
@@ -27,6 +36,15 @@ actual val platformDatabaseModule: Module = module {
     }
     single { get<SpotDatabase>().spotDao() }
     single<SpotRepository> { LocalSpotRepository(get(), get()) }
+
+    single {
+        getTagAlongDatabaseBuilder(androidContext())
+            .setDriver(BundledSQLiteDriver())
+            .fallbackToDestructiveMigration(true)
+            .build()
+    }
+    single { get<TagAlongDatabase>().chatDao() }
+    single<ChatRepository> { RoomChatRepository(get()) }
 }
 
 actual fun epochMillis(): Long = System.currentTimeMillis()

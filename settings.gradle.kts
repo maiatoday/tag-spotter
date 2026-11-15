@@ -35,3 +35,10 @@ include(":feature:main")
 include(":wear")
 include(":desktopApp")
 include(":webApp")
+
+// TagAlong Companion App Modules
+include(":core:a2ui")
+include(":core:agent")
+include(":feature:tagalong")
+include(":tagalongApp:desktop")
+include(":tagalongApp:android")

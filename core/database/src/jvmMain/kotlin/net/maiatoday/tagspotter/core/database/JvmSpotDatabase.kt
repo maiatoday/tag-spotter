@@ -14,6 +14,13 @@ actual fun getDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<SpotDatabase> {
     )
 }
 
+actual fun getTagAlongDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<TagAlongDatabase> {
+    val dbFile = File(System.getProperty("java.io.tmpdir"), "tagalong_database.db")
+    return Room.databaseBuilder<TagAlongDatabase>(
+        name = dbFile.absolutePath
+    )
+}
+
 actual val platformDatabaseModule: Module = module {
     single {
         getDatabaseBuilder()
@@ -24,6 +31,15 @@ actual val platformDatabaseModule: Module = module {
     }
     single { get<SpotDatabase>().spotDao() }
     single<SpotRepository> { LocalSpotRepository(get(), get()) }
+
+    single {
+        getTagAlongDatabaseBuilder()
+            .setDriver(BundledSQLiteDriver())
+            .fallbackToDestructiveMigration(true)
+            .build()
+    }
+    single { get<TagAlongDatabase>().chatDao() }
+    single<ChatRepository> { RoomChatRepository(get()) }
 }
 
 actual fun epochMillis(): Long = System.currentTimeMillis()

@@ -6,6 +6,7 @@ import org.koin.dsl.module
 
 actual val platformDatabaseModule: Module = module {
     single<SpotRepository> { WasmSpotRepository() }
+    single<ChatRepository> { FakeChatRepository() }
 }
 
 private fun jsTime(): Double = js("Date.now()")
