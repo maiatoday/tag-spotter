@@ -24,23 +24,40 @@
    - [4.1 Current Component Inventory & Sharing Matrix](#41-current-component-inventory--sharing-matrix)
    - [4.2 Opportunities for Unification (`:core:ui`)](#42-opportunities-for-unification-coreui)
    - [4.3 Bi-directional Reuse (Tag Spotter using A2UI)](#43-bi-directional-reuse-tag-spotter-using-a2ui)
-5. [Phase 4 Implementation Roadmap & Next Steps](#5-phase-4-implementation-roadmap--next-steps)
+5. [Data Access Architecture: Database, Remote Sync & Hybrid Data Layer](#5-data-access-architecture-database-remote-sync--hybrid-data-layer)
+   - [5.1 Local Storage Layer (`SpotDatabase` & `TagAlongDatabase`)](#51-local-storage-layer-spotdatabase--tagalongdatabase)
+   - [5.2 Remote Cloud Layer (Firestore & Cloud Storage)](#52-remote-cloud-layer-firestore--cloud-storage)
+   - [5.3 Hybrid Data Bridge (`HybridSpotRepository`)](#53-hybrid-data-bridge-hybridspotrepository)
+   - [5.4 Complete End-to-End Data Flow Diagram](#54-complete-end-to-end-data-flow-diagram)
+6. [Agent Prompt Architecture & Dynamic Catalog Passing](#6-agent-prompt-architecture--dynamic-catalog-passing)
+   - [6.1 Audit of Current State (The Hardcoding Risk)](#61-audit-of-current-state-the-hardcoding-risk)
+   - [6.2 Dynamic A2UI Schema Generation from Catalog](#62-dynamic-a2ui-schema-generation-from-catalog)
+   - [6.3 Dynamic Spatial & Spots Context Injection](#63-dynamic-spatial--spots-context-injection)
+   - [6.4 Verification Checklist for Prompt Generation](#64-verification-checklist-for-prompt-generation)
+7. [Spot Creation Architecture: How to Add a New Spot](#7-spot-creation-architecture-how-to-add-a-new-spot)
+   - [7.1 Baseline: How Tag Spotter Adds Spots Today](#71-baseline-how-tag-spotter-adds-spots-today)
+   - [7.2 Workflow 1: Conversational / Agentic Spot Creation (AI-Assisted)](#72-workflow-1-conversational--agentic-spot-creation-ai-assisted)
+   - [7.3 Workflow 2: Interactive A2UI Card Action (`A2UIAction.SaveSpot`)](#73-workflow-2-interactive-a2ui-card-action-a2uiactionsavespot)
+   - [7.4 Workflow 3: Cross-App Deep Link Handoff to Tag Spotter](#74-workflow-3-cross-app-deep-link-handoff-to-tag-spotter)
+   - [7.5 Spot Creation Comparison Matrix](#75-spot-creation-comparison-matrix)
+8. [Phase 4 Implementation Roadmap & Next Steps](#8-phase-4-implementation-roadmap--next-steps)
    - [Step 4.1: Android Firebase Configuration & App Check Setup](#step-41-android-firebase-configuration--app-check-setup)
    - [Step 4.2: Shared UI Primitives Consolidation (`:core:ui`)](#step-42-shared-ui-primitives-consolidation-coreui)
    - [Step 4.3: Theme Switching & New Conversation Controls](#step-43-theme-switching--new-conversation-controls)
-   - [Step 4.4: Cross-App Deep Linking & Handoff Contract](#step-44-cross-app-deep-linking--handoff-contract)
-   - [Step 4.5: Agentic "Save as New Spot" & Interactive Action Callbacks](#step-45-agentic-save-as-new-spot--interactive-action-callbacks)
-   - [Step 4.6: Conversation History Drawer / Sheet Implementation](#step-46-conversation-history-drawer--sheet-implementation)
-   - [Step 4.7: Full Monorepo Multi-App Regression Gate](#step-47-full-monorepo-multi-app-regression-gate)
-6. [Future Phases Horizon (Phase 5+)](#6-future-phases-horizon-phase-5)
-7. [Comprehensive Test Plan for TagAlong Companion App](#7-comprehensive-test-plan-for-tagalong-companion-app)
+   - [Step 4.4: Dynamic Prompt & Catalog Generation Refactor](#step-44-dynamic-prompt--catalog-generation-refactor)
+   - [Step 4.5: Cross-App Deep Linking & Handoff Contract](#step-45-cross-app-deep-linking--handoff-contract)
+   - [Step 4.6: Agentic "Save as New Spot" & Interactive Action Callbacks](#step-46-agentic-save-as-new-spot--interactive-action-callbacks)
+   - [Step 4.7: Conversation History Drawer / Sheet Implementation](#step-47-conversation-history-drawer--sheet-implementation)
+   - [Step 4.8: Full Monorepo Multi-App Regression Gate](#step-48-full-monorepo-multi-app-regression-gate)
+9. [Future Phases Horizon (Phase 5+)](#9-future-phases-horizon-phase-5)
+10. [Comprehensive Test Plan for TagAlong Companion App](#10-comprehensive-test-plan-for-tagalong-companion-app)
    - [Tier 1: Unit, Parser & Session Tests](#tier-1-unit-parser--session-tests)
    - [Tier 2: Repository & Persistence Tests](#tier-2-repository--persistence-tests)
    - [Tier 3: Dual-Engine A/B Verification Test Suite](#tier-3-dual-engine-ab-verification-test-suite)
    - [Tier 4: UX Controls & Multimodal Tests (Theme, Session, Photo)](#tier-4-ux-controls--multimodal-tests-theme-session-photo)
    - [Tier 5: Live Agent & App Check Smoke Tests](#tier-5-live-agent--app-check-smoke-tests)
    - [Tier 6: Monorepo Regression Gate](#tier-6-monorepo-regression-gate)
-8. [Clean Context Handoff & Execution Prompt](#8-clean-context-handoff--execution-prompt)
+11. [Clean Context Handoff & Execution Prompt](#11-clean-context-handoff--execution-prompt)
 
 ---
 
@@ -58,10 +75,12 @@ Phases 1 through 3 of the A2UI and Google ADK migration are complete:
 
 **Phase 4** focuses on:
 1. Production configuration of Android Firebase App Check + live Gemini ADK inference.
-2. Systematic UI component consolidation and maximal code reuse across both apps.
-3. Defining the user identity / authentication strategy for TagAlong.
-4. Implementing cross-app deep linking and action dispatching.
-5. Establishing a comprehensive, repeatable test plan for TagAlong.
+2. Dynamic catalog passing in LLM prompts (eliminating hardcoded schemas and hardcoded mock data).
+3. Clear data access architecture separating local Room caches from remote Firestore public spots.
+4. Implementing multi-path spot creation ("Add New Spot" via chat, generative UI card, and deep link).
+5. Systematic UI component consolidation into `:core:ui`.
+6. Theme switching (Light/Dark mode) and multi-session Conversation History.
+7. Establishing a comprehensive, repeatable test plan for TagAlong.
 
 ---
 
@@ -101,33 +120,38 @@ flowchart TD
 
 ### 2.2 Read vs. Write & App Check vs. Auth
 
-1. **Reading Public Spots (Open Access):**
-   In [firestore.rules](file:///Users/maia/workspace/maiatoday/tag-spotter/firestore.rules#L107-L109):
-   ```javascript
-   match /public_spots/{uuid} {
-     allow read: if true;
-   }
-   ```
-   Anyone can read public spots without signing in. TagAlong queries `/public_spots` to answer user questions, display nearby murals, and build walking tours. **No login required.**
+1. **Reading Public Spots (Open Read):**
+   - In [firestore.rules](file:///Users/maia/workspace/maiatoday/tag-spotter/firebase/firestore.rules#L31-L34), `/public_spots/{uuid}` has:
+     ```javascript
+     match /public_spots/{spotId} {
+       allow read: if true;
+       allow write: if request.auth != null;
+     }
+     ```
+   - Anyone (anonymous or unauthenticated) can read public community murals and walking tours without logging in.
 
-2. **Local Chat Persistence (On-Device):**
-   `TagAlongDatabase` (`ChatSessionEntity`, `ChatMessageEntity`) lives in the local app container. **No login required.**
+2. **Chat Persistence (Local Room SQLite):**
+   - TagAlong stores chat history, conversation sessions, and local card state in `TagAlongDatabase.kt` locally on-device. No cloud login is required to persist or browse past conversations.
 
-3. **LLM Inference Security (App Check vs. User Auth):**
-   - On Android, `com.google.firebase.ai` uses **Firebase App Check** (Play Integrity provider), which verifies that requests originate from your authentic, untampered app binary. **App Check does not require a logged-in user.**
-   - On Desktop JVM, the runner uses `GEMINI_API_KEY`. **No user login required.**
+3. **Gemini LLM Inference Authorization:**
+   - **On Android (`AndroidTagAlongAgent.kt`):** Inference uses Firebase AI (`com.google.firebase.ai`). Firebase AI is secured via **Firebase App Check** (Play Integrity on physical devices, Debug Provider on emulators). App Check validates that the request originates from an authentic, untampered TagAlong application binary—**not** user identity.
+   - **On Desktop (`DesktopTagAlongAgent.kt`):** Inference uses Google GenAI SDK (`com.google.genai.Client`) authorized via `GEMINI_API_KEY`. No end-user sign-in is required.
 
-4. **When IS Login Required?**
-   - **Personal Spot Access:** If a user wants TagAlong to see their *private* unshared spots from Tag Spotter on another device (reading `users/{userId}/spots`), Firebase Auth is required (`isOwner(userId)`).
-   - **Spot Creation / Modification from Chat:** If the agent offers a *"Save this mural to my collection"* button and syncs it to the cloud, the user must be authenticated.
-   - **Attributed Community Contributions:** If voting on mural styles or submitting artist attributions requires verified community identity rather than anonymous votes.
+4. **When IS Authentication Required?**
+   - **Writing to Private User Spots (`/users/{uid}/spots`):** If a user wants to synchronize their saved spots across devices in Tag Spotter.
+   - **Direct Public Mural Publishing:** Directly publishing a new public spot from TagAlong to Firestore `/public_spots/{uuid}` requires `request.auth != null`.
+   - **Attributed Community Voting:** If voting needs to prevent duplicate votes per user ID.
 
 ### 2.3 Recommendation: Zero-Friction Guest-First with Optional Sign-In
 
 > [!IMPORTANT]
-> **Recommended Decision: Guest-First (No mandatory login).**
-> - **Default Experience:** TagAlong opens immediately into the chat/map interface. Users can immediately chat, browse murals, generate walking tours, and test style quizzes without any registration barrier.
-> - **Optional Account Linking (Phase 4.4 / Phase 5):** Provide an optional profile/account icon in the top bar. If the user signs in with Google or Email (reusing `AuthService` from `:core:sync`), TagAlong connects their personal collection and unlocks private spot sync and author attribution.
+> **Conclusion:** TagAlong should **NOT** mandate user sign-in on launch.
+>
+> 1. **Default Mode (Guest / Anonymous Explorer):**
+>    - Full access to conversational AI guide, local chat history, walking tour generation, interactive style quizzes, public spot discovery, and local offline caching.
+> 2. **Optional Sign-In (Triggered Just-In-Time):**
+>    - Trigger sign-in only when the user explicitly taps *"Sync to My Tag Spotter Account"* or *"Publish to Community Catalog"*.
+>    - Provide Firebase Anonymous Auth or Google Sign-In via `GoogleSignInHelper` when write synchronization is initiated.
 
 ---
 
@@ -135,68 +159,43 @@ flowchart TD
 
 ### 3.1 Light and Dark Mode Switching
 
-TagAlong's visual aesthetic is anchored around the **Urban Neon** palette. Both light and dark palettes already exist in [Theme.kt](file:///Users/maia/workspace/maiatoday/tag-spotter/core/ui/src/commonMain/kotlin/net/maiatoday/tagspotter/core/ui/theme/Theme.kt):
-- **`UrbanDarkColorScheme`:** High-contrast pitch-black and deep carbon backgrounds with electric cyan (`#00FFCC`), hot magenta (`#FF007F`), and lime green accents.
-- **`UrbanLightColorScheme`:** Clean light surfaces with deep charcoal typography and vibrant urban saturated accents.
+TagAlong currently defaults to the urban dark neon palette. Support for light mode is already architected in `:core:ui`.
 
-#### Architectural Specification:
-1. **Theme Mode Enum:** Introduce `ThemeMode { SYSTEM, LIGHT, DARK }` in `:core:ui` or `:feature:tagalong`.
-2. **Top Bar Quick Toggle:** Add a Sun / Moon toggle icon in the `TagAlongScreen` / `MainActivity` TopAppBar:
-   - When in Dark: displays Sun icon (`Icons.Default.LightMode`) -> switches to Light.
-   - When in Light: displays Moon icon (`Icons.Default.DarkMode`) -> switches to Dark.
-3. **Reactive Re-theming:**
-   - In `MainActivity.kt` and Desktop `Main.kt`, bind `MyApplicationTheme(darkTheme = when(themeMode) { ... })`.
-   - Ensure A2UI component cards in `:core:a2ui` use semantic theme tokens (`MaterialTheme.colorScheme.surfaceVariant`, `LocalCategoryColors.current`) so cards look vibrant and readable in both modes.
+#### Color System Status:
+- [Theme.kt](file:///Users/maia/workspace/maiatoday/tag-spotter/core/ui/src/commonMain/kotlin/net/maiatoday/tagspotter/core/ui/theme/Theme.kt) already contains:
+  - `UrbanDarkColorScheme` (Dark background `#0D0E15`, Neon Pink `#FF2A85`, Electric Blue `#00E5FF`, Neon Lime `#39FF14`, Dark Surface `#161926`).
+  - `UrbanLightColorScheme` (Light background `#F8F9FE`, Deep Violet `#7000FF`, Crisp Magenta `#D80064`, High-contrast surfaces).
+- `MyApplicationTheme` accepts a boolean parameter `darkTheme: Boolean = isSystemInDarkTheme()`.
+
+#### UX Implementation Plan:
+1. **Theme Mode State:** Introduce an enum in `:core:settings`:
+   ```kotlin
+   enum class ThemeMode { SYSTEM, LIGHT, DARK }
+   ```
+2. **TopAppBar Toggle:**
+   - Add a theme toggle button in `TagAlongScreen`'s top app bar (Moon icon for dark mode, Sun icon for light mode).
+3. **Card Contrast Verification:**
+   - Ensure A2UI component borders and neon chip glows adapt appropriately:
+     - In Dark mode: Glowing borders (`Color(0x3300E5FF)`), deep slate surfaces.
+     - In Light mode: Clean drop shadows, crisp border strokes (`Color(0x227000FF)`), dark readable typography.
 
 ---
 
 ### 3.2 "New Conversation" Lifecycle
 
-A conversational companion app must make starting a fresh thread effortless without forcing the user to delete or overwrite past context.
+Users need a quick way to clear the current chat context and start exploring a new neighborhood or art style without discarding past conversations.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant TopBar as TagAlong TopBar / Menu
-    participant VM as TagAlongViewModel
-    participant DB as TagAlongDatabase (Room)
-    participant UI as TagAlongScreen
-
-    User->>TopBar: Tap "New Conversation" (+)
-    TopBar->>VM: startNewConversation()
-    VM->>DB: insertSession(ChatSessionEntity(newSessionId, "New Conversation", now))
-    VM->>VM: Reset messages & clear attached photo
-    VM->>UI: Emit TagAlongUiState(sessionId = newSessionId, messages = [Greeting])
-    UI-->>User: Fresh conversational canvas ready
-```
-
-#### Implementation Details:
-1. **Action in Top Bar:** Place a distinct `+` ("New Chat") button in the `TopAppBar` on both Android and Desktop.
-2. **ViewModel Implementation:**
-   ```kotlin
-   fun startNewConversation() {
-       val newSessionId = "session-${epochMillis()}"
-       viewModelScope.launch {
-           val initialSession = ChatSession(
-               sessionId = newSessionId,
-               title = "New Conversation",
-               createdAt = epochMillis(),
-               lastActiveAt = epochMillis()
-           )
-           chatRepository.insertSession(initialSession)
-           _uiState.update { current ->
-               current.copy(
-                   sessionId = newSessionId,
-                   messages = listOf(createDefaultAgentWelcomeMessage()),
-                   inputText = "",
-                   attachedPhotoUri = null
-               )
-           }
-       }
-   }
-   ```
-3. **Session Auto-titling:** When the user sends their first message in this new session, update `ChatSessionEntity.title` using the first 30 characters of their prompt (or a concise agent-generated summary).
+#### Proposed UX Flow:
+1. **Top Bar Action:** A prominent `+` ("New Chat") button in the `TagAlongScreen` top bar.
+2. **Action Dispatch:**
+   - Calls `TagAlongViewModel.startNewConversation()`.
+3. **Lifecycle Actions:**
+   - Generates a fresh `newSessionId = "session-${epochMillis()}"`.
+   - Inserts a new `ChatSession` record into `TagAlongDatabase`.
+   - Updates `_uiState` with the new `sessionId` and clears the message stream.
+   - Posts a fresh welcome message from TagAlong tailored to the user's current GPS location.
+   - Clears any pending photo attachment or active tour waypoint selection.
+   - The previous session remains fully persisted in `TagAlongDatabase` for retrieval in Conversation History.
 
 ---
 
@@ -249,7 +248,7 @@ The underlying `ChatDao` already exposes:
 
 A primary objective is ensuring maximum reuse of Compose UI components between **Tag Spotter** and **TagAlong**, preventing duplicated code and fragmented styling.
 
-### 3.1 Current Component Inventory & Sharing Matrix
+### 4.1 Current Component Inventory & Sharing Matrix
 
 | UI Component | Current Location | Tag Spotter Uses? | TagAlong Uses? | Sharing Status | Action Plan |
 | :--- | :--- | :---: | :---: | :---: | :--- |
@@ -286,18 +285,335 @@ A2UI shouldn't be a one-way street for TagAlong. Tag Spotter can leverage A2UI c
 
 ---
 
-## 5. Phase 4 Implementation Roadmap & Next Steps
+## 5. Data Access Architecture: Database, Remote Sync & Hybrid Data Layer
+
+Understanding how data flows between on-device SQLite databases and remote Firebase services is essential for both apps:
+
+### 5.1 Local Storage Layer (`SpotDatabase` & `TagAlongDatabase`)
+
+The on-device storage lives in `:core:database` using AndroidX Room with SQLite:
+
+1. **`SpotDatabase` (`SpotDao.kt`):**
+   - **`spots` table:** Core mural entity (`id`, `uuid`, `description`, `latitude`, `longitude`, `category`, `isStarred`, `isPublic`, `ownerUid`, `updatedAt`, `isImported`).
+   - **`images` table:** Mural photos (`id`, `spotId`, `imagePath`, `thumbnailPath`, `isMain`, `rating`).
+   - **`tags` & `artists` tables:** Normalized tags and artist associations linked by `spotId`.
+   - **Access Repository:** `LocalSpotRepository` encapsulates DAO operations, photo processing, and reactive Flow emissions.
+
+2. **`TagAlongDatabase` (`ChatDao.kt`):**
+   - **`chat_sessions` table:** High-level conversation threads (`sessionId`, `title`, `createdAt`, `lastActiveAt`).
+   - **`chat_messages` table:** Individual turns (`id`, `sessionId`, `sender` ["user" | "agent"], `text`, `a2uiPayloadJson`, `imagePath`, `timestamp`). Cascading foreign key deletes all messages if a session is deleted.
+   - **Access Repository:** `RoomChatRepository` exposes reactive Flows (`getMessagesForSession`, `getAllSessions`) and suspend mutation methods.
+
+### 5.2 Remote Cloud Layer (Firestore & Cloud Storage)
+
+Remote data lives in Google Firebase and is synchronized via `:core:sync`:
+
+1. **Firestore Collections:**
+   - **`/public_spots/{uuid}`:** Community mural discovery feed.
+     - Security: `allow read: if true;`, `allow write: if request.auth != null;`.
+     - Serialized format: Full `SpotDetails` JSON.
+   - **`/users/{uid}/spots/{uuid}`:** Authenticated user personal cloud backup.
+     - Security: `allow read, write: if isOwner(uid);`.
+   - **`/shared_packs/{code}`:** Bundled spot packs for import/export.
+
+2. **Firebase Storage:**
+   - Full resolution photos and compressed thumbnails: `/users/{uid}/images/{uuid}.jpg`.
+
+3. **`SyncManager` (`NonWebSyncManager.kt`):**
+   - Provides background sync (`syncNow()`), real-time Firestore listeners (`startRealtimeSync(uid)`), and public spot querying (`fetchPublicSpots(minLat, maxLat, minLon, maxLon)`).
+
+### 5.3 Hybrid Data Bridge (`HybridSpotRepository`)
+
+[HybridSpotRepository.kt](file:///Users/maia/workspace/maiatoday/tag-spotter/core/sync/src/commonMain/kotlin/net/maiatoday/tagspotter/core/sync/HybridSpotRepository.kt) acts as the single source of truth for street art spots by combining local SQLite cache with remote Firestore queries:
+
+- **`getNearbySpots(lat, lon, radiusKm)`:**
+  1. Computes latitude/longitude bounding box coordinates from `radiusKm`.
+  2. Queries `localRepository.getAllSpots()`.
+  3. Queries `syncManager.fetchPublicSpots(minLat, maxLat, minLon, maxLon)` from Firestore.
+  4. Merges both collections, deduplicating by `uuid`.
+  5. Prioritizes local high-res image file paths over remote HTTP URLs when a spot is present in both.
+  6. Calculates exact Haversine distance, filters within `radiusKm`, and sorts closest first.
+- **`getAllSpots()`:** Returns union of all local spots + remote public spots.
+- **`getSpotByUuid(uuid)`:** Checks local DB first, then falls back to remote `/public_spots`.
+
+### 5.4 Complete End-to-End Data Flow Diagram
 
 ```mermaid
 flowchart TD
-    subgraph Phase 4: Production Integration, UX Features & Component Consolidation
+    subgraph TagAlongApp["TagAlong Companion App"]
+        ChatVM["TagAlongViewModel"]
+        AgentRunner["Google ADK Runner"]
+        Tools["StreetArtTools"]
+    end
+
+    subgraph TagSpotterApp["Tag Spotter App"]
+        GalleryVM["GalleryViewModel"]
+        DetailVM["DetailViewModel"]
+    end
+
+    subgraph CoreHybrid[":core:sync (Hybrid Data Layer)"]
+        HybridRepo["HybridSpotRepository"]
+        SyncMgr["SyncManager (NonWebSyncManager)"]
+    end
+
+    subgraph CoreDB[":core:database (Local SQLite / Room)"]
+        LocalRepo["LocalSpotRepository"]
+        SpotDB[("SpotDatabase<br><i>spots, images, tags</i>")]
+        ChatRepo["RoomChatRepository"]
+        ChatDB[("TagAlongDatabase<br><i>chat_sessions, chat_messages</i>")]
+    end
+
+    subgraph FirebaseCloud["Firebase Cloud Services"]
+        FirestorePublic[("Firestore: /public_spots")]
+        FirestorePrivate[("Firestore: /users/{uid}/spots")]
+        GCS[("Firebase Storage<br><i>Mural Photos</i>")]
+    end
+
+    ChatVM --> ChatRepo
+    ChatRepo --> ChatDB
+
+    AgentRunner --> Tools
+    Tools --> HybridRepo
+
+    GalleryVM --> LocalRepo
+    DetailVM --> LocalRepo
+    DetailVM --> SyncMgr
+
+    HybridRepo --> LocalRepo
+    HybridRepo --> SyncMgr
+
+    LocalRepo --> SpotDB
+
+    SyncMgr --> FirestorePublic
+    SyncMgr --> FirestorePrivate
+    SyncMgr --> GCS
+```
+
+---
+
+## 6. Agent Prompt Architecture & Dynamic Catalog Passing
+
+### 6.1 Audit of Current State (The Hardcoding Risk)
+
+Currently in [TagAlongPrompts.kt](file:///Users/maia/workspace/maiatoday/tag-spotter/core/agent/src/commonMain/kotlin/net/maiatoday/tagspotter/core/agent/TagAlongPrompts.kt), the system instruction contains:
+1. **Hardcoded JSON Schemas:** Full JSON examples for `SpotCard`, `TourCard`, `ArtistBioCard`, `StyleQuiz`, `CommunityVoting`, and `MapPinOverlay` are embedded as raw multiline strings inside `SYSTEM_INSTRUCTION`.
+   - *Risk:* If a property is added or altered in `A2UIComponent` models (e.g. adding `distanceMeters` or `isStarred`), the prompt becomes stale, leading to LLM hallucinating deprecated schemas.
+2. **Zero Injected Spots Context:** The prompt gives the agent zero awareness of what spots exist locally until a tool is explicitly called.
+3. **Hardcoded Berlin Mock Fallbacks:** In `TagAlongViewModel.defaultBerlinMarkers()` and `TagAlongMockFixtures`, Berlin spots ("Cosmic Chameleon", "Teufelsberg") are hardcoded as static fallbacks.
+
+### 6.2 Dynamic A2UI Schema Generation from Catalog
+
+Instead of maintaining brittle raw strings in `TagAlongPrompts`, the catalog should programmatically define and export its prompt schemas:
+
+```kotlin
+// In :core:a2ui or :core:agent
+interface A2UIPromptDescriptor {
+    val componentName: String
+    val description: String
+    val jsonSchemaExample: String
+}
+
+class NeonA2UICatalog {
+    // Returns dynamic schema guidance for all registered cards
+    fun generateAgentPromptInstructions(): String {
+        return buildString {
+            appendLine("The available A2UI generative UI components and their schemas are:")
+            registeredDescriptors.forEach { desc ->
+                appendLine("### ${desc.componentName} (${desc.description})")
+                appendLine("```json")
+                appendLine(desc.jsonSchemaExample)
+                appendLine("```")
+            }
+        }
+    }
+}
+```
+
+### 6.3 Dynamic Spatial & Spots Context Injection
+
+When the agent runner is spun up in `TagAlongViewModel`, dynamic spatial context should be injected into the system prompt:
+
+```kotlin
+data class AgentContextConfig(
+    val cityName: String = "Berlin",
+    val latitude: Double = 52.4972,
+    val longitude: Double = 13.2415,
+    val activePackName: String? = null,
+    val localSpotCount: Int = 0
+)
+
+object TagAlongPrompts {
+    fun buildSystemInstruction(
+        catalog: NeonA2UICatalog,
+        context: AgentContextConfig
+    ): String {
+        return buildString {
+            appendLine("You are TagAlong, an enthusiastic, knowledgeable urban street art guide.")
+            appendLine()
+            appendLine("CURRENT CONTEXT:")
+            appendLine("- Active Location: ${context.cityName} (${context.latitude}, ${context.longitude})")
+            appendLine("- Local spots in database: ${context.localSpotCount}")
+            context.activePackName?.let { appendLine("- Active Pack: $it") }
+            appendLine()
+            appendLine("ALWAYS USE YOUR TOOLS to fetch actual spots and artists.")
+            appendLine()
+            appendLine(catalog.generateAgentPromptInstructions())
+        }
+    }
+}
+```
+
+### 6.4 Verification Checklist for Prompt Generation
+
+- [ ] Ensure `TagAlongPrompts.buildSystemInstruction()` reflects all active components from `NeonA2UICatalog`.
+- [ ] Add unit test `DynamicPromptGenerationTest` in `:core:agent` verifying that every component in `NeonA2UICatalog` has a corresponding JSON schema section in the prompt.
+- [ ] Verify that GPS updates dynamically refresh or inform tool calls rather than falling back to hardcoded coordinates.
+
+---
+
+## 7. Spot Creation Architecture: How to Add a New Spot
+
+Street art spots can be created and logged through multiple pathways depending on whether the user is in **Tag Spotter** (curator camera workflow) or **TagAlong** (conversational multimodal companion).
+
+### 7.1 Baseline: How Tag Spotter Adds Spots Today
+
+1. **User Action:** User taps `+` on the Map or Gallery screen in Tag Spotter.
+2. **Camera / Gallery:** User captures a mural image or selects from photo library.
+3. **Draft Initialization:** `DetailViewModel` creates a draft `SpotDetails`:
+   - Auto-populates GPS latitude and longitude from EXIF metadata or `LocationProvider`.
+   - Generates a new `UUID.randomUUID().toString()`.
+4. **Metadata Editing:** User enters title, description, artist name(s), category chips, and toggles `isPublic` (community vs. private).
+5. **Persistence:**
+   - `PhotoProcessor.saveOriginalAndThumbnail()` creates optimized local files.
+   - `LocalSpotRepository.saveSpot(...)` saves `SpotEntity` and `ImageEntity` records via `SpotDao.insertSpot()`.
+6. **Cloud Sync:** `SyncManager.syncNow()` uploads the image to Firebase Storage, writes `/users/{uid}/spots/{uuid}`, and copies to `/public_spots/{uuid}` if `isPublic == true`.
+
+---
+
+### 7.2 Workflow 1: Conversational / Agentic Spot Creation (AI-Assisted)
+
+In TagAlong, a user can log a spot conversationally:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Chat as TagAlong UI
+    participant VM as TagAlongViewModel
+    participant Agent as Gemini ADK Agent
+    participant Tools as StreetArtTools
+    participant Repo as SpotRepository / Hybrid
+
+    User->>Chat: Attaches mural photo + "Found this new mural in Kreuzberg!"
+    Chat->>VM: sendMessage(photoUri, text)
+    VM->>Agent: Multimodal turn (image + user prompt)
+    Agent->>Tools: identifyMuralByPhoto(description, lat, lon)
+    Tools-->>Agent: No existing match (confidence 0.0)
+    Agent-->>VM: "Awesome find! Looks like a stencil piece by an unknown crew. Want me to save it?" + A2UI Draft SpotCard
+    User->>Chat: Taps [Save Spot] on SpotCard
+    Chat->>VM: handleAction(A2UIAction.SaveSpot)
+    VM->>Repo: saveSpot(newSpotDetails)
+    Repo-->>VM: spotId: 42
+    VM-->>Chat: "Saved to your street art collection! 🎉"
+```
+
+#### New Tool Required for Full Autonomy:
+Add a `saveNewSpot` tool directly to `StreetArtTools`:
+```kotlin
+@Tool(
+    name = "saveNewSpot",
+    description = "Saves a newly discovered street art mural to the local spots database."
+)
+suspend fun saveNewSpot(
+    @Param(description = "Title or description of the mural") title: String,
+    @Param(description = "Primary artist name") artist: String,
+    @Param(description = "Category: mural, graffiti, stencil, or sticker") category: String,
+    @Param(description = "Latitude coordinates") latitude: Double,
+    @Param(description = "Longitude coordinates") longitude: Double,
+    @Param(description = "Comma-separated style tags") tags: String,
+    @Param(description = "Whether to publish to public community feed") isPublic: Boolean = true
+): String
+```
+
+---
+
+### 7.3 Workflow 2: Interactive A2UI Card Action (`A2UIAction.SaveSpot`)
+
+When the agent presents a `SpotCard`, the card can feature an interactive action:
+- Button: `[+ Add to My Collection]`.
+- Action payload:
+  ```json
+  {
+    "action": "save_spot",
+    "spotId": "generated-uuid",
+    "title": "Cosmic Chameleon",
+    "artist": "AeroFlux",
+    "latitude": 52.4972,
+    "longitude": 13.2415
+  }
+  ```
+- **Handler in `TagAlongViewModel`:**
+  ```kotlin
+  fun handleAction(action: A2UIAction) {
+      when (action) {
+          is A2UIAction.SaveSpot -> {
+              viewModelScope.launch {
+                  val newSpot = Spot(
+                      uuid = action.spotId.ifBlank { generateUuid() },
+                      description = action.title,
+                      latitude = action.latitude,
+                      longitude = action.longitude,
+                      isPublic = true,
+                      category = action.category
+                  )
+                  localSpotRepository.saveSpot(newSpot, imagePath = action.imageUrl, thumbnailPath = "")
+                  _uiState.update { it.copy(messages = it.messages + agentConfirmationMessage) }
+              }
+          }
+          // ...
+      }
+  }
+  ```
+
+---
+
+### 7.4 Workflow 3: Cross-App Deep Link Handoff to Tag Spotter
+
+When a user in TagAlong wants full manual control (taking multiple photos, adding custom artist tags, manual EXIF editing):
+1. TagAlong displays an action button on the card: `[Open in Tag Spotter Editor]`.
+2. Tapping dispatches deep link URI:
+   ```
+   tagspotter://capture?imageUri={uri}&lat={lat}&lon={lon}&title={title}&artist={artist}&category={category}
+   ```
+3. Tag Spotter's `MainActivity` parses the URI and immediately opens `DetailScreen` in `Draft` mode with all AI-suggested fields pre-filled.
+
+---
+
+### 7.5 Spot Creation Comparison Matrix
+
+| Capability | Tag Spotter Workflow | TagAlong Agentic Workflow | TagAlong Deep Link Workflow |
+| :--- | :--- | :--- | :--- |
+| **Trigger** | Camera icon / FAB | Natural language chat + photo | "Edit in Tag Spotter" card action |
+| **Metadata Entry** | Manual form inputs | AI vision suggestion + 1-tap confirm | AI suggested, manually editable in form |
+| **Location Source** | Device GPS / Photo EXIF | Current GPS or conversation context | TagAlong GPS passed via URI parameter |
+| **Offline Support** | 100% offline (Room SQLite) | Offline mock card or online Gemini | 100% offline |
+| **Cloud Publishing** | Syncs to `/public_spots` on sync | Local save + background sync | Standard Tag Spotter sync |
+
+---
+
+## 8. Phase 4 Implementation Roadmap & Next Steps
+
+```mermaid
+flowchart TD
+    subgraph Phase 4: Production Integration, UX Features & Architecture
         S41[Step 4.1: Android Firebase & App Check Setup]
         S42[Step 4.2: UI Primitives Consolidation in :core:ui]
         S43[Step 4.3: Theme Switching & New Conversation Controls]
-        S44[Step 4.4: Cross-App Deep Linking Contracts]
-        S45[Step 4.5: Agentic Actions & Spot Saving]
-        S46[Step 4.6: Conversation History Drawer / Sheet]
-        S47[Step 4.7: Monorepo Multi-App Regression Gate]
+        S44[Step 4.4: Dynamic Prompt & Catalog Generation Refactor]
+        S45[Step 4.5: Cross-App Deep Linking Contracts]
+        S46[Step 4.6: Agentic Spot Saving & SaveSpot Action]
+        S47[Step 4.7: Conversation History Drawer / Sheet]
+        S48[Step 4.8: Monorepo Multi-App Regression Gate]
     end
 
     S41 --> S42
@@ -306,6 +622,7 @@ flowchart TD
     S44 --> S45
     S45 --> S46
     S46 --> S47
+    S47 --> S48
 ```
 
 ### Step 4.1: Android Firebase Configuration & App Check Setup
@@ -342,7 +659,17 @@ flowchart TD
   - Toggle theme icon in running app: verify UI switches between `UrbanDarkColorScheme` and `UrbanLightColorScheme`.
   - Tap `+`: verify message list resets to fresh welcome state and new `sessionId` is assigned.
 
-### Step 4.4: Cross-App Deep Linking & Handoff Contract
+### Step 4.4: Dynamic Prompt & Catalog Generation Refactor
+- **Goal:** Ensure A2UI component schemas in system prompts are dynamically derived from `NeonA2UICatalog` instead of hardcoded strings in `TagAlongPrompts.kt`.
+- **Work Items:**
+  1. Add `generateAgentPromptInstructions()` to `NeonA2UICatalog` dynamically outputting card schemas.
+  2. Implement `TagAlongPrompts.buildSystemInstruction(catalog, contextConfig)` accepting dynamic spatial bounds and catalog counts.
+  3. Update `createDesktopTagAlongRunner` and `createAndroidTagAlongRunner` to pass dynamic catalog instructions.
+  4. Write unit test `DynamicPromptGenerationTest` in `:core:agent`.
+- **Verification:**
+  - `./gradlew :core:agent:allTests :feature:tagalong:allTests`
+
+### Step 4.5: Cross-App Deep Linking & Handoff Contract
 - **Goal:** Enable smooth navigation between Tag Spotter and TagAlong.
 - **Work Items:**
   1. Define URI scheme in `:core:model` or `:core:ui`:
@@ -354,16 +681,17 @@ flowchart TD
 - **Verification:**
   - `adb shell am start -W -a android.intent.action.VIEW -d "tagalong://spot/test-uuid" net.maiatoday.tagalong.android`
 
-### Step 4.5: Agentic "Save as New Spot" & Interactive Action Callbacks
+### Step 4.6: Agentic "Save as New Spot" & Interactive Action Callbacks
 - **Goal:** Allow the user to take/attach a photo in TagAlong chat, have the agent identify the artist/style, and click a button on the generated A2UI card to save it directly into `SpotRepository`.
 - **Work Items:**
-  1. Add `A2UIAction.SaveSpot(spotData)` handling to `TagAlongViewModel`.
-  2. Wire `HybridSpotRepository.saveSpot(...)` to persist the new spot locally (and to `/public_spots` if `isPublic` is selected).
-  3. Provide instant visual feedback in chat: *"Saved to your murals collection!"* with a direct link to view it.
+  1. Add `saveNewSpot` tool to `StreetArtTools.kt` delegating to `SpotRepository`.
+  2. Add `A2UIAction.SaveSpot(spotData)` handling to `TagAlongViewModel`.
+  3. Wire `HybridSpotRepository.saveSpot(...)` to persist the new spot locally (and to `/public_spots` if `isPublic` is selected).
+  4. Provide instant visual feedback in chat: *"Saved to your murals collection!"* with a direct link to view it.
 - **Verification:**
   - Test via mock payload and live chat: click "Save Mural", verify spot appears in `SpotRepository.getAllSpots()`.
 
-### Step 4.6: Conversation History Drawer / Sheet Implementation
+### Step 4.7: Conversation History Drawer / Sheet Implementation
 - **Goal:** Enable users to browse, switch between, and manage past chat sessions saved in `TagAlongDatabase`.
 - **Work Items:**
   1. Expose `val allSessions: StateFlow<List<ChatSession>>` in `TagAlongViewModel` collected from `ChatDao.getAllSessions()`.
@@ -375,7 +703,7 @@ flowchart TD
   - Test session switching in ViewModel test: verify messages for selected session load into `uiState.messages`.
   - Delete session test: verify session and all associated messages are removed from SQLite.
 
-### Step 4.7: Full Monorepo Multi-App Regression Gate
+### Step 4.8: Full Monorepo Multi-App Regression Gate
 - **Goal:** Ensure all targets across the entire monorepo compile, pass tests, and assemble without regression.
 - **Command:**
   ```bash
@@ -384,7 +712,7 @@ flowchart TD
 
 ---
 
-## 6. Future Phases Horizon (Phase 5+)
+## 9. Future Phases Horizon (Phase 5+)
 
 | Phase | Title | Key Deliverables |
 | :--- | :--- | :--- |
@@ -395,7 +723,7 @@ flowchart TD
 
 ---
 
-## 7. Comprehensive Test Plan for TagAlong Companion App
+## 10. Comprehensive Test Plan for TagAlong Companion App
 
 To ensure stability across platforms, engines, and multimodal inputs, TagAlong utilizes a 6-tier test plan:
 
@@ -415,6 +743,7 @@ flowchart TD
   - Validation of all catalog component types: `SpotCard`, `TourCard`, `ArtistBioCard`, `StyleQuizWidget`, `CommunityVotingCard`, `MapPinOverlayWidget`.
   - Fallback error resilience: verify malformed JSON or unknown component tags cleanly produce a `FallbackComponentData` without throwing exceptions.
   - Action serialization and roundtrip parsing (`A2UIAction`).
+  - Dynamic prompt generation test: verify `NeonA2UICatalog.generateAgentPromptInstructions()` matches catalog component definitions.
   - `TagAlongViewModelTest`: verify `startNewConversation()` creates new session, loads welcome message, and clears inputs.
   - Verify `switchSession(targetSessionId)` updates state messages from repository.
 - **Command:**
@@ -429,6 +758,7 @@ flowchart TD
   - Multi-session queries: `getAllSessions()`, `getSessionById()`, cascading delete via `deleteSessionById()`.
   - `RoomChatRepository` flow emissions when new messages are stored.
   - `HybridSpotRepository` spot merging and deduplication: local spots + remote public Firestore spots.
+  - Spot persistence via `LocalSpotRepository.saveSpot(...)` and `saveSpotDetails(...)`.
 - **Command:**
   ```bash
   ./gradlew :core:database:allTests :core:sync:allTests
@@ -483,7 +813,7 @@ flowchart TD
 
 ---
 
-## 8. Clean Context Handoff & Execution Prompt
+## 11. Clean Context Handoff & Execution Prompt
 
 When beginning Phase 4 in a fresh session, copy and paste the prompt below to resume work with exact alignment:
 
@@ -499,7 +829,8 @@ Baseline Status:
 Immediate Next Tasks:
 1. Implement Step 4.3: Add Light/Dark Mode toggle and "New Conversation" (+) control in TagAlong TopAppBar and ViewModel.
 2. Implement Step 4.2: Consolidate shared UI primitives into :core:ui (move ZoomableImageOverlay, unify NeonTagChip / NeonCategoryBadge).
-3. Plan & Stage Step 4.6: Conversation History Drawer / Sheet using existing TagAlongDatabase multi-session support.
-4. Prepare Step 4.1: Configure Android Firebase App Check and Google Services for net.maiatoday.tagalong.android.
-5. Execute Tier 1 & Tier 2 tests from the TagAlong Test Plan.
+3. Implement Step 4.4: Refactor system prompt generation to dynamically derive A2UI component schemas from NeonA2UICatalog.
+4. Stage Step 4.6 & 4.7: Implement agentic spot saving (saveNewSpot tool + SaveSpot A2UI action) and Conversation History Drawer.
+5. Prepare Step 4.1: Configure Android Firebase App Check and Google Services for net.maiatoday.tagalong.android.
+6. Execute Tier 1 & Tier 2 tests from the TagAlong Test Plan.
 ```

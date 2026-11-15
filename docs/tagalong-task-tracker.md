@@ -148,7 +148,8 @@ flowchart LR
 | ⏳ | **Step 4.1** | Android Firebase & App Check Setup | `:tagalongApp:android` | Phase 3 | 🔀 *Parallel with 4.2* | `./gradlew :tagalongApp:android:assembleDebug` |
 | ⏳ | **Step 4.2** | Shared UI Primitives Consolidation | `:core:ui`, `:feature:detail` | Phase 3 | 🔀 *Parallel with 4.1* | `./gradlew :core:ui:allTests :feature:detail:allTests :core:a2ui:allTests` |
 | ⏳ | **Step 4.3** | Theme Toggle & New Conversation Controls | `:feature:tagalong`, Apps | Step 4.2 | 🔀 *Parallel with 4.4* | `./gradlew :feature:tagalong:allTests :tagalongApp:desktop:assemble` |
-| ⏳ | **Step 4.4** | Cross-App Deep Linking Contract | Core & App Shells | Steps 4.1, 4.2 | Sequential | Deep link intent tests |
-| ⏳ | **Step 4.5** | Agentic Spot Saving & Action Callbacks | `:feature:tagalong`, `:core:sync` | Step 4.2 | Sequential | `./gradlew :feature:tagalong:allTests` |
-| ⏳ | **Step 4.6** | Conversation History Drawer / Sheet | `:feature:tagalong`, `:core:database` | Step 4.3 | Sequential | `./gradlew :feature:tagalong:allTests` |
-| ⏳ | **Step 4.7** | Multi-App Regression Gate | Full Monorepo | Steps 4.1-4.6 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :tagalongApp:android:assembleDebug :desktopApp:assemble :tagalongApp:desktop:assemble` |
+| ⏳ | **Step 4.4** | Dynamic Prompt & Catalog Generation | `:core:a2ui`, `:core:agent` | Step 4.2 | 🔀 *Parallel with 4.3* | `./gradlew :core:agent:allTests :feature:tagalong:allTests` |
+| ⏳ | **Step 4.5** | Cross-App Deep Linking Contract | Core & App Shells | Steps 4.1, 4.2 | Sequential | Deep link intent tests |
+| ⏳ | **Step 4.6** | Agentic Spot Saving & SaveSpot Action | `:feature:tagalong`, `:core:sync` | Steps 4.2, 4.4 | Sequential | `./gradlew :feature:tagalong:allTests` |
+| ⏳ | **Step 4.7** | Conversation History Drawer / Sheet | `:feature:tagalong`, `:core:database` | Step 4.3 | Sequential | `./gradlew :feature:tagalong:allTests` |
+| ⏳ | **Step 4.8** | Multi-App Regression Gate | Full Monorepo | Steps 4.1-4.7 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :tagalongApp:android:assembleDebug :desktopApp:assemble :tagalongApp:desktop:assemble` |
