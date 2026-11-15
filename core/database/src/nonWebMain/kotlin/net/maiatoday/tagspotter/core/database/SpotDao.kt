@@ -72,6 +72,9 @@ interface SpotDao {
     @Query("UPDATE spots SET isStarred = :isStarred, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
     suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean, lastEditedAt: Long)
 
+    @Query("UPDATE spots SET isPublic = :isPublic, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean, lastEditedAt: Long)
+
     @Query("SELECT * FROM spots WHERE isStarred = 1 AND (ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
     suspend fun getStarredSpots(activeUid: String?): List<SpotEntity>
 

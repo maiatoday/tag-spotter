@@ -34,7 +34,8 @@ data class SpotEntity(
     val lastEditedAt: Long = createdAt,
     val isSynced: Boolean = false,
     val ownerUid: String? = null,
-    val parentPackId: String? = null
+    val parentPackId: String? = null,
+    val isPublic: Boolean = false
 )
 
 @Entity(
@@ -119,7 +120,8 @@ fun SpotEntity.toDomain(): Spot = Spot(
     lastEditedAt = lastEditedAt,
     isSynced = isSynced,
     ownerUid = ownerUid,
-    parentPackId = parentPackId
+    parentPackId = parentPackId,
+    isPublic = isPublic
 )
 
 fun Spot.toEntity(): SpotEntity = SpotEntity(
@@ -141,7 +143,8 @@ fun Spot.toEntity(): SpotEntity = SpotEntity(
     lastEditedAt = lastEditedAt,
     isSynced = isSynced,
     ownerUid = ownerUid,
-    parentPackId = parentPackId
+    parentPackId = parentPackId,
+    isPublic = isPublic
 )
 
 fun SpotImageEntity.toDomain(): SpotImage = SpotImage(

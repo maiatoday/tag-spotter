@@ -156,6 +156,12 @@ class FakeSpotRepository : SpotRepository {
         updateFlow()
     }
 
+    override suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean) {
+        val details = spotsMap[spotId] ?: return
+        spotsMap[spotId] = details.copy(spot = details.spot.copy(isPublic = isPublic))
+        updateFlow()
+    }
+
     override suspend fun getStarredSpots(): List<Spot> {
         return spotsMap.values.map { it.spot }.filter { it.isStarred }
     }

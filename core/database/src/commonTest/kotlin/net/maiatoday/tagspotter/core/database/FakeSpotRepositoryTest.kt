@@ -80,6 +80,12 @@ class FakeSpotRepositoryTest {
         assertEquals(1, repo.getStarredSpotsCount())
         assertEquals(1, repo.getStarredSpots().size)
 
+        // 6b. Public spots
+        repo.updateSpotPublic(savedId, true)
+        assertEquals(true, repo.getSpotById(savedId).first()?.spot?.isPublic)
+        repo.updateSpotPublic(savedId, false)
+        assertEquals(false, repo.getSpotById(savedId).first()?.spot?.isPublic)
+
         // 7. Syncing & Offline adoption
         val unsynced = repo.getUnsyncedSpots()
         assertEquals(1, unsynced.size)

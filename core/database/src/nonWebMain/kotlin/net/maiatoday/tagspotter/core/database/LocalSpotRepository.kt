@@ -298,6 +298,11 @@ class LocalSpotRepository(
         spotDao.updateSpotStarred(spotId, isStarred, now)
     }
 
+    override suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean) {
+        val now = epochMillis()
+        spotDao.updateSpotPublic(spotId, isPublic, now)
+    }
+
     override suspend fun getStarredSpots(): List<Spot> {
         return spotDao.getStarredSpots(activeUid).map { it.toDomain() }
     }

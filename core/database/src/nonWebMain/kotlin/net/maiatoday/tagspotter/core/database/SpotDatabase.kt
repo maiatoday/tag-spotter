@@ -86,13 +86,19 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
     }
 }
 
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE spots ADD COLUMN isPublic INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 fun RoomDatabase.Builder<SpotDatabase>.configureSpotDatabase(): RoomDatabase.Builder<SpotDatabase> {
-    return this.addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+    return this.addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
 }
 
 @Database(
     entities = [SpotEntity::class, SpotImageEntity::class, SpotNoteEntity::class, LoadedPackEntity::class],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

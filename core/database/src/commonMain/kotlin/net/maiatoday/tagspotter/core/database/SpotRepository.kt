@@ -34,6 +34,7 @@ interface SpotRepository {
         createThumbnail: suspend (String) -> String?
     ): Int
     suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean)
+    suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean)
     suspend fun getStarredSpots(): List<Spot>
     suspend fun getStarredSpotsCount(): Int
     suspend fun setMainImage(spotId: Long, imageId: Long)

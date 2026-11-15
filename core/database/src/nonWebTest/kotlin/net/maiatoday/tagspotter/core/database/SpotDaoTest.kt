@@ -261,4 +261,31 @@ class SpotDaoTest : BaseDaoTest() {
         assertNull(dao.getSpotIdForNote(999L))
         assertNull(dao.getSpotIdForImage(999L))
     }
+
+    @Test
+    fun updateSpotPublicTogglesFlagAndTouchesSync() = runTest {
+        val spot = SpotEntity(
+            id = 50L,
+            latitude = 12.34,
+            longitude = 56.78,
+            createdAt = 1000L,
+            description = "Spot 50",
+            tags = emptyList(),
+            category = "graffiti",
+            status = "active",
+            isPublic = false,
+            isSynced = true
+        )
+        dao.insertSpot(spot)
+
+        val initial = dao.getSpotDetails(50L).first()
+        assertEquals(false, initial?.spot?.isPublic)
+
+        dao.updateSpotPublic(50L, true, 2000L)
+
+        val updated = dao.getSpotDetails(50L).first()
+        assertEquals(true, updated?.spot?.isPublic)
+        assertEquals(2000L, updated?.spot?.lastEditedAt)
+        assertEquals(false, updated?.spot?.isSynced)
+    }
 }

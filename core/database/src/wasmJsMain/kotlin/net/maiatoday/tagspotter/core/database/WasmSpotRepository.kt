@@ -400,6 +400,15 @@ class WasmSpotRepository : SpotRepository {
         persistToLocalStorage()
     }
 
+    override suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean) {
+        val current: SpotDetails = spotsFlow.value[spotId] ?: return
+        val now = epochMillis()
+        spotsFlow.value = spotsFlow.value + (spotId to current.copy(
+            spot = current.spot.copy(isPublic = isPublic, lastEditedAt = now, isSynced = false)
+        ))
+        persistToLocalStorage()
+    }
+
     override suspend fun getStarredSpots(): List<Spot> {
         return spotsFlow.value.values.map { it.spot }.filter { it.isStarred }
     }
