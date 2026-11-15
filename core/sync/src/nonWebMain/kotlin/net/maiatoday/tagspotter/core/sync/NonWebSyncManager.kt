@@ -101,6 +101,42 @@ class NonWebSyncManager(
                 // Upload metadata to Firestore
                 spotsCollection.document(uuid).set(SpotDetails.serializer(), detailToPush)
 
+                // Dual-write to /public_spots if marked as public, or remove if private
+                if (detailToPush.spot.isPublic) {
+                    val publicImages = detailToPush.images.map { image ->
+                        val bytes = readBytesFromFile(image.thumbnailPath) ?: readBytesFromFile(image.imagePath)
+                        if (bytes != null) {
+                            try {
+                                platformLog(TAG, "Uploading public thumbnail for image: ${image.uuid}")
+                                val storageRef = currentStorage.reference("public_spots/$uuid/thumbnails/${image.uuid}.jpg")
+                                storageRef.putData(bytes.toFirebaseStorageData())
+                                val downloadUrl = storageRef.getDownloadUrl()
+                                platformLog(TAG, "Uploaded public thumbnail and got download URL: $downloadUrl")
+                                image.copy(thumbnailPath = downloadUrl)
+                            } catch (e: Exception) {
+                                platformLogError(TAG, "Failed to upload public thumbnail ${image.uuid}", e)
+                                image
+                            }
+                        } else {
+                            image
+                        }
+                    }
+                    val publicDetail = detailToPush.copy(images = publicImages)
+                    try {
+                        currentFirestore.collection("public_spots").document(uuid).set(SpotDetails.serializer(), publicDetail)
+                        platformLog(TAG, "Dual-wrote public spot to /public_spots/$uuid")
+                    } catch (e: Exception) {
+                        platformLogError(TAG, "Failed to dual-write public spot $uuid", e)
+                    }
+                } else {
+                    try {
+                        currentFirestore.collection("public_spots").document(uuid).delete()
+                        platformLog(TAG, "Cleaned up /public_spots/$uuid since isPublic is false")
+                    } catch (e: Exception) {
+                        platformLogError(TAG, "Failed to delete /public_spots/$uuid", e)
+                    }
+                }
+
                 // Save any updated thumbnail URLs locally
                 if (updatedImages != localDetail.images) {
                     repository.saveSpotDetails(detailToPush)
@@ -220,7 +256,8 @@ class NonWebSyncManager(
         val userId = activeUserId ?: return
         try {
             firestore?.collection("users")?.document(userId)?.collection("spots")?.document(uuid)?.delete()
-            platformLog(TAG, "Deleted remote spot $uuid from Firestore")
+            firestore?.collection("public_spots")?.document(uuid)?.delete()
+            platformLog(TAG, "Deleted remote spot $uuid from Firestore (personal & public)")
         } catch (e: Exception) {
             platformLogError(TAG, "Error deleting remote spot $uuid from Firestore", e)
         }
@@ -420,6 +457,33 @@ class NonWebSyncManager(
                 notes = detail.notes.map { it.copy(id = 0L) }
             )
             repository.saveSpotDetails(updatedDetail)
+        }
+    }
+
+    override suspend fun fetchPublicSpots(
+        minLat: Double,
+        maxLat: Double,
+        minLon: Double,
+        maxLon: Double
+    ): List<SpotDetails> {
+        val currentFirestore = firestore ?: return emptyList()
+        return try {
+            val snapshot = currentFirestore.collection("public_spots").get()
+            snapshot.documents.mapNotNull { doc ->
+                try {
+                    doc.data(SpotDetails.serializer())
+                } catch (e: Exception) {
+                    platformLogError(TAG, "Error parsing public spot ${doc.id}", e)
+                    null
+                }
+            }.filter { detail ->
+                detail.spot.isPublic &&
+                detail.spot.latitude in minLat..maxLat &&
+                detail.spot.longitude in minLon..maxLon
+            }
+        } catch (e: Exception) {
+            platformLogError(TAG, "Error fetching public spots", e)
+            emptyList()
         }
     }
 

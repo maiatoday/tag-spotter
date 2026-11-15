@@ -173,6 +173,57 @@ class JvmSyncManager(
                     println("Failed to push spot metadata for $uuid: ${patchResponse.bodyAsText()}")
                 }
 
+                // Dual-write to /public_spots if marked as public, or remove if private
+                if (detailToPush.spot.isPublic) {
+                    val publicImages = detailToPush.images.map { image ->
+                        val path = image.thumbnailPath.ifEmpty { image.imagePath }
+                        var resolvedUrl = if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+                        if (path.isNotEmpty() && !path.startsWith("http")) {
+                            try {
+                                val bytes = readBytesFromFile(path)
+                                if (bytes != null) {
+                                    val objectPath = "public_spots/$uuid/thumbnails/${image.uuid}.jpg"
+                                    val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
+                                    val storageUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o?uploadType=media&name=$encodedPath"
+                                    val storageResponse = client.authenticatedClient.post(storageUrl) {
+                                        contentType(ContentType.Image.JPEG)
+                                        setBody(bytes)
+                                    }
+                                    if (storageResponse.status.value in 200..299) {
+                                        resolvedUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/public_spots%2F$uuid%2Fthumbnails%2F${image.uuid}.jpg?alt=media"
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                println("Failed to upload public thumbnail ${image.uuid}: ${e.message}")
+                            }
+                        }
+                        val finalUrl = resolvedUrl.ifEmpty { "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/public_spots%2F$uuid%2Fthumbnails%2F${image.uuid}.jpg?alt=media" }
+                        image.copy(
+                            thumbnailPath = if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else finalUrl,
+                            imagePath = if (image.imagePath.startsWith("http")) image.imagePath else finalUrl
+                        )
+                    }
+                    val publicDetailToPush = detailToPush.copy(images = publicImages)
+                    val publicJsonElement = client.jsonConfig.encodeToJsonElement(SpotDetails.serializer(), publicDetailToPush)
+                    val publicFirestoreFields = publicJsonElement.jsonObject.toFirestoreValue()["mapValue"]?.jsonObject?.get("fields")?.jsonObject
+                    if (publicFirestoreFields != null) {
+                        val publicDocUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/public_spots/$uuid"
+                        client.authenticatedClient.patch(publicDocUrl) {
+                            contentType(ContentType.Application.Json)
+                            setBody(buildJsonObject {
+                                put("fields", publicFirestoreFields)
+                            })
+                        }
+                    }
+                } else {
+                    try {
+                        val publicDocUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/public_spots/$uuid"
+                        client.authenticatedClient.delete(publicDocUrl)
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+
                 // Mark as successfully synced locally
                 repository.markSpotAsSynced(uuid)
             }
@@ -275,6 +326,12 @@ class JvmSyncManager(
             }
         } catch (e: Exception) {
             println("Error deleting remote spot $uuid: ${e.message}")
+        }
+        try {
+            val publicDocUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/public_spots/$uuid"
+            client.authenticatedClient.delete(publicDocUrl)
+        } catch (e: Exception) {
+            // ignore
         }
     }
 
@@ -443,5 +500,38 @@ class JvmSyncManager(
             )
             repository.saveImportedSpot(updatedDetail)
         }
+    }
+
+    override suspend fun fetchPublicSpots(
+        minLat: Double,
+        maxLat: Double,
+        minLon: Double,
+        maxLon: Double
+    ): List<SpotDetails> {
+        try {
+            val listUrl = "https://firestore.googleapis.com/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/public_spots"
+            val getResponse = client.authenticatedClient.get(listUrl)
+            if (getResponse.status.value == 200) {
+                val responseJson = client.jsonConfig.parseToJsonElement(getResponse.bodyAsText()).jsonObject
+                val documents = responseJson["documents"]?.jsonArray ?: return emptyList()
+                return documents.mapNotNull { docElement ->
+                    try {
+                        val fields = docElement.jsonObject["fields"]?.jsonObject ?: return@mapNotNull null
+                        val standardFields = fields.mapValues { it.value.jsonObject.fromFirestoreValue() }
+                        val standardJsonObj = JsonObject(standardFields)
+                        client.jsonConfig.decodeFromJsonElement(SpotDetails.serializer(), standardJsonObj)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }.filter { detail ->
+                    detail.spot.isPublic &&
+                    detail.spot.latitude in minLat..maxLat &&
+                    detail.spot.longitude in minLon..maxLon
+                }
+            }
+        } catch (e: Exception) {
+            println("Error fetching public spots via JVM REST client: ${e.message}")
+        }
+        return emptyList()
     }
 }

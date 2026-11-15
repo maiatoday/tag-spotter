@@ -17,4 +17,11 @@ interface SyncManager {
     suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String
     suspend fun importPackByCode(code: String): SharedPack
     suspend fun saveImportedPack(sharedPack: SharedPack)
+
+    suspend fun fetchPublicSpots(
+        minLat: Double = -90.0,
+        maxLat: Double = 90.0,
+        minLon: Double = -180.0,
+        maxLon: Double = 180.0
+    ): List<SpotDetails> = emptyList()
 }
