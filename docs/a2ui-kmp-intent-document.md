@@ -1,7 +1,8 @@
 # Intent Document: TagAlong Agentic Showcase (Google ADK + A2UI + Firebase App Check)
 
 > **Date:** 2026-11-11  
-> **Task Tracker & Orchestration Board:** [tagalong-task-tracker.md](tagalong-task-tracker.md)
+> **Task Tracker & Orchestration Board:** [tagalong-task-tracker.md](tagalong-task-tracker.md)  
+> **ADK Runtime & Lifecycle Guide:** [tagalong-adk-runtime-guide.md](tagalong-adk-runtime-guide.md)
 
 ## 📑 Table of Contents
 
@@ -11,6 +12,9 @@
 - [4. A2UI Library Evaluation & Selection Decision](#4-a2ui-library-evaluation--selection-decision)
 - [5. Dual-Engine Feasibility & Android A/B Switcher](#5-dual-engine-feasibility--android-ab-switcher)
 - [6. Target Multi-App Module Graph (Tag Spotter + TagAlong)](#6-target-multi-app-module-graph-tag-spotter--tagalong)
+  - [6.1 High-Level Monorepo Module Dependencies](#61-high-level-monorepo-module-dependencies)
+  - [6.2 TagAlong Companion Architecture (ADK + A2UI)](#62-tagalong-companion-architecture-adk--a2ui)
+  - [6.3 Tag Spotter Application Architecture](#63-tag-spotter-application-architecture)
 - [7. Full Urban Suite Neon A2UI Component Catalog & Error Resilience](#7-full-urban-suite-neon-a2ui-component-catalog--error-resilience)
 - [8. Adaptive Desktop & Multiplatform Layout](#8-adaptive-desktop--multiplatform-layout)
 - [9. Future Features & Architectural Considerations](#9-future-features--architectural-considerations)
@@ -171,6 +175,8 @@ enum class A2UIEngineType {
 
 ## 6. Target Multi-App Module Graph (Tag Spotter + TagAlong)
 
+### 6.1 High-Level Monorepo Module Dependencies
+
 ```mermaid
 flowchart TD
     subgraph Shared Core Modules [Existing - Unmodified]
@@ -207,6 +213,171 @@ flowchart TD
     CoreLoc & CorePhoto --> FeatTagAlong
     CoreA2UI & CoreAgent --> FeatTagAlong
     FeatTagAlong --> TagAlongDesktop & TagAlongAndroid
+```
+
+### 6.2 TagAlong Companion Architecture (ADK + A2UI)
+
+This diagram details how the Google Agent Development Kit (`:core:agent`), the generative A2UI renderer (`:core:a2ui`), and shared core services integrate into the TagAlong companion app without overlapping dependency flows:
+
+```mermaid
+flowchart TD
+    %% Class Definitions for Color Coding
+    classDef common fill:#172554,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef tagalong fill:#3b1344,stroke:#d946ef,stroke-width:2px,color:#ffffff;
+    classDef tagspotter fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+
+    %% 1. APP ENTRYPOINTS
+    subgraph Tier1 ["1. App Targets"]
+        AndroidApp["tagalongApp:android (Firebase App Check)"]:::tagalong
+        DesktopApp["tagalongApp:desktop (Gemini API Key)"]:::tagalong
+    end
+
+    %% 2. FEATURE LAYER
+    subgraph Tier2 [":feature:tagalong (Companion Feature UI)"]
+        UI["TagAlongScreen (Chat Stream & MiniMap)"]:::tagalong
+        VM["TagAlongViewModel (State & Session Manager)"]:::tagalong
+        Host["A2UIRendererHost (A2UI Surface Host)"]:::tagalong
+    end
+
+    %% 3. ENGINES LAYER
+    subgraph Tier3 ["3. Companion Engines"]
+        subgraph AgentEngine [":core:agent (Google ADK)"]
+            ADKRunner["ADK LlmAgent & Runner"]:::tagalong
+            ADKTools["StreetArtTools (KSP @Tool)"]:::tagalong
+            ModelBackend["Model Backend (Firebase AI / Gemini JVM)"]:::tagalong
+        end
+
+        subgraph UIEngine [":core:a2ui (Generative UI)"]
+            A2UIEngine["A2UI Engine Adapter (a2ui-kmp / androidx.a2ui)"]:::tagalong
+            A2UICatalog["Neon Catalog (SpotCard, TourCard, Quiz)"]:::tagalong
+        end
+    end
+
+    %% 4. DATA & CORE LAYER
+    subgraph Tier4 ["4. Data & Core Domain Layer"]
+        HybridRepo["HybridSpotRepository (:core:sync)"]:::common
+        LocService["Location Service (:core:location)"]:::common
+        NeonTokens["Neon Style Tokens (:core:ui)"]:::common
+        TagAlongDB["TagAlongDatabase (Chat History)"]:::tagalong
+        SpotDB["SpotDatabase v14 (Local Spots)"]:::tagspotter
+        Firestore["Cloud Firestore (/public_spots)"]:::tagspotter
+    end
+
+    %% LEGEND
+    subgraph Tier5 ["Color Legend"]
+        L1["Shared Core Code"]:::common
+        L2["TagAlong Companion App"]:::tagalong
+        L3["Tag Spotter Original App"]:::tagspotter
+    end
+
+    %% Connectors
+    AndroidApp --> UI
+    DesktopApp --> UI
+
+    UI <--> VM
+    UI --> Host
+
+    VM <-->|Prompts & Response Stream| ADKRunner
+    ADKRunner --> ModelBackend
+    ADKRunner --> ADKTools
+
+    VM -->|Streamed JSON| Host
+    Host -->|Render| A2UIEngine
+    A2UIEngine --> A2UICatalog
+    Host -.->|User Actions| VM
+
+    ADKTools -->|Query Murals| HybridRepo
+    ADKTools -->|Read Coordinates| LocService
+    A2UICatalog -->|Theme| NeonTokens
+    VM -->|Save Turns| TagAlongDB
+
+    HybridRepo --> SpotDB
+    HybridRepo --> Firestore
+```
+
+### 6.3 Tag Spotter Application Architecture
+
+This diagram details the architecture of the existing Tag Spotter application, highlighting its role as the offline-first mural capture and content producer app:
+
+```mermaid
+flowchart TD
+    %% Class Definitions
+    classDef common fill:#172554,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef tagspotter fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+
+    %% 1. APP TARGETS
+    subgraph Tier1 ["1. Tag Spotter App Targets"]
+        AndroidApp[":androidApp (CameraX, Play Services)"]:::tagspotter
+        DesktopApp[":desktopApp (Desktop Compose)"]:::tagspotter
+        WebApp[":webApp (WasmJs)"]:::tagspotter
+        WearApp[":wear (WearOS Quick Log)"]:::tagspotter
+    end
+
+    %% 2. FEATURE MODULES
+    subgraph Tier2 ["2. Feature Layer"]
+        FeatMain[":feature:main (Tab Shell & Nav)"]:::tagspotter
+        FeatGallery[":feature:gallery (Capture & Grid)"]:::tagspotter
+        FeatMap[":feature:map (Interactive Pin Map)"]:::tagspotter
+        FeatDetail[":feature:detail (Detail & Public Toggle)"]:::tagspotter
+        FeatSettings[":feature:settings (Account & Sync)"]:::tagspotter
+    end
+
+    %% 3. CORE SERVICES & AI
+    subgraph Tier3 ["3. Core Services & Single-Shot AI"]
+        CorePhoto[":core:photo (EXIF & Thumbnails)"]:::common
+        CoreLoc[":core:location (GPS Provider)"]:::common
+        CoreAI[":core:ai (Gemini Style/Artist Tagging)"]:::tagspotter
+    end
+
+    %% 4. PERSISTENCE & SYNC
+    subgraph Tier4 ["4. Data & Synchronization Layer"]
+        CoreDB[":core:database (SpotRepository)"]:::common
+        CoreSync[":core:sync (SyncManager)"]:::common
+        RoomDB["SpotDatabase v14 (Local Offline Cache)"]:::tagspotter
+        PrivateStore["Firestore: users/{uid}/spots (Private)"]:::tagspotter
+        PublicStore["Firestore: /public_spots/{uuid} (Public)"]:::tagspotter
+    end
+
+    %% 5. SHARED FOUNDATIONS
+    subgraph Tier5 ["5. Shared Foundations"]
+        CoreModel[":core:model (Spot, SpotDetails)"]:::common
+        CoreUI[":core:ui (Neon Tokens & Components)"]:::common
+    end
+
+    %% LEGEND
+    subgraph Tier6 ["Color Legend"]
+        L1["Shared Core Code (Reused by TagAlong)"]:::common
+        L2["Tag Spotter Specific Features & Storage"]:::tagspotter
+    end
+
+    %% Connections
+    AndroidApp --> FeatMain
+    DesktopApp --> FeatMain
+    WebApp --> FeatMain
+    WearApp --> FeatMain
+
+    FeatMain --> FeatGallery
+    FeatMain --> FeatMap
+    FeatMain --> FeatDetail
+    FeatMain --> FeatSettings
+
+    FeatGallery --> CorePhoto
+    FeatGallery --> CoreLoc
+    FeatDetail --> CoreAI
+
+    FeatGallery --> CoreDB
+    FeatMap --> CoreDB
+    FeatDetail --> CoreDB
+    FeatSettings --> CoreSync
+
+    CoreDB --> RoomDB
+    CoreSync --> CoreDB
+    CoreSync --> PrivateStore
+    CoreSync --> PublicStore
+
+    Tier2 -.-> CoreUI
+    Tier3 -.-> CoreModel
+    Tier4 -.-> CoreModel
 ```
 
 ---
