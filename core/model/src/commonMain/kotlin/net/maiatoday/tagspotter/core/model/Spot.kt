@@ -22,7 +22,8 @@ data class Spot(
     val lastEditedAt: Long = createdAt,
     val isSynced: Boolean = false,
     val ownerUid: String? = null,
-    val parentPackId: String? = null
+    val parentPackId: String? = null,
+    val isPublic: Boolean = false
 ) {
     companion object {
         val CATEGORIES = listOf("graffiti", "sculpture", "nature", "architecture", "public_place", "food")
