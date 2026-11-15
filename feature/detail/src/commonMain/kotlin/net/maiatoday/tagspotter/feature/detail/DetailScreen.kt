@@ -748,6 +748,7 @@ fun DetailScreen(
                         onUpdatePhotographer = { viewModel.updatePhotographer(it) },
                         onUpdateDescription = { viewModel.updateDescription(it) },
                         onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
+                        onTogglePublic = { viewModel.updatePublic(it) },
                         onMapPickerClick = { isMapPickerDialogVisible = true },
                         onSetEditing = { viewModel.setEditing(it) }
                     )
@@ -832,6 +833,7 @@ fun DetailScreen(
                             onUpdatePhotographer = { viewModel.updatePhotographer(it) },
                             onUpdateDescription = { viewModel.updateDescription(it) },
                             onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
+                            onTogglePublic = { viewModel.updatePublic(it) },
                             onMapPickerClick = { isMapPickerDialogVisible = true },
                             onSetEditing = { viewModel.setEditing(it) }
                         )

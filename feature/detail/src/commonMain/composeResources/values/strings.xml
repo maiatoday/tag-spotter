@@ -42,6 +42,8 @@
     <string name="btn_navigate">NAVIGATE</string>
     <string name="btn_refine">REFINE</string>
     <string name="btn_map_it">MAP IT</string>
+    <string name="share_public_spot">Share as Public Spot</string>
+    <string name="share_public_spot_desc">Make this spot visible to other explorers</string>
 
     <!-- Photo Timeline Section -->
     <string name="photo_timeline_header">PHOTO TIMELINE</string>

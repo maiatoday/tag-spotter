@@ -45,6 +45,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -92,6 +94,7 @@ fun DetailMetadataCard(
     onUpdatePhotographer: (String) -> Unit,
     onUpdateDescription: (String) -> Unit,
     onUpdateArtworkDate: (String) -> Unit,
+    onTogglePublic: (Boolean) -> Unit = {},
     onMapPickerClick: () -> Unit,
     onSetEditing: (Boolean) -> Unit = {}
 ) {
@@ -753,6 +756,39 @@ fun DetailMetadataCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Public Spot Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(DetailRes.string.share_public_spot),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(DetailRes.string.share_public_spot_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Switch(
+                    checked = details.spot.isPublic,
+                    onCheckedChange = { onTogglePublic(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = Color.DarkGray
+                    )
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))

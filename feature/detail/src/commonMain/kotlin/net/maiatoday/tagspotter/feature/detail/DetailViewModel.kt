@@ -273,6 +273,23 @@ class DetailViewModel(
         }
     }
 
+    fun togglePublic() {
+        val details = spotDetails.value ?: return
+        updatePublic(!details.spot.isPublic)
+    }
+
+    fun updatePublic(isPublic: Boolean) {
+        if (spotId != -1L) {
+            viewModelScope.launch {
+                repository.updateSpotPublic(spotId, isPublic)
+            }
+        } else {
+            _draftDetails.value = _draftDetails.value?.let {
+                it.copy(spot = it.spot.copy(isPublic = isPublic))
+            }
+        }
+    }
+
     fun updateStatus(status: String) {
         if (spotId != -1L) {
             viewModelScope.launch {

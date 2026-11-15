@@ -52,6 +52,8 @@ object DetailStrings {
     val btn_navigate: StringResource = Res.string.btn_navigate
     val btn_refine: StringResource = Res.string.btn_refine
     val btn_map_it: StringResource = Res.string.btn_map_it
+    val share_public_spot: StringResource = Res.string.share_public_spot
+    val share_public_spot_desc: StringResource = Res.string.share_public_spot_desc
     val photo_timeline_header: StringResource = Res.string.photo_timeline_header
     val content_desc_add_image: StringResource = Res.string.content_desc_add_image
     val content_desc_delete_image: StringResource = Res.string.content_desc_delete_image

@@ -11,11 +11,11 @@
 
 ```mermaid
 flowchart LR
-    P1[Phase 1: Foundation<br><b>2 / 5 Done</b>] --> P2[Phase 2: Regression Gate<br><b>PENDING</b>]
+    P1[Phase 1: Foundation<br><b>3 / 5 Done</b>] --> P2[Phase 2: Regression Gate<br><b>PENDING</b>]
     P2 --> P3[Phase 3: TagAlong App<br><b>0 / 6 Done</b>]
 ```
 
-- **Current Active Phase:** **Phase 1 (Step 1.3 / Step 1.4)**
+- **Current Active Phase:** **Phase 1 (Step 1.4)**
 - **Total Tasks:** 11 steps + 1 Regression Gate
 - **TagAlong Target Platforms:** Android + Desktop (JVM) *(Phase 1 preserves all existing Tag Spotter targets including iOS & Wasm)*
 - **Status:** 🟡 In Progress
@@ -28,7 +28,7 @@ flowchart LR
 | :---: | :--- | :--- | :--- | :--- | :---: | :--- |
 | ✅ | **Step 1.1** | Model Schema Evolution (`isPublic`) | `:core:model` | None | Sequential | `./gradlew :core:model:allTests` |
 | ✅ | **Step 1.2** | Room Migration v13→v14 & TagAlong DB | `:core:database` | Step 1.1 | 🔀 *Parallel with 1.4* | `./gradlew :core:database:allTests` |
-| ⏳ | **Step 1.3** | Tag Spotter Detail Screen UI Switch | `:feature:detail` | Step 1.2 | 🔀 *Parallel with 1.4* | `./gradlew :feature:detail:allTests` |
+| ✅ | **Step 1.3** | Tag Spotter Detail Screen UI Switch | `:feature:detail` | Step 1.2 | 🔀 *Parallel with 1.4* | `./gradlew :feature:detail:allTests` |
 | ⏳ | **Step 1.4** | Firestore Dual-Write & Public Queries | `:core:sync` | Step 1.1 | 🔀 *Parallel with 1.2/1.3* | `./gradlew :core:sync:allTests` |
 | ⏳ | **Step 1.5** | Hybrid Spot Repository | `:core:sync` | Steps 1.2, 1.4 | Sequential | `./gradlew :core:sync:allTests` |
 
@@ -52,7 +52,7 @@ flowchart LR
     - `core/database/src/wasmJsMain/kotlin/net/maiatoday/tagspotter/core/database/...` (update `SpotRepository` implementation)
   - **Test:** `./gradlew :core:database:allTests`
 
-- [ ] **Step 1.3: Tag Spotter Detail Screen UI Switch**
+- [x] **Step 1.3: Tag Spotter Detail Screen UI Switch**
   - **Module:** `:feature:detail`
   - **Goal:** Add neon-styled "Share as Public Spot" Switch to `DetailMetadataCard.kt` and bind to `DetailViewModel.togglePublic()`.
   - **Files:**

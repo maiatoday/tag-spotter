@@ -127,6 +127,13 @@ class DetailViewModelTest {
         viewModel.updateTags(listOf("tagB", "tagC"))
         assertEquals(listOf("tagB", "tagC"), viewModel.spotDetails.value?.spot?.tags)
 
+        // Update public
+        assertEquals(false, viewModel.spotDetails.value?.spot?.isPublic)
+        viewModel.updatePublic(true)
+        assertEquals(true, viewModel.spotDetails.value?.spot?.isPublic)
+        viewModel.togglePublic()
+        assertEquals(false, viewModel.spotDetails.value?.spot?.isPublic)
+
         // Add note
         viewModel.addNote("Nice spot", 2000L)
         val notes = viewModel.spotDetails.value?.notes
@@ -716,6 +723,7 @@ class DetailViewModelTest {
         viewModel.updateLocation(10.0, 20.0)
         viewModel.updateDescription("Desc")
         viewModel.updateArtworkDate("2024")
+        viewModel.updatePublic(true)
         
         val spot = viewModel.spotDetails.value?.spot
         assertNotNull(spot)
@@ -728,6 +736,10 @@ class DetailViewModelTest {
         assertEquals(20.0, spot.longitude)
         assertEquals("Desc", spot.description)
         assertEquals("2024", spot.artworkDate)
+        assertEquals(true, spot.isPublic)
+
+        viewModel.togglePublic()
+        assertEquals(false, viewModel.spotDetails.value?.spot?.isPublic)
     }
 
     @Test
