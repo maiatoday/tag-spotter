@@ -172,6 +172,16 @@ class NonWebSyncManager(
                     } else {
                         platformLog(TAG, "Local spot is up to date or newer: ${resolvedDetail.spot.uuid}")
                     }
+
+                    // If remote document in Firestore had stale thumbnail URLs, heal it in Firestore too
+                    if (resolvedDetail.images != cloudDetail.images) {
+                        try {
+                            spotsCollection.document(resolvedDetail.spot.uuid).set(SpotDetails.serializer(), resolvedDetail)
+                            platformLog(TAG, "Healed remote spot document in Firestore with fresh thumbnail URLs: ${resolvedDetail.spot.uuid}")
+                        } catch (e: Exception) {
+                            platformLogError(TAG, "Failed to heal remote spot document in Firestore: ${resolvedDetail.spot.uuid}", e)
+                        }
+                    }
                 } catch (e: Exception) {
                     platformLogError(TAG, "Error parsing pulled spot document from doc ID: ${doc.id}", e)
                 }
@@ -489,20 +499,20 @@ class NonWebSyncManager(
 
     private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
         val currentStorage = storage ?: return cloudDetail
-        val updatedImages = cloudDetail.images.map { image ->
-            if (image.thumbnailPath.isEmpty() || !image.thumbnailPath.startsWith("http")) {
-                try {
-                    val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
-                    val downloadUrl = storageRef.getDownloadUrl()
-                    platformLog(TAG, "Resolved remote thumbnail URL for ${image.uuid}: $downloadUrl")
-                    image.copy(thumbnailPath = downloadUrl)
-                } catch (e: Exception) {
-                    platformLogError(TAG, "Failed to resolve remote thumbnail for ${image.uuid}", e)
-                    image
+        val updatedImages = coroutineScope {
+            cloudDetail.images.map { image ->
+                async {
+                    try {
+                        val storageRef = currentStorage.reference("users/$userId/thumbnails/${image.uuid}.jpg")
+                        val downloadUrl = storageRef.getDownloadUrl()
+                        platformLog(TAG, "Resolved remote thumbnail URL for ${image.uuid}: $downloadUrl")
+                        image.copy(thumbnailPath = downloadUrl)
+                    } catch (e: Exception) {
+                        platformLogError(TAG, "Failed to resolve remote thumbnail for ${image.uuid}", e)
+                        image
+                    }
                 }
-            } else {
-                image
-            }
+            }.awaitAll()
         }
         return cloudDetail.copy(images = updatedImages)
     }
