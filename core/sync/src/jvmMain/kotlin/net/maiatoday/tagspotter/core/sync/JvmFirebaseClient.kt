@@ -106,6 +106,7 @@ class JvmFirebaseClient(private val secureStorage: SecureStorage) {
                         null
                     }
                 }
+                sendWithoutRequest { true }
             }
         }
     }

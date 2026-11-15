@@ -11,14 +11,14 @@
 
 ```mermaid
 flowchart LR
-    P1[Phase 1: Foundation<br><b>3 / 5 Done</b>] --> P2[Phase 2: Regression Gate<br><b>PENDING</b>]
+    P1[Phase 1: Foundation<br><b>5 / 5 Done</b>] --> P2[Phase 2: Regression Gate<br><b>READY</b>]
     P2 --> P3[Phase 3: TagAlong App<br><b>0 / 6 Done</b>]
 ```
 
-- **Current Active Phase:** **Phase 1 (Step 1.4)**
+- **Current Active Phase:** **Phase 2 (Regression Gate)**
 - **Total Tasks:** 11 steps + 1 Regression Gate
 - **TagAlong Target Platforms:** Android + Desktop (JVM) *(Phase 1 preserves all existing Tag Spotter targets including iOS & Wasm)*
-- **Status:** 🟡 In Progress
+- **Status:** 🟡 Ready for Phase 2
 
 ---
 
