@@ -30,7 +30,7 @@ flowchart LR
 | ✅ | **Step 1.2** | Room Migration v13→v14 & TagAlong DB | `:core:database` | Step 1.1 | 🔀 *Parallel with 1.4* | `./gradlew :core:database:allTests` |
 | ✅ | **Step 1.3** | Tag Spotter Detail Screen UI Switch | `:feature:detail` | Step 1.2 | 🔀 *Parallel with 1.4* | `./gradlew :feature:detail:allTests` |
 | ✅ | **Step 1.4** | Firestore Dual-Write & Public Queries | `:core:sync` | Step 1.1 | 🔀 *Parallel with 1.2/1.3* | `./gradlew :core:sync:allTests` |
-| ⏳ | **Step 1.5** | Hybrid Spot Repository | `:core:sync` | Steps 1.2, 1.4 | Sequential | `./gradlew :core:sync:allTests` |
+| ✅ | **Step 1.5** | Hybrid Spot Repository | `:core:sync` | Steps 1.2, 1.4 | Sequential | `./gradlew :core:sync:allTests` |
 
 ### Detailed Phase 1 Checklist:
 
@@ -71,7 +71,7 @@ flowchart LR
     - `firestore.rules` (via `firestore-rules-author` subagent)
   - **Test:** `./gradlew :core:sync:allTests`
 
-- [ ] **Step 1.5: Hybrid Spot Repository**
+- [x] **Step 1.5: Hybrid Spot Repository**
   - **Module:** `:core:sync`
   - **Goal:** Implement `HybridSpotRepository` in `:core:sync` merging local `SpotRepository` spots with remote `SyncManager.fetchPublicSpots(...)`, deduplicating by `uuid`, and register in `syncModule`.
   - **Files:**

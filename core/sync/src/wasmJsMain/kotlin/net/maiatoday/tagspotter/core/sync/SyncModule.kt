@@ -6,4 +6,5 @@ import org.koin.dsl.module
 actual val syncModule: Module = module {
     single<AuthService> { WasmAuthService() }
     single<SyncManager> { WasmSyncManager(get()) }
+    single { HybridSpotRepository(get(), get()) }
 }

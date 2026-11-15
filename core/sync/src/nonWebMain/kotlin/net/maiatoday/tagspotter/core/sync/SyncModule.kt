@@ -18,4 +18,10 @@ actual val syncModule: Module = module {
         val secureStorage = get<SecureStorage>()
         getJvmSyncManager(repository, secureStorage) ?: NonWebSyncManager(repository)
     }
+    single {
+        HybridSpotRepository(
+            localRepository = get(),
+            syncManager = get()
+        )
+    }
 }
