@@ -71,16 +71,35 @@ import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 @Composable
 fun TagAlongScreen(
     viewModel: TagAlongViewModel = koinViewModel(),
-    engine: A2UIRendererEngine = remember { KmpA2UIEngine() },
+    engine: A2UIRendererEngine? = null,
     onPickPhoto: ((onPicked: (String) -> Unit) -> Unit)? = null,
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val availableEngines = rememberAvailableEngines()
+    var currentEngineIndex by remember { mutableIntStateOf(0) }
+    val activeEngine = engine ?: if (availableEngines.isNotEmpty()) {
+        availableEngines[currentEngineIndex % availableEngines.size]
+    } else {
+        remember { KmpA2UIEngine() }
+    }
+
+    LaunchedEffect(activeEngine) {
+        viewModel.attachEngine(activeEngine)
+    }
+
     val uiState by viewModel.uiState.collectAsState()
     TagAlongScreenContent(
         uiState = uiState,
-        engine = engine,
+        engine = activeEngine,
+        onToggleEngine = if (availableEngines.size > 1 && engine == null) {
+            {
+                currentEngineIndex = (currentEngineIndex + 1) % availableEngines.size
+                val nextEngine = availableEngines[currentEngineIndex]
+                viewModel.switchEngine(nextEngine)
+            }
+        } else null,
         onSendMessage = { viewModel.sendMessage(it) },
         onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
         onAction = { viewModel.handleAction(it) },
@@ -91,7 +110,7 @@ fun TagAlongScreen(
                 viewModel.onPhotoAttached(pickedUri)
             }
         },
-        onNewChat = { viewModel.startNewConversation(engine) },
+        onNewChat = { viewModel.startNewConversation(activeEngine) },
         onOpenSpotDetail = onOpenSpotDetail,
         onViewOnMainMap = onViewOnMainMap,
         modifier = modifier
@@ -102,6 +121,7 @@ fun TagAlongScreen(
 fun TagAlongScreenContent(
     uiState: TagAlongUiState,
     engine: A2UIRendererEngine,
+    onToggleEngine: (() -> Unit)? = null,
     onSendMessage: (String) -> Unit,
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
@@ -172,6 +192,7 @@ fun TagAlongScreenContent(
                         messages = uiState.messages,
                         listState = listState,
                         engine = engine,
+                        onToggleEngine = onToggleEngine,
                         inputText = uiState.inputText,
                         onInputTextChanged = onInputTextChanged,
                         attachedPhotoUri = uiState.attachedPhotoUri,
@@ -215,6 +236,7 @@ fun TagAlongScreenContent(
                 messages = uiState.messages,
                 listState = listState,
                 engine = engine,
+                onToggleEngine = onToggleEngine,
                 inputText = uiState.inputText,
                 onInputTextChanged = onInputTextChanged,
                 attachedPhotoUri = uiState.attachedPhotoUri,
@@ -237,6 +259,7 @@ private fun ChatPane(
     messages: List<TagAlongMessage>,
     listState: LazyListState,
     engine: A2UIRendererEngine,
+    onToggleEngine: (() -> Unit)? = null,
     inputText: String,
     onInputTextChanged: (String) -> Unit,
     attachedPhotoUri: String?,
@@ -289,14 +312,29 @@ private fun ChatPane(
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, DarkTertiaryContainer)
+                            border = BorderStroke(1.dp, DarkTertiaryContainer),
+                            modifier = if (onToggleEngine != null) {
+                                Modifier.clip(RoundedCornerShape(6.dp)).clickable { onToggleEngine() }
+                            } else Modifier
                         ) {
-                            Text(
-                                text = engine.engineType.name,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                color = DarkTertiaryContainer,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                            ) {
+                                Text(
+                                    text = engine.engineType.name,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                    color = DarkTertiaryContainer
+                                )
+                                if (onToggleEngine != null) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "⇄",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        color = DarkTertiaryContainer
+                                    )
+                                }
+                            }
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                         IconButton(
@@ -561,7 +599,17 @@ private fun ChatMessageItem(
             }
         }
 
-        if (message.a2uiPayload != null) {
+        if (message.surfaceIds.isNotEmpty()) {
+            message.surfaceIds.forEach { surfaceId ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    engine.RenderSurface(
+                        surfaceId = surfaceId,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        } else if (message.a2uiPayload != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 engine.RenderSurface(

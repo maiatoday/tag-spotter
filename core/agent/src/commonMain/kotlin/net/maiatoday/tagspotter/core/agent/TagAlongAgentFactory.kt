@@ -15,7 +15,8 @@ object TagAlongAgentFactory {
     fun createAgent(
         model: Model,
         tools: List<BaseTool> = emptyList(),
-        systemInstruction: String = TagAlongPrompts.SYSTEM_INSTRUCTION
+        catalogSchemaJson: String? = null,
+        systemInstruction: String = TagAlongPrompts.buildSystemInstruction(catalogSchemaJson)
     ): LlmAgent {
         return LlmAgent(
             name = AGENT_NAME,
@@ -36,11 +37,13 @@ object TagAlongAgentFactory {
     fun createRunner(
         model: Model,
         streetArtTools: StreetArtTools,
-        systemInstruction: String = TagAlongPrompts.SYSTEM_INSTRUCTION
+        catalogSchemaJson: String? = null,
+        systemInstruction: String = TagAlongPrompts.buildSystemInstruction(catalogSchemaJson)
     ): Runner {
         val agent = createAgent(
             model = model,
             tools = streetArtTools.toTools(),
+            catalogSchemaJson = catalogSchemaJson,
             systemInstruction = systemInstruction
         )
         return createRunner(agent)
