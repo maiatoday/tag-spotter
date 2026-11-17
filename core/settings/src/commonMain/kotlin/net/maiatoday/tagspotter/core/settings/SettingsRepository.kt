@@ -1,8 +1,18 @@
 package net.maiatoday.tagspotter.core.settings
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+
+enum class ThemeMode {
+    SYSTEM,
+    LIGHT,
+    DARK
+}
 
 interface SettingsRepository {
+    val themeMode: StateFlow<ThemeMode>
+    fun setThemeMode(mode: ThemeMode)
+
     val photographerName: Flow<String>
     suspend fun updatePhotographerName(name: String)
     val homeCity: Flow<String>

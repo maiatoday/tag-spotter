@@ -12,6 +12,8 @@ enum class A2UIEngineType {
 interface A2UIRendererEngine {
     val engineType: A2UIEngineType
 
+    fun clearSurfaces() {}
+
     @Composable
     fun RenderSurface(
         payloadJson: String,

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
+import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
 import net.maiatoday.tagspotter.core.a2ui.model.MapPinOverlayData
 import net.maiatoday.tagspotter.core.a2ui.model.SpotCardData
 import net.maiatoday.tagspotter.core.a2ui.model.TourCardData
@@ -67,6 +68,52 @@ class TagAlongViewModel(
         )
     )
     val uiState: StateFlow<TagAlongUiState> = _uiState.asStateFlow()
+
+    var engine: A2UIRendererEngine? = null
+
+    val activeSessionId: String
+        get() = _uiState.value.sessionId
+
+    fun startNewConversation(rendererEngine: A2UIRendererEngine? = null) {
+        val targetEngine = rendererEngine ?: engine
+        targetEngine?.clearSurfaces()
+        viewModelScope.launch {
+            val now = epochMillis()
+            val newSessionId = "session-$now"
+            chatRepository.createOrUpdateSession(
+                ChatSession(
+                    sessionId = newSessionId,
+                    title = "Street Art Exploration",
+                    createdAt = now,
+                    lastActiveAt = now
+                )
+            )
+            val welcomeText = "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
+            val initialMsg = TagAlongMessage(
+                id = "init-welcome-$now",
+                sender = TagAlongSender.AGENT,
+                text = welcomeText,
+                timestamp = now
+            )
+            chatRepository.insertMessage(
+                ChatMessage(
+                    sessionId = newSessionId,
+                    sender = "agent",
+                    text = welcomeText,
+                    timestamp = initialMsg.timestamp
+                )
+            )
+            _uiState.update {
+                it.copy(
+                    sessionId = newSessionId,
+                    messages = listOf(initialMsg),
+                    inputText = "",
+                    attachedPhotoUri = null,
+                    isGenerating = false
+                )
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {

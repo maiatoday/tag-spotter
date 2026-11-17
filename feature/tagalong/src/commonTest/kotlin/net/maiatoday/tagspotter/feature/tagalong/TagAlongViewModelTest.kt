@@ -16,6 +16,11 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
+import net.maiatoday.tagspotter.core.a2ui.A2UIEngineType
+import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
+import net.maiatoday.tagspotter.core.a2ui.catalog.NeonA2UICatalog
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import net.maiatoday.tagspotter.core.agent.TagAlongAgentFactory
 import net.maiatoday.tagspotter.core.database.ChatMessage
 import net.maiatoday.tagspotter.core.database.ChatSession
@@ -367,5 +372,50 @@ class TagAlongViewModelTest {
 
         val dbMessages = chatRepo.getMessagesListForSession("failing-session")
         assertTrue(dbMessages.last().text.contains("Unable to reach TagAlong agent"))
+    }
+
+    @Test
+    fun testStartNewConversation() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        var clearSurfacesCalled = false
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_BINARYTAPE
+            override fun clearSurfaces() {
+                clearSurfacesCalled = true
+            }
+            @Composable
+            override fun RenderSurface(
+                payloadJson: String,
+                catalog: NeonA2UICatalog,
+                onAction: (A2UIAction) -> Unit,
+                modifier: Modifier
+            ) {}
+        }
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "session-1"
+        )
+        advanceUntilIdle()
+        assertEquals("session-1", viewModel.activeSessionId)
+
+        viewModel.startNewConversation(fakeEngine)
+        advanceUntilIdle()
+
+        assertTrue(clearSurfacesCalled)
+        val newSessionId = viewModel.activeSessionId
+        assertTrue(newSessionId != "session-1")
+        assertTrue(newSessionId.startsWith("session-"))
+
+        val sessionInRepo = chatRepo.getSessionById(newSessionId)
+        assertNotNull(sessionInRepo)
+
+        val messagesInRepo = chatRepo.getMessagesListForSession(newSessionId)
+        assertEquals(1, messagesInRepo.size)
+        assertTrue(messagesInRepo.first().text.contains("TagAlong"))
+
+        val uiState = viewModel.uiState.value
+        assertEquals(newSessionId, uiState.sessionId)
+        assertEquals(1, uiState.messages.size)
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import net.maiatoday.tagspotter.core.settings.ThemeMode
 
 private val UrbanDarkColorScheme = darkColorScheme(
     primary = DarkPrimary,
@@ -66,7 +67,12 @@ expect fun PlatformThemeSideEffect(darkTheme: Boolean)
 
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    darkTheme: Boolean = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+    },
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) UrbanDarkColorScheme else UrbanLightColorScheme
