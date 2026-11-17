@@ -5,10 +5,15 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.useResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.google.adk.kt.runners.Runner
+import net.maiatoday.tagspotter.core.agent.createDesktopTagAlongRunner
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
+import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 import net.maiatoday.tagspotter.core.ui.theme.MyApplicationTheme
 import net.maiatoday.tagspotter.feature.main.MainNavigation
 import net.maiatoday.tagspotter.feature.main.initKoin
+import net.maiatoday.tagspotter.feature.tagalong.di.tagalongModule
+import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongScreen
 import org.koin.dsl.module
 import java.awt.Taskbar
 import java.io.File
@@ -18,6 +23,20 @@ import javax.imageio.ImageIO
 val desktopSecretsModule =
     module {
         single<SecretsProvider> { DesktopSecretsProvider() }
+    }
+
+val desktopAgentModule =
+    module {
+        val secrets = DesktopSecretsProvider()
+        val apiKey = secrets.getGeminiApiKey()
+        if (apiKey.isNotBlank()) {
+            single<Runner> {
+                createDesktopTagAlongRunner(
+                    apiKey = apiKey,
+                    hybridSpotRepository = get()
+                )
+            }
+        }
     }
 
 class DesktopSecretsProvider : SecretsProvider {
@@ -39,7 +58,7 @@ class DesktopSecretsProvider : SecretsProvider {
 fun main() =
     application {
         // Initialize DI
-        initKoin(listOf(desktopSecretsModule))
+        initKoin(listOf(desktopSecretsModule, desktopAgentModule, tagalongModule))
 
         // Set macOS Dock Icon / AWT Taskbar icon if supported
         try {
@@ -81,6 +100,26 @@ fun main() =
                     },
                     versionName = "1.0.0-desktop",
                     showToast = { println("Toast: $it") },
+                    tagAlongContent = { onOpenSpotDetail, onViewOnMainMap ->
+                        TagAlongScreen(
+                            onOpenSpotDetail = onOpenSpotDetail,
+                            onViewOnMainMap = onViewOnMainMap,
+                            onPickPhoto = { onPhotoPicked ->
+                                val fileDialog = java.awt.FileDialog(null as java.awt.Frame?, "Select Street Art Photo", java.awt.FileDialog.LOAD)
+                                fileDialog.setFilenameFilter { _, name ->
+                                    val lower = name.lowercase()
+                                    lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp")
+                                }
+                                fileDialog.isVisible = true
+                                val directory = fileDialog.directory
+                                val file = fileDialog.file
+                                if (directory != null && file != null) {
+                                    val selectedFile = File(directory, file)
+                                    onPhotoPicked(selectedFile.toURI().toString())
+                                }
+                            }
+                        )
+                    }
                 )
             }
         }

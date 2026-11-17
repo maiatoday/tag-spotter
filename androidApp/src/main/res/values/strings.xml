@@ -38,4 +38,9 @@
     <string name="wear_notification_channel_name">Wear Watch Location Query</string>
     <string name="wear_notification_title">TagSpotter Watch Query</string>
     <string name="wear_notification_message">Querying nearby street art spots for your watch…</string>
+
+    <!-- App Shortcuts -->
+    <string name="shortcut_tagalong_short_label">TagAlong AI Guide</string>
+    <string name="shortcut_tagalong_long_label">TagAlong Street Art AI Guide</string>
+    <string name="shortcut_tagalong_disabled_message">TagAlong is currently unavailable</string>
 </resources>

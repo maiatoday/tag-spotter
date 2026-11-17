@@ -33,8 +33,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.koin.compose.viewmodel.koinViewModel
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
 import net.maiatoday.tagspotter.core.a2ui.catalog.NeonA2UICatalog
@@ -68,153 +67,33 @@ import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 
 @Composable
 fun TagAlongScreen(
-    viewModel: TagAlongViewModel? = null,
+    viewModel: TagAlongViewModel = koinViewModel(),
     engine: A2UIRendererEngine = remember { KmpA2UIEngine() },
     catalog: NeonA2UICatalog = remember { NeonA2UICatalog() },
     onPickPhoto: ((onPicked: (String) -> Unit) -> Unit)? = null,
+    onOpenSpotDetail: ((Long) -> Unit)? = null,
+    onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    if (viewModel != null) {
-        val uiState by viewModel.uiState.collectAsState()
-        TagAlongScreenContent(
-            uiState = uiState,
-            engine = engine,
-            catalog = catalog,
-            onSendMessage = { viewModel.sendMessage(it) },
-            onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
-            onAction = { viewModel.handleAction(it) },
-            onInputTextChanged = { viewModel.onInputTextChanged(it) },
-            onClearPhoto = { viewModel.onClearPhoto() },
-            onPickPhoto = {
-                onPickPhoto?.invoke { pickedUri ->
-                    viewModel.onPhotoAttached(pickedUri)
-                }
-            },
-            modifier = modifier
-        )
-    } else {
-        var localInputText by remember { mutableStateOf("") }
-        var localAttachedPhotoUri by remember { mutableStateOf<String?>(null) }
-        var localCenterLat by remember { mutableDoubleStateOf(52.4972) }
-        var localCenterLng by remember { mutableDoubleStateOf(13.2415) }
-        var localZoom by remember { mutableDoubleStateOf(14.0) }
-        var localFocusedTitle by remember { mutableStateOf("Teufelsberg Street Art") }
-        val localMarkers = remember { mutableStateListOf(*TagAlongViewModel.defaultBerlinMarkers().toTypedArray()) }
-        val localMessages = remember {
-            mutableStateListOf(
-                TagAlongMessage(
-                    id = "init-1",
-                    sender = TagAlongSender.AGENT,
-                    text = "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
-                ),
-                TagAlongMessage(
-                    id = "init-2",
-                    sender = TagAlongSender.AGENT,
-                    a2uiPayload = TagAlongMockFixtures.SPOT_DOSSIER_JSON
-                )
-            )
-        }
-
-        val uiState = TagAlongUiState(
-            messages = localMessages,
-            mapCenterLat = localCenterLat,
-            mapCenterLng = localCenterLng,
-            mapZoom = localZoom,
-            focusedTitle = localFocusedTitle,
-            mapMarkers = localMarkers,
-            inputText = localInputText,
-            attachedPhotoUri = localAttachedPhotoUri
-        )
-
-        TagAlongScreenContent(
-            uiState = uiState,
-            engine = engine,
-            catalog = catalog,
-            onSendMessage = { text ->
-                if (text.isNotBlank() || localAttachedPhotoUri != null) {
-                    localMessages.add(
-                        TagAlongMessage(
-                            id = "user-${System.currentTimeMillis()}",
-                            sender = TagAlongSender.USER,
-                            text = text.ifBlank { null },
-                            photoUri = localAttachedPhotoUri
-                        )
-                    )
-                    localInputText = ""
-                    localAttachedPhotoUri = null
-                }
-            },
-            onSelectMockFixture = { name, json ->
-                localMessages.add(
-                    TagAlongMessage(
-                        id = "fixture-${System.currentTimeMillis()}",
-                        sender = TagAlongSender.AGENT,
-                        text = "Here is the simulated **$name** A2UI surface:",
-                        a2uiPayload = json
-                    )
-                )
-            },
-            onAction = { action ->
-                when (action) {
-                    is A2UIAction.ViewOnMap -> {
-                        if (action.latitude != 0.0 && action.longitude != 0.0) {
-                            localCenterLat = action.latitude
-                            localCenterLng = action.longitude
-                            localFocusedTitle = action.title
-                        }
-                    }
-                    is A2UIAction.NavigateToStop -> {
-                        localCenterLat = action.latitude
-                        localCenterLng = action.longitude
-                        localFocusedTitle = "Stop #${action.stopIndex}: ${action.title}"
-                    }
-                    is A2UIAction.StarSpot -> {
-                        val index = localMarkers.indexOfFirst { it.title.contains(action.spotId, ignoreCase = true) }
-                        if (index != -1) {
-                            val old = localMarkers[index]
-                            localMarkers[index] = old.copy(isStarred = !old.isStarred)
-                        }
-                    }
-                    is A2UIAction.AnswerQuiz -> {
-                        localMessages.add(
-                            TagAlongMessage(
-                                id = "msg-${System.currentTimeMillis()}",
-                                sender = TagAlongSender.AGENT,
-                                text = if (action.isCorrect) "🎯 Spot on! That's the correct technique." else "❌ Not quite! Check the explanation on the card."
-                            )
-                        )
-                    }
-                    is A2UIAction.VoteOption -> {
-                        localMessages.add(
-                            TagAlongMessage(
-                                id = "msg-${System.currentTimeMillis()}",
-                                sender = TagAlongSender.AGENT,
-                                text = "🗳️ Vote recorded for '${action.optionId}'! Thanks for curating the city's street art."
-                            )
-                        )
-                    }
-                    is A2UIAction.Retry -> {
-                        localMessages.add(
-                            TagAlongMessage(
-                                id = "msg-${System.currentTimeMillis()}",
-                                sender = TagAlongSender.AGENT,
-                                text = "🔄 Retrying card render..."
-                            )
-                        )
-                    }
-                    is A2UIAction.Custom -> {}
-                }
-            },
-            onInputTextChanged = { localInputText = it },
-            onClearPhoto = { localAttachedPhotoUri = null },
-            onPickPhoto = {
-                onPickPhoto?.invoke { pickedUri ->
-                    localAttachedPhotoUri = pickedUri
-                }
-            },
-            modifier = modifier
-        )
-    }
+    val uiState by viewModel.uiState.collectAsState()
+    TagAlongScreenContent(
+        uiState = uiState,
+        engine = engine,
+        catalog = catalog,
+        onSendMessage = { viewModel.sendMessage(it) },
+        onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
+        onAction = { viewModel.handleAction(it) },
+        onInputTextChanged = { viewModel.onInputTextChanged(it) },
+        onClearPhoto = { viewModel.onClearPhoto() },
+        onPickPhoto = {
+            onPickPhoto?.invoke { pickedUri ->
+                viewModel.onPhotoAttached(pickedUri)
+            }
+        },
+        onOpenSpotDetail = onOpenSpotDetail,
+        onViewOnMainMap = onViewOnMainMap,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -228,6 +107,8 @@ fun TagAlongScreenContent(
     onInputTextChanged: (String) -> Unit,
     onClearPhoto: () -> Unit,
     onPickPhoto: () -> Unit,
+    onOpenSpotDetail: ((Long) -> Unit)? = null,
+    onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -244,6 +125,33 @@ fun TagAlongScreenContent(
             .background(DarkBackground)
     ) {
         val isDesktopTwoPane = maxWidth >= 760.dp
+
+        val wrappedOnAction: (A2UIAction) -> Unit = { action ->
+            onAction(action)
+            if (!isDesktopTwoPane) {
+                when (action) {
+                    is A2UIAction.ViewOnMap -> {
+                        if (action.latitude != 0.0 && action.longitude != 0.0) {
+                            onViewOnMainMap?.invoke(action.latitude, action.longitude)
+                        }
+                    }
+                    is A2UIAction.NavigateToStop -> {
+                        if (action.latitude != 0.0 && action.longitude != 0.0) {
+                            onViewOnMainMap?.invoke(action.latitude, action.longitude)
+                        }
+                    }
+                    else -> {}
+                }
+            }
+            if (action is A2UIAction.Custom) {
+                if (action.name == "openSpotDetail" || action.name == "openDetail") {
+                    val spotId = action.params["spotId"]?.toLongOrNull() ?: action.params["id"]?.toLongOrNull()
+                    if (spotId != null) {
+                        onOpenSpotDetail?.invoke(spotId)
+                    }
+                }
+            }
+        }
 
         if (isDesktopTwoPane) {
             Row(modifier = Modifier.fillMaxSize()) {
@@ -265,7 +173,7 @@ fun TagAlongScreenContent(
                         onPickPhoto = onPickPhoto,
                         onSendMessage = onSendMessage,
                         onSelectMockFixture = onSelectMockFixture,
-                        onAction = onAction,
+                        onAction = wrappedOnAction,
                         isOffline = uiState.isOffline,
                         offlineMessage = uiState.offlineMessage,
                         isGenerating = uiState.isGenerating
@@ -296,53 +204,23 @@ fun TagAlongScreenContent(
                 }
             }
         } else {
-            var selectedTab by remember { mutableIntStateOf(0) }
-            Column(modifier = Modifier.fillMaxSize()) {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = DarkBackground,
-                    contentColor = DarkPrimaryContainer
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Agent Chat & A2UI", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Live Map (${uiState.mapMarkers.size})", fontWeight = FontWeight.Bold) }
-                    )
-                }
-
-                if (selectedTab == 0) {
-                    ChatPane(
-                        messages = uiState.messages,
-                        listState = listState,
-                        engine = engine,
-                        catalog = catalog,
-                        inputText = uiState.inputText,
-                        onInputTextChanged = onInputTextChanged,
-                        attachedPhotoUri = uiState.attachedPhotoUri,
-                        onClearPhoto = onClearPhoto,
-                        onPickPhoto = onPickPhoto,
-                        onSendMessage = onSendMessage,
-                        onSelectMockFixture = onSelectMockFixture,
-                        onAction = onAction,
-                        isOffline = uiState.isOffline,
-                        offlineMessage = uiState.offlineMessage,
-                        isGenerating = uiState.isGenerating
-                    )
-                } else {
-                    MapPane(
-                        latitude = uiState.mapCenterLat,
-                        longitude = uiState.mapCenterLng,
-                        zoomLevel = uiState.mapZoom,
-                        focusedTitle = uiState.focusedTitle,
-                        markers = uiState.mapMarkers
-                    )
-                }
-            }
+            ChatPane(
+                messages = uiState.messages,
+                listState = listState,
+                engine = engine,
+                catalog = catalog,
+                inputText = uiState.inputText,
+                onInputTextChanged = onInputTextChanged,
+                attachedPhotoUri = uiState.attachedPhotoUri,
+                onClearPhoto = onClearPhoto,
+                onPickPhoto = onPickPhoto,
+                onSendMessage = onSendMessage,
+                onSelectMockFixture = onSelectMockFixture,
+                onAction = wrappedOnAction,
+                isOffline = uiState.isOffline,
+                offlineMessage = uiState.offlineMessage,
+                isGenerating = uiState.isGenerating
+            )
         }
     }
 }

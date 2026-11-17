@@ -9,7 +9,11 @@ plugins {
 
 android {
     namespace = "net.maiatoday.tagspotter"
-    compileSdk = libs.versions.androidCompileSdk.get().toInt()
+    compileSdk {
+        version = release(libs.versions.androidCompileSdk.get().toInt()) {
+            minorApiLevel = libs.versions.androidCompileSdkMinor.get().toInt()
+        }
+    }
     defaultConfig {
         applicationId = "net.maiatoday.tagspotter"
         minSdk = libs.versions.androidMinSdk.get().toInt()
@@ -51,7 +55,11 @@ android {
 
     packaging {
       resources {
-        excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        excludes += listOf(
+          "/META-INF/{AL2.0,LGPL2.1}",
+          "/META-INF/INDEX.LIST",
+          "/META-INF/DEPENDENCIES"
+        )
       }
     }
     testOptions {
@@ -97,6 +105,10 @@ dependencies {
   implementation(project(":feature:detail"))
   implementation(project(":feature:settings"))
   implementation(project(":feature:main"))
+  implementation(project(":feature:tagalong"))
+  implementation(project(":core:a2ui"))
+  implementation(project(":core:agent"))
+  implementation(libs.google.adk.kotlin.core)
 
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)

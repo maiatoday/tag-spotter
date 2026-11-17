@@ -16,11 +16,16 @@ import net.maiatoday.tagspotter.feature.settings.SettingsScreen
 @Composable
 fun MainNavigation(
     initialSpotId: Long? = null,
+    initialTab: Tab = Tab.Gallery,
     onNavigateToSpotHandled: () -> Unit = {},
     onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
     versionName: String,
     showToast: (String) -> Unit,
-    onGoogleSignInClick: (() -> Unit)? = null
+    onGoogleSignInClick: (() -> Unit)? = null,
+    tagAlongContent: (@Composable (
+        onOpenSpotDetail: (Long) -> Unit,
+        onViewOnMainMap: (Double, Double) -> Unit
+    ) -> Unit)? = null
 ) {
     val config = remember {
         SavedStateConfiguration {
@@ -66,7 +71,9 @@ fun MainNavigation(
                     onNavigateToSettings = { backStack.add(SettingsKey) },
                     onTriggerFiles = onTriggerFiles,
                     versionName = versionName,
-                    showToast = showToast
+                    showToast = showToast,
+                    initialTab = initialTab,
+                    tagAlongContent = tagAlongContent
                 )
             }
             entry<DetailKey> { key ->

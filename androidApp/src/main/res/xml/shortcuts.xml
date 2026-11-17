@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="tagalong_ai_guide"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_name"
+        android:shortcutShortLabel="@string/shortcut_tagalong_short_label"
+        android:shortcutLongLabel="@string/shortcut_tagalong_long_label"
+        android:shortcutDisabledMessage="@string/shortcut_tagalong_disabled_message">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="net.maiatoday.tagspotter"
+            android:targetClass="net.maiatoday.tagspotter.feature.main.MainActivity"
+            android:data="tagspotter://tagalong" />
+    </shortcut>
+</shortcuts>
