@@ -24,23 +24,26 @@ kotlin {
             dependencies {
                 implementation(project(":core:model"))
                 implementation(project(":core:ui"))
+                api(libs.a2ui.get4k())
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
                 implementation(libs.coil.compose)
-                implementation(libs.kotlinx.serialization.json)
+                api(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
         commonTest {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
         androidMain {
             dependencies {
                 implementation(libs.androidx.a2ui.model)
                 implementation(libs.androidx.a2ui.engine)
+                implementation(libs.androidx.a2ui.compose.runtime)
                 implementation(libs.androidx.a2ui.compose.ui)
                 implementation(libs.androidx.compose.material3.a2ui)
             }

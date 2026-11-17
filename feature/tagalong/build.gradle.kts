@@ -38,6 +38,7 @@ kotlin {
                 implementation(compose.components.resources)
 
                 implementation(libs.koin.core)
+                implementation(libs.kotlinx.serialization.json)
                 implementation(libs.koin.compose.viewmodel)
                 implementation(libs.androidx.lifecycle.viewmodel.compose)
                 implementation(libs.kotlinx.coroutines.core)

@@ -1,73 +1,95 @@
 package net.maiatoday.tagspotter.feature.tagalong
 
-import net.maiatoday.tagspotter.core.a2ui.model.ArtistBioCardData
-import net.maiatoday.tagspotter.core.a2ui.model.CommunityVotingData
-import net.maiatoday.tagspotter.core.a2ui.model.FallbackComponentData
-import net.maiatoday.tagspotter.core.a2ui.model.MapPinOverlayData
-import net.maiatoday.tagspotter.core.a2ui.model.SpotCardData
-import net.maiatoday.tagspotter.core.a2ui.model.StyleQuizData
-import net.maiatoday.tagspotter.core.a2ui.model.TourCardData
-import net.maiatoday.tagspotter.core.a2ui.parser.A2UIPayloadParser
+import net.maiatoday.tagspotter.core.a2ui.engine.KmpA2UIEngine
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class TagAlongMockFixturesTest {
 
     @Test
     fun testSpotDossierFixture() {
-        val component = A2UIPayloadParser.parse(TagAlongMockFixtures.SPOT_DOSSIER_JSON)
-        assertIs<SpotCardData>(component)
-        assertEquals("spot-berlin-teufelsberg-01", component.spotId)
-        assertEquals("Cosmic Chameleon", component.title)
-        assertEquals("AeroFlux", component.artist)
+        val engine = KmpA2UIEngine()
+        val surfaces = engine.processProtocolMessage(TagAlongMockFixtures.SPOT_DOSSIER_JSON)
+        assertEquals(listOf("spot-surface-1"), surfaces)
+        val surface = engine.stateManager.getSurface("spot-surface-1")
+        assertNotNull(surface)
+        assertEquals("root", surface.rootComponentId)
+        val dataModel = engine.stateManager.getDataModel("spot-surface-1")
+        assertNotNull(dataModel)
+        assertEquals("Cosmic Chameleon", dataModel.getString("/spot/title"))
+        assertEquals("AeroFlux", dataModel.getString("/spot/artist"))
     }
 
     @Test
     fun testTourSampleFixture() {
-        val component = A2UIPayloadParser.parse(TagAlongMockFixtures.TOUR_SAMPLE_JSON)
-        assertIs<TourCardData>(component)
-        assertEquals("tour-mitte-hidden-gems", component.tourId)
-        assertEquals(4, component.waypoints.size)
+        val engine = KmpA2UIEngine()
+        val surfaces = engine.processProtocolMessage(TagAlongMockFixtures.TOUR_SAMPLE_JSON)
+        assertEquals(listOf("tour-surface-1"), surfaces)
+        val surface = engine.stateManager.getSurface("tour-surface-1")
+        assertNotNull(surface)
+        assertEquals("root", surface.rootComponentId)
+        val dataModel = engine.stateManager.getDataModel("tour-surface-1")
+        assertNotNull(dataModel)
+        assertEquals("Mitte Hidden Alleyways Tour", dataModel.getString("/tour/title"))
     }
 
     @Test
     fun testArtistBioFixture() {
-        val component = A2UIPayloadParser.parse(TagAlongMockFixtures.ARTIST_BIO_JSON)
-        assertIs<ArtistBioCardData>(component)
-        assertEquals("Kira 'Volt' Jensen", component.artistName)
-        assertEquals(3, component.artworks.size)
+        val engine = KmpA2UIEngine()
+        val surfaces = engine.processProtocolMessage(TagAlongMockFixtures.ARTIST_BIO_JSON)
+        assertEquals(listOf("artist-surface-1"), surfaces)
+        val surface = engine.stateManager.getSurface("artist-surface-1")
+        assertNotNull(surface)
+        val dataModel = engine.stateManager.getDataModel("artist-surface-1")
+        assertNotNull(dataModel)
+        assertEquals("Kira 'Volt' Jensen", dataModel.getString("/artist/artistName"))
     }
 
     @Test
     fun testQuizSampleFixture() {
-        val component = A2UIPayloadParser.parse(TagAlongMockFixtures.QUIZ_SAMPLE_JSON)
-        assertIs<StyleQuizData>(component)
-        assertEquals("quiz-berlin-styles-01", component.quizId)
-        assertEquals(3, component.options.size)
+        val engine = KmpA2UIEngine()
+        val surfaces = engine.processProtocolMessage(TagAlongMockFixtures.QUIZ_SAMPLE_JSON)
+        assertEquals(listOf("quiz-surface-1"), surfaces)
+        val surface = engine.stateManager.getSurface("quiz-surface-1")
+        assertNotNull(surface)
+        // Verify Basic Catalog composition (Card, Column, Text, ChoicePicker, Button)
+        assertTrue(surface.components.containsKey("root"))
+        assertTrue(surface.components.containsKey("col1"))
+        assertTrue(surface.components.containsKey("picker"))
+        assertTrue(surface.components.containsKey("submit_btn"))
     }
 
     @Test
     fun testVotingSampleFixture() {
-        val component = A2UIPayloadParser.parse(TagAlongMockFixtures.VOTING_SAMPLE_JSON)
-        assertIs<CommunityVotingData>(component)
-        assertEquals("poll-wall-curation-01", component.pollId)
-        assertEquals(3, component.options.size)
-        assertEquals(307, component.totalVotes)
+        val engine = KmpA2UIEngine()
+        val surfaces = engine.processProtocolMessage(TagAlongMockFixtures.VOTING_SAMPLE_JSON)
+        assertEquals(listOf("voting-surface-1"), surfaces)
+        val surface = engine.stateManager.getSurface("voting-surface-1")
+        assertNotNull(surface)
+        assertTrue(surface.components.containsKey("root"))
+        assertTrue(surface.components.containsKey("v_picker"))
+        assertTrue(surface.components.containsKey("v_btn"))
     }
 
     @Test
     fun testMapOverlayFixture() {
-        val component = A2UIPayloadParser.parse(TagAlongMockFixtures.MAP_OVERLAY_JSON)
-        assertIs<MapPinOverlayData>(component)
-        assertEquals("Kreuzberg Neon Cluster", component.title)
-        assertEquals(3, component.pins.size)
+        val engine = KmpA2UIEngine()
+        val surfaces = engine.processProtocolMessage(TagAlongMockFixtures.MAP_OVERLAY_JSON)
+        assertEquals(listOf("map-surface-1"), surfaces)
+        val surface = engine.stateManager.getSurface("map-surface-1")
+        assertNotNull(surface)
+        assertTrue(surface.components.containsKey("root"))
     }
 
     @Test
     fun testMalformedFixture() {
-        val component = A2UIPayloadParser.parse(TagAlongMockFixtures.MALFORMED_JSON)
-        assertIs<FallbackComponentData>(component)
+        val engine = KmpA2UIEngine()
+        val surfaces = engine.processProtocolMessage(TagAlongMockFixtures.MALFORMED_JSON)
+        assertEquals(listOf("malformed-surface-1"), surfaces)
+        val surface = engine.stateManager.getSurface("malformed-surface-1")
+        assertNotNull(surface)
     }
 }
