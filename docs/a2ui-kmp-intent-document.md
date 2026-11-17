@@ -63,7 +63,7 @@ This document defines the complete architecture, design specifications, and phas
 | **Google Cloud ADK Docs** | [docs.cloud.google.com/.../adk](https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/adk) | Official Enterprise Agent Platform documentation for the Agent Development Kit. |
 | **A2UI Protocol Standard** | [a2ui.org](https://a2ui.org) | Official open standard and declarative JSON specification for Agent-to-User Interfaces. |
 | **Jetpack `androidx.a2ui`** | [developer.android.com/.../a2ui](https://developer.android.com/jetpack/androidx/releases/a2ui) | Google's official Android Jetpack Compose A2UI library suite (`a2ui-engine`, `compose-ui`, `material3-a2ui`). |
-| **`a2ui-kmp` (BinaryTape)** | [github.com/BinaryTape/a2ui-kmp](https://github.com/BinaryTape/a2ui-kmp) | Community Kotlin Multiplatform port by @xx2bab enabling Compose Multiplatform rendering on Android & Desktop. |
+| **`a2ui-4k` (Contextable)** | [github.com/Contextable/a2ui-4k](https://github.com/Contextable/a2ui-4k) | Kotlin Multiplatform A2UI v0.9 rendering engine (`com.contextable:a2ui-4k`) enabling Compose Multiplatform rendering on Android, iOS & Desktop. |
 | **ClimateTrace CMP Sample** | [github.com/joreilly/ClimateTraceKMP](https://github.com/joreilly/ClimateTraceKMP) | John O'Reilly's reference sample integrating Google ADK, A2UI, and MCP in Kotlin Multiplatform. |
 
 ---
@@ -112,18 +112,19 @@ flowchart TD
 
 ## 4. A2UI Library Evaluation & Selection Decision
 
-| Evaluation Criteria | Official Google `androidx.a2ui` | Community `a2ui-kmp` (BinaryTape / @xx2bab) |
+| Evaluation Criteria | Official Google `androidx.a2ui` | KMP `Contextable/a2ui-4k` |
 | :--- | :--- | :--- |
-| **Multiplatform Support** | ❌ **Android Only** (bound to Android Jetpack Compose) | ✅ **Full KMP** (Android, iOS, Desktop JVM via Compose Multiplatform) |
-| **Artifacts** | `androidx.a2ui:a2ui-engine`<br>`androidx.a2ui.compose:compose-ui`<br>`androidx.compose.material3:material3-a2ui` | `com.binarytape:a2ui-kmp-core`<br>`com.binarytape:a2ui-kmp-compose` |
-| **Maintainer** | Google AndroidX Team | El / @xx2bab (Android GDE / BinaryTape) |
-| **Release Stage** | Alpha (`1.0.0-alpha02`) | Active Open-Source KMP Port |
-| **State Reactivity** | Jetpack Compose Snapshot State | Compose Multiplatform Snapshot State + JSON Pointer Binding |
+| **Multiplatform Support** | ❌ **Android Only** (bound to Android Jetpack Compose) | ✅ **Full KMP** (Android, iOS, Desktop JVM, Wasm via Compose Multiplatform) |
+| **Artifacts** | `androidx.a2ui:a2ui-model`<br>`androidx.a2ui:a2ui-engine`<br>`androidx.a2ui.compose:compose-runtime`<br>`androidx.a2ui.compose:compose-ui`<br>`androidx.compose.material3:material3-a2ui` | `com.contextable:a2ui-4k:0.10.0` |
+| **Maintainer** | Google AndroidX Team | Contextable LLC |
+| **Release Stage** | Alpha (`1.0.0-alpha02`) | Active Open-Source KMP Engine (`0.10.0`) |
+| **Catalog & Schema API** | `A2uiCatalog` + `A2uiComponent` + `catalog.toJsonSchemaString()` | `CoreCatalog` + `A2UiRenderTool` |
+| **State Reactivity & Render Loop** | `A2uiMessageProcessor` + `A2uiDataModel` (`SnapshotStateMap` / `SnapshotStateSparseList`) + `A2uiSurface` | `SurfaceStateManager` + JSON Pointer Binding + `A2UISurface` |
 | **Theme System** | AndroidX Material 3 | Shared Compose Multiplatform Material 3 Tokens |
 
 ### Architectural Decision:
-* **Primary Cross-Platform Engine:** **`a2ui-kmp` (BinaryTape)** for Android, iOS, and Desktop.
-* **Secondary Android Benchmark Engine:** **`androidx.a2ui` (Google)** available on Android via an adapter interface to compare developer experience, schema conformance, and rendering speed.
+* **Primary Cross-Platform Engine:** **`a2ui-4k` (`com.contextable:a2ui-4k`)** for Android, iOS, and Desktop.
+* **Secondary Android Benchmark Engine:** **`androidx.a2ui` (Google)** available on Android via an adapter interface to compare developer experience, schema generation, data model reactivity, and rendering side-by-side.
 
 ---
 
