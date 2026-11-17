@@ -58,7 +58,6 @@ import androidx.compose.ui.unit.sp
 import org.koin.compose.viewmodel.koinViewModel
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
-import net.maiatoday.tagspotter.core.a2ui.catalog.NeonA2UICatalog
 import net.maiatoday.tagspotter.core.a2ui.engine.KmpA2UIEngine
 import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.SpotMapView
@@ -73,7 +72,6 @@ import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 fun TagAlongScreen(
     viewModel: TagAlongViewModel = koinViewModel(),
     engine: A2UIRendererEngine = remember { KmpA2UIEngine() },
-    catalog: NeonA2UICatalog = remember { NeonA2UICatalog() },
     onPickPhoto: ((onPicked: (String) -> Unit) -> Unit)? = null,
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
@@ -83,7 +81,6 @@ fun TagAlongScreen(
     TagAlongScreenContent(
         uiState = uiState,
         engine = engine,
-        catalog = catalog,
         onSendMessage = { viewModel.sendMessage(it) },
         onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
         onAction = { viewModel.handleAction(it) },
@@ -105,7 +102,6 @@ fun TagAlongScreen(
 fun TagAlongScreenContent(
     uiState: TagAlongUiState,
     engine: A2UIRendererEngine,
-    catalog: NeonA2UICatalog,
     onSendMessage: (String) -> Unit,
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
@@ -149,9 +145,14 @@ fun TagAlongScreenContent(
                     else -> {}
                 }
             }
-            if (action is A2UIAction.Custom) {
-                if (action.name == "openSpotDetail" || action.name == "openDetail") {
-                    val spotId = action.params["spotId"]?.toLongOrNull() ?: action.params["id"]?.toLongOrNull()
+            if (action is A2UIAction.OpenSpotDetail) {
+                val spotId = action.spotId.toLongOrNull()
+                if (spotId != null) {
+                    onOpenSpotDetail?.invoke(spotId)
+                }
+            } else if (action is A2UIAction.ClientEvent) {
+                if (action.name == "openSpotDetail" || action.name == "open_spot_detail" || action.name == "openDetail") {
+                    val spotId = (action.context["spotId"]?.toString() ?: action.context["id"]?.toString())?.toLongOrNull()
                     if (spotId != null) {
                         onOpenSpotDetail?.invoke(spotId)
                     }
@@ -171,7 +172,6 @@ fun TagAlongScreenContent(
                         messages = uiState.messages,
                         listState = listState,
                         engine = engine,
-                        catalog = catalog,
                         inputText = uiState.inputText,
                         onInputTextChanged = onInputTextChanged,
                         attachedPhotoUri = uiState.attachedPhotoUri,
@@ -215,7 +215,6 @@ fun TagAlongScreenContent(
                 messages = uiState.messages,
                 listState = listState,
                 engine = engine,
-                catalog = catalog,
                 inputText = uiState.inputText,
                 onInputTextChanged = onInputTextChanged,
                 attachedPhotoUri = uiState.attachedPhotoUri,
@@ -238,7 +237,6 @@ private fun ChatPane(
     messages: List<TagAlongMessage>,
     listState: LazyListState,
     engine: A2UIRendererEngine,
-    catalog: NeonA2UICatalog,
     inputText: String,
     onInputTextChanged: (String) -> Unit,
     attachedPhotoUri: String?,
@@ -397,7 +395,6 @@ private fun ChatPane(
                 ChatMessageItem(
                     message = message,
                     engine = engine,
-                    catalog = catalog,
                     onAction = onAction
                 )
             }
@@ -514,7 +511,6 @@ private fun ChatPane(
 private fun ChatMessageItem(
     message: TagAlongMessage,
     engine: A2UIRendererEngine,
-    catalog: NeonA2UICatalog,
     onAction: (A2UIAction) -> Unit
 ) {
     val isUser = message.sender == TagAlongSender.USER
@@ -570,7 +566,6 @@ private fun ChatMessageItem(
             Box(modifier = Modifier.fillMaxWidth()) {
                 engine.RenderSurface(
                     payloadJson = message.a2uiPayload,
-                    catalog = catalog,
                     onAction = onAction,
                     modifier = Modifier.fillMaxWidth()
                 )
