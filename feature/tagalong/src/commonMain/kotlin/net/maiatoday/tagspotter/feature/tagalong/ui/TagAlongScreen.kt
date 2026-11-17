@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,13 +29,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -59,6 +66,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
 import net.maiatoday.tagspotter.core.a2ui.engine.KmpA2UIEngine
+import net.maiatoday.tagspotter.core.database.ChatSession
+import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.SpotMapView
 import net.maiatoday.tagspotter.core.ui.theme.DarkBackground
@@ -68,6 +77,7 @@ import net.maiatoday.tagspotter.core.ui.theme.DarkSurfaceVariant
 import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagAlongScreen(
     viewModel: TagAlongViewModel = koinViewModel(),
@@ -90,6 +100,9 @@ fun TagAlongScreen(
     }
 
     val uiState by viewModel.uiState.collectAsState()
+    val allSessions by viewModel.allSessions.collectAsState()
+    var showHistorySheet by remember { mutableStateOf(false) }
+
     TagAlongScreenContent(
         uiState = uiState,
         engine = activeEngine,
@@ -111,10 +124,30 @@ fun TagAlongScreen(
             }
         },
         onNewChat = { viewModel.startNewConversation(activeEngine) },
+        onOpenHistory = { showHistorySheet = true },
         onOpenSpotDetail = onOpenSpotDetail,
         onViewOnMainMap = onViewOnMainMap,
         modifier = modifier
     )
+
+    if (showHistorySheet) {
+        HistoryBottomSheet(
+            sessions = allSessions,
+            activeSessionId = uiState.sessionId,
+            onDismissRequest = { showHistorySheet = false },
+            onSwitchSession = { sessionId ->
+                viewModel.switchSession(sessionId, activeEngine)
+                showHistorySheet = false
+            },
+            onDeleteSession = { sessionId ->
+                viewModel.deleteSession(sessionId, activeEngine)
+            },
+            onNewChat = {
+                viewModel.startNewConversation(activeEngine)
+                showHistorySheet = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -129,6 +162,7 @@ fun TagAlongScreenContent(
     onClearPhoto: () -> Unit,
     onPickPhoto: () -> Unit,
     onNewChat: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -202,6 +236,7 @@ fun TagAlongScreenContent(
                         onSelectMockFixture = onSelectMockFixture,
                         onAction = wrappedOnAction,
                         onNewChat = onNewChat,
+                        onOpenHistory = onOpenHistory,
                         isOffline = uiState.isOffline,
                         offlineMessage = uiState.offlineMessage,
                         isGenerating = uiState.isGenerating
@@ -246,6 +281,7 @@ fun TagAlongScreenContent(
                 onSelectMockFixture = onSelectMockFixture,
                 onAction = wrappedOnAction,
                 onNewChat = onNewChat,
+                onOpenHistory = onOpenHistory,
                 isOffline = uiState.isOffline,
                 offlineMessage = uiState.offlineMessage,
                 isGenerating = uiState.isGenerating
@@ -269,6 +305,7 @@ private fun ChatPane(
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
     onNewChat: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     isOffline: Boolean = false,
     offlineMessage: String? = null,
     isGenerating: Boolean = false,
@@ -337,6 +374,17 @@ private fun ChatPane(
                             }
                         }
                         Spacer(modifier = Modifier.width(6.dp))
+                        IconButton(
+                            onClick = onOpenHistory,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "Chat History",
+                                tint = DarkPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
                         IconButton(
                             onClick = onNewChat,
                             modifier = Modifier.size(28.dp)
@@ -692,5 +740,177 @@ private fun MapPane(
                 modifier = Modifier.fillMaxSize()
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryBottomSheet(
+    sessions: List<ChatSession>,
+    activeSessionId: String,
+    onDismissRequest: () -> Unit,
+    onSwitchSession: (String) -> Unit,
+    onDeleteSession: (String) -> Unit,
+    onNewChat: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+    ) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "CHAT HISTORY",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                    color = DarkPrimaryContainer,
+                    letterSpacing = 1.sp
+                )
+                Button(
+                    onClick = onNewChat,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkPrimaryContainer,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "New Chat",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "New Chat",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (sessions.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No conversation history yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(sessions, key = { it.sessionId }) { session ->
+                        val isActive = session.sessionId == activeSessionId
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isActive) {
+                                    DarkPrimaryContainer.copy(alpha = 0.12f)
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                }
+                            ),
+                            border = BorderStroke(
+                                width = if (isActive) 1.5.dp else 1.dp,
+                                color = if (isActive) DarkPrimaryContainer else DarkSurfaceVariant.copy(alpha = 0.4f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSwitchSession(session.sessionId) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = session.title.ifBlank { "Street Art Exploration" },
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium
+                                            ),
+                                            color = if (isActive) DarkPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1
+                                        )
+                                        if (isActive) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = DarkPrimaryContainer.copy(alpha = 0.2f),
+                                                border = BorderStroke(1.dp, DarkPrimaryContainer)
+                                            ) {
+                                                Text(
+                                                    text = "ACTIVE",
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        fontSize = 8.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    ),
+                                                    color = DarkPrimaryContainer,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = formatSessionTime(session.lastActiveAt),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { onDeleteSession(session.sessionId) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Session",
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun formatSessionTime(timestamp: Long, now: Long = epochMillis()): String {
+    val diff = now - timestamp
+    return when {
+        diff < 60_000L -> "Just now"
+        diff < 3600_000L -> "${diff / 60_000L}m ago"
+        diff < 86400_000L -> "${diff / 3600_000L}h ago"
+        diff < 7 * 86400_000L -> "${diff / 86400_000L}d ago"
+        else -> "${diff / (7 * 86400_000L)}w ago"
     }
 }

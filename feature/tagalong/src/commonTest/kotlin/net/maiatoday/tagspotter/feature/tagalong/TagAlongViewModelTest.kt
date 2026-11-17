@@ -664,4 +664,269 @@ class TagAlongViewModelTest {
         assertEquals(48.8566, state.mapCenterLat)
         assertEquals(2.3522, state.mapCenterLng)
     }
+
+    @Test
+    fun testAllSessionsFlowEmission() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "session-1",
+                title = "Kreuzberg Murals",
+                createdAt = 1000L,
+                lastActiveAt = 2000L
+            )
+        )
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "session-2",
+                title = "Mitte Tour",
+                createdAt = 1500L,
+                lastActiveAt = 3000L
+            )
+        )
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "session-1"
+        )
+        advanceUntilIdle()
+
+        val initialSessions = viewModel.allSessions.value
+        assertEquals(2, initialSessions.size)
+        assertTrue(initialSessions.any { it.sessionId == "session-1" })
+        assertTrue(initialSessions.any { it.sessionId == "session-2" })
+
+        // Add a 3rd session
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "session-3",
+                title = "Friedrichshain Tags",
+                createdAt = 2000L,
+                lastActiveAt = 4000L
+            )
+        )
+        advanceUntilIdle()
+
+        val updatedSessions = viewModel.allSessions.value
+        assertEquals(3, updatedSessions.size)
+        assertTrue(updatedSessions.any { it.sessionId == "session-3" })
+    }
+
+    @Test
+    fun testSwitchSessionClearsSurfacesAndReplaysA2UIPayload() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "session-A",
+                title = "Session A",
+                createdAt = 1000L
+            )
+        )
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "session-B",
+                title = "Session B",
+                createdAt = 2000L
+            )
+        )
+
+        val payloadJson = TagAlongMockFixtures.SPOT_DOSSIER_JSON
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-B",
+                sender = "user",
+                text = "Show me the mural",
+                timestamp = 2001L
+            )
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-B",
+                sender = "agent",
+                text = "Here is the spot card",
+                a2uiPayloadJson = payloadJson,
+                timestamp = 2002L
+            )
+        )
+
+        var clearSurfacesCount = 0
+        val processedPayloads = mutableListOf<String>()
+
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = flowOf()
+            override fun getCatalogSchemaJson(): String = "{}"
+            override fun processProtocolMessage(json: String): List<String> {
+                processedPayloads.add(json)
+                return listOf("surface-reconstructed-1")
+            }
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {}
+            override fun clearSurfaces() {
+                clearSurfacesCount++
+            }
+            @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
+            override fun RenderSurface(
+                payloadJson: String,
+                onAction: (A2UIAction) -> Unit,
+                modifier: Modifier
+            ) {}
+        }
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "session-A"
+        )
+        advanceUntilIdle()
+
+        viewModel.attachEngine(fakeEngine)
+        advanceUntilIdle()
+
+        val clearCountBefore = clearSurfacesCount
+
+        viewModel.switchSession("session-B")
+        advanceUntilIdle()
+
+        assertTrue(clearSurfacesCount > clearCountBefore, "Expected clearSurfaces to be called on switchSession")
+        assertEquals(1, processedPayloads.size)
+        assertEquals(payloadJson, processedPayloads.first())
+
+        val state = viewModel.uiState.value
+        assertEquals("session-B", state.sessionId)
+        assertEquals(2, state.messages.size)
+
+        val agentMsg = state.messages[1]
+        assertEquals(TagAlongSender.AGENT, agentMsg.sender)
+        assertEquals("Here is the spot card", agentMsg.text)
+        assertEquals(payloadJson, agentMsg.a2uiPayload)
+        assertEquals(listOf("surface-reconstructed-1"), agentMsg.surfaceIds)
+    }
+
+    @Test
+    fun testDeleteActiveSessionSwitchesToNextSessionWhenSessionsRemain() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "session-active",
+                title = "Active Session",
+                createdAt = 1000L,
+                lastActiveAt = 1000L
+            )
+        )
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "session-next",
+                title = "Next Session",
+                createdAt = 2000L,
+                lastActiveAt = 2000L
+            )
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-next",
+                sender = "agent",
+                text = "Hello from session next",
+                timestamp = 2001L
+            )
+        )
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "session-active"
+        )
+        advanceUntilIdle()
+
+        assertEquals("session-active", viewModel.activeSessionId)
+
+        viewModel.deleteSession("session-active")
+        advanceUntilIdle()
+
+        // Check chatRepo has deleted session-active
+        val deletedSession = chatRepo.getSessionById("session-active")
+        assertEquals(null, deletedSession)
+
+        // Check activeSessionId switched to session-next
+        assertEquals("session-next", viewModel.activeSessionId)
+        val state = viewModel.uiState.value
+        assertEquals("session-next", state.sessionId)
+        assertEquals(1, state.messages.size)
+        assertEquals("Hello from session next", state.messages.first().text)
+    }
+
+    @Test
+    fun testDeleteActiveSessionStartsNewConversationWhenNoSessionsRemain() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "only-session",
+                title = "Only Session",
+                createdAt = 1000L,
+                lastActiveAt = 1000L
+            )
+        )
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "only-session"
+        )
+        advanceUntilIdle()
+
+        assertEquals("only-session", viewModel.activeSessionId)
+
+        viewModel.deleteSession("only-session")
+        advanceUntilIdle()
+
+        // Verify old session deleted
+        assertEquals(null, chatRepo.getSessionById("only-session"))
+
+        // Verify switched to brand new session
+        val state = viewModel.uiState.value
+        assertTrue(state.sessionId != "only-session")
+        assertTrue(state.sessionId.startsWith("session-"))
+        assertEquals(1, state.messages.size)
+        assertEquals(TagAlongSender.AGENT, state.messages.first().sender)
+        assertTrue(state.messages.first().text!!.contains("TagAlong"))
+    }
+
+    @Test
+    fun testDeleteNonActiveSessionLeavesActiveSessionUntouched() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "active-session",
+                title = "Active Session",
+                createdAt = 1000L,
+                lastActiveAt = 2000L
+            )
+        )
+        chatRepo.createOrUpdateSession(
+            ChatSession(
+                sessionId = "other-session",
+                title = "Other Session",
+                createdAt = 500L,
+                lastActiveAt = 1000L
+            )
+        )
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "active-session"
+        )
+        advanceUntilIdle()
+
+        assertEquals("active-session", viewModel.activeSessionId)
+
+        viewModel.deleteSession("other-session")
+        advanceUntilIdle()
+
+        assertEquals(null, chatRepo.getSessionById("other-session"))
+        assertEquals("active-session", viewModel.activeSessionId)
+        assertEquals("active-session", viewModel.uiState.value.sessionId)
+    }
 }
