@@ -68,7 +68,9 @@ class MainActivity : ComponentActivity() {
     }
 
     setContent {
-      MyApplicationTheme {
+      val settingsRepository: net.maiatoday.tagspotter.core.settings.SettingsRepository = koinInject()
+      val themeMode by settingsRepository.themeMode.collectAsStateWithLifecycle()
+      MyApplicationTheme(themeMode = themeMode) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           MainActivityContent(
             initialSpotId = initialSpotId,

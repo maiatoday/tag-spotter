@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
+import net.maiatoday.tagspotter.core.settings.ThemeMode
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.SyncManager
@@ -135,6 +136,12 @@ class SettingsViewModel(
             syncManager.stopRealtimeSync()
             spotRepository.activeUid = null
         }
+    }
+
+    val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
+
+    fun setThemeMode(mode: ThemeMode) {
+        settingsRepository.setThemeMode(mode)
     }
 
     val photographerName: StateFlow<String> = settingsRepository.photographerName

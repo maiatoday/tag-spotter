@@ -1,5 +1,8 @@
 package net.maiatoday.tagspotter.desktop
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.useResource
@@ -79,7 +82,11 @@ fun main() =
             title = "Tag Spotter",
             icon = BitmapPainter(icon),
         ) {
-            MyApplicationTheme {
+            val settingsRepository = remember {
+                org.koin.core.context.GlobalContext.get().get<net.maiatoday.tagspotter.core.settings.SettingsRepository>()
+            }
+            val themeMode by settingsRepository.themeMode.collectAsState()
+            MyApplicationTheme(themeMode = themeMode) {
                 MainNavigation(
                     initialSpotId = null,
                     onNavigateToSpotHandled = {},

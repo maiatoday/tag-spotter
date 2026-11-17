@@ -50,6 +50,18 @@ class FakeSettingsRepositoryTest {
             cancelAndConsumeRemainingEvents()
         }
 
+        repo.themeMode.test {
+            assertEquals(ThemeMode.SYSTEM, awaitItem())
+
+            repo.setThemeMode(ThemeMode.LIGHT)
+            assertEquals(ThemeMode.LIGHT, awaitItem())
+
+            repo.setThemeMode(ThemeMode.DARK)
+            assertEquals(ThemeMode.DARK, awaitItem())
+
+            cancelAndConsumeRemainingEvents()
+        }
+
         repo.darkMapEnabled.test {
             assertFalse(awaitItem())
 

@@ -24,10 +24,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -90,6 +94,7 @@ fun TagAlongScreen(
                 viewModel.onPhotoAttached(pickedUri)
             }
         },
+        onNewChat = { viewModel.startNewConversation(engine) },
         onOpenSpotDetail = onOpenSpotDetail,
         onViewOnMainMap = onViewOnMainMap,
         modifier = modifier
@@ -107,6 +112,7 @@ fun TagAlongScreenContent(
     onInputTextChanged: (String) -> Unit,
     onClearPhoto: () -> Unit,
     onPickPhoto: () -> Unit,
+    onNewChat: () -> Unit = {},
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -174,6 +180,7 @@ fun TagAlongScreenContent(
                         onSendMessage = onSendMessage,
                         onSelectMockFixture = onSelectMockFixture,
                         onAction = wrappedOnAction,
+                        onNewChat = onNewChat,
                         isOffline = uiState.isOffline,
                         offlineMessage = uiState.offlineMessage,
                         isGenerating = uiState.isGenerating
@@ -217,6 +224,7 @@ fun TagAlongScreenContent(
                 onSendMessage = onSendMessage,
                 onSelectMockFixture = onSelectMockFixture,
                 onAction = wrappedOnAction,
+                onNewChat = onNewChat,
                 isOffline = uiState.isOffline,
                 offlineMessage = uiState.offlineMessage,
                 isGenerating = uiState.isGenerating
@@ -239,6 +247,7 @@ private fun ChatPane(
     onSendMessage: (String) -> Unit,
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
+    onNewChat: () -> Unit = {},
     isOffline: Boolean = false,
     offlineMessage: String? = null,
     isGenerating: Boolean = false,
@@ -278,17 +287,30 @@ private fun ChatPane(
                         )
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, DarkTertiaryContainer)
-                    ) {
-                        Text(
-                            text = engine.engineType.name,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                            color = DarkTertiaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = DarkTertiaryContainer.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, DarkTertiaryContainer)
+                        ) {
+                            Text(
+                                text = engine.engineType.name,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                color = DarkTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        IconButton(
+                            onClick = onNewChat,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "New Chat",
+                                tint = DarkPrimaryContainer
+                            )
+                        }
                     }
                 }
 

@@ -3,12 +3,23 @@ package net.maiatoday.tagspotter.core.settings
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class WasmSettingsRepository(
     private val secureStorage: SecureStorage,
     private val settings: Settings
 ) : SettingsRepository {
+    private val _themeMode = MutableStateFlow(
+        settings.getStringOrNull("theme_mode")?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
+    )
+    override val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    override fun setThemeMode(mode: ThemeMode) {
+        settings.putString("theme_mode", mode.name)
+        _themeMode.value = mode
+    }
+
     private val _photographerName = MutableStateFlow(settings.getString("photographer_name", ""))
     override val photographerName: Flow<String> = _photographerName.asStateFlow()
 

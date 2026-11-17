@@ -55,7 +55,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import net.maiatoday.tagspotter.core.settings.ThemeMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Info
@@ -103,6 +105,7 @@ fun MainContainer(
     val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val galleryViewModel: GalleryViewModel = koinViewModel()
@@ -376,6 +379,46 @@ fun MainContainer(
                                     uncheckedTrackColor = Color.DarkGray
                                 )
                             )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Theme",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                ThemeMode.entries.forEach { mode ->
+                                    val isSelected = themeMode == mode
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                            .clickable { viewModel.setThemeMode(mode) }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = when (mode) {
+                                                ThemeMode.SYSTEM -> "Auto"
+                                                ThemeMode.LIGHT -> "Light"
+                                                ThemeMode.DARK -> "Dark"
+                                            },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 

@@ -6,17 +6,52 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import androidx.datastore.core.IOException
 
 class DataStoreSettingsRepository(
     private val secureStorage: SecureStorage,
-    private val dataStore: DataStore<Preferences>
+    private val dataStore: DataStore<Preferences>,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) : SettingsRepository {
+
+    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    override val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    init {
+        scope.launch {
+            dataStore.data
+                .catch { exception ->
+                    if (exception is IOException) {
+                        emit(emptyPreferences())
+                    } else {
+                        throw exception
+                    }
+                }
+                .collect { preferences ->
+                    val modeStr = preferences[THEME_MODE]
+                    _themeMode.value = modeStr?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
+                }
+        }
+    }
+
+    override fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        scope.launch {
+            dataStore.edit { preferences ->
+                preferences[THEME_MODE] = mode.name
+            }
+        }
+    }
     
     private val _geminiApiKey = MutableStateFlow(getSavedGeminiApiKey())
     override val geminiApiKey: Flow<String> = _geminiApiKey.asStateFlow()
@@ -31,6 +66,7 @@ class DataStoreSettingsRepository(
     }
 
     companion object {
+        val THEME_MODE = stringPreferencesKey("theme_mode")
         val PHOTOGRAPHER_NAME = stringPreferencesKey("photographer_name")
         val HOME_CITY = stringPreferencesKey("home_city")
         val SHOW_TEST_DATA = booleanPreferencesKey("show_test_data")

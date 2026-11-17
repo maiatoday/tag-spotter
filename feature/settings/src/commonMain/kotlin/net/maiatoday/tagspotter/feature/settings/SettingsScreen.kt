@@ -57,6 +57,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.maiatoday.tagspotter.core.settings.ThemeMode
 import net.maiatoday.tagspotter.feature.settings.res.SettingsRes
 import net.maiatoday.tagspotter.feature.settings.res.rememberToastLauncher
 import net.maiatoday.tagspotter.feature.settings.res.stringResource
@@ -83,6 +84,8 @@ fun SettingsScreen(
 ) {
     val toastLauncher = rememberToastLauncher()
     val strings = rememberSettingsStrings()
+
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
 
     val savedName by viewModel.photographerName.collectAsStateWithLifecycle()
     var photographerNameInput by remember(savedName) { mutableStateOf(savedName) }
@@ -596,6 +599,72 @@ fun SettingsScreen(
                         }
                     }
                 }
+
+                // Appearance / Theme Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Appearance",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Choose your preferred theme mode for Tag Spotter",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ThemeMode.entries.forEach { mode ->
+                                val isSelected = themeMode == mode
+                                Button(
+                                    onClick = { viewModel.setThemeMode(mode) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = if (isSelected) {
+                                        ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    } else {
+                                        ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = when (mode) {
+                                            ThemeMode.SYSTEM -> "System"
+                                            ThemeMode.LIGHT -> "Light"
+                                            ThemeMode.DARK -> "Dark"
+                                        },
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Settings Card
                 Card(

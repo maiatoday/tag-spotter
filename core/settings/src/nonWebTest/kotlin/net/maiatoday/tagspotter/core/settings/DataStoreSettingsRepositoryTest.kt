@@ -29,11 +29,15 @@ class DataStoreSettingsRepositoryTest {
 
         assertFalse(repository.darkMapEnabled.first())
         assertTrue(repository.artistRecognitionEnabled.first())
+        assertEquals(ThemeMode.SYSTEM, repository.themeMode.value)
     }
 
     @Test
     fun updatePreferencesWorksCorrectly() = runTest {
         val repository = createRepository()
+
+        repository.setThemeMode(ThemeMode.DARK)
+        assertEquals(ThemeMode.DARK, repository.themeMode.value)
 
         repository.updatePhotographerName("Alice")
         assertEquals("Alice", repository.photographerName.first())
