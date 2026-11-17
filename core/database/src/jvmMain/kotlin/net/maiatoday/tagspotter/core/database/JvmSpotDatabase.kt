@@ -8,14 +8,22 @@ import org.koin.dsl.module
 import java.io.File
 
 actual fun getDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<SpotDatabase> {
-    val dbFile = File(System.getProperty("java.io.tmpdir"), "spot_database.db")
+    val dir = File(System.getProperty("user.home"), ".tagspotter")
+    if (!dir.exists()) {
+        dir.mkdirs()
+    }
+    val dbFile = File(dir, "spot_database.db")
     return Room.databaseBuilder<SpotDatabase>(
         name = dbFile.absolutePath
     )
 }
 
 actual fun getTagAlongDatabaseBuilder(ctx: Any?): RoomDatabase.Builder<TagAlongDatabase> {
-    val dbFile = File(System.getProperty("java.io.tmpdir"), "tagalong_database.db")
+    val dir = File(System.getProperty("user.home"), ".tagspotter")
+    if (!dir.exists()) {
+        dir.mkdirs()
+    }
+    val dbFile = File(dir, "tagalong_database.db")
     return Room.databaseBuilder<TagAlongDatabase>(
         name = dbFile.absolutePath
     )

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
@@ -48,12 +49,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import net.maiatoday.tagspotter.core.settings.ThemeMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Info
@@ -72,7 +76,8 @@ import org.koin.compose.viewmodel.koinViewModel
 
 enum class Tab {
     Gallery,
-    Map
+    Map,
+    TagAlong
 }
 
 @Composable
@@ -84,12 +89,23 @@ fun MainContainer(
     versionName: String,
     showToast: (String) -> Unit,
     modifier: Modifier = Modifier,
+    initialTab: Tab = Tab.Gallery,
+    tagAlongContent: (@Composable (
+        onOpenSpotDetail: (Long) -> Unit,
+        onViewOnMainMap: (Double, Double) -> Unit
+    ) -> Unit)? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
-    var selectedTab by rememberSaveable { mutableStateOf(Tab.Gallery) }
+    var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
+    var targetMapCenter by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+
+    LaunchedEffect(initialTab) {
+        selectedTab = initialTab
+    }
     val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val galleryViewModel: GalleryViewModel = koinViewModel()
@@ -364,6 +380,46 @@ fun MainContainer(
                                 )
                             )
                         }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Theme",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                ThemeMode.entries.forEach { mode ->
+                                    val isSelected = themeMode == mode
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                            .clickable { viewModel.setThemeMode(mode) }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = when (mode) {
+                                                ThemeMode.SYSTEM -> "Auto"
+                                                ThemeMode.LIGHT -> "Light"
+                                                ThemeMode.DARK -> "Dark"
+                                            },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Text(
@@ -456,6 +512,43 @@ fun MainContainer(
                                 indicatorColor = Color.Transparent
                             )
                         )
+                        if (tagAlongContent != null) {
+                            NavigationRailItem(
+                                selected = selectedTab == Tab.TagAlong,
+                                onClick = { selectedTab = Tab.TagAlong },
+                                icon = {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = stringResource(MainRes.string.content_desc_tagalong_tab),
+                                            tint = if (selectedTab == Tab.TagAlong) MaterialTheme.colorScheme.tertiary else unselectedColor
+                                        )
+                                        if (selectedTab == Tab.TagAlong) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(20.dp)
+                                                    .height(2.dp)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                        shape = RoundedCornerShape(1.dp)
+                                                    )
+                                            )
+                                        } else {
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                        }
+                                    }
+                                },
+                                label = { Text(stringResource(MainRes.string.tab_tagalong_label), fontWeight = FontWeight.SemiBold) },
+                                colors = NavigationRailItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                    unselectedIconColor = unselectedColor,
+                                    selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                    unselectedTextColor = unselectedColor,
+                                    indicatorColor = Color.Transparent
+                                )
+                            )
+                        }
                         if (isCameraSupported) {
                             NavigationRailItem(
                                 selected = false,
@@ -511,7 +604,13 @@ fun MainContainer(
                             showImportPackDialog = showGalleryImportDialog,
                             onImportPackDismiss = { showGalleryImportDialog = false },
                             showLoadedPacksDialog = showGalleryLoadedPacksDialog,
-                            onLoadedPacksDismiss = { showGalleryLoadedPacksDialog = false }
+                            onLoadedPacksDismiss = { showGalleryLoadedPacksDialog = false },
+                            targetMapCenter = targetMapCenter,
+                            tagAlongContent = tagAlongContent,
+                            onViewOnMainMap = { lat, lon ->
+                                targetMapCenter = Pair(lat, lon)
+                                selectedTab = Tab.Map
+                            }
                         )
                     }
                 }
@@ -594,6 +693,43 @@ fun MainContainer(
                                     indicatorColor = Color.Transparent
                                 )
                             )
+                            if (tagAlongContent != null) {
+                                NavigationBarItem(
+                                    selected = selectedTab == Tab.TagAlong,
+                                    onClick = { selectedTab = Tab.TagAlong },
+                                    icon = {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoAwesome,
+                                                contentDescription = stringResource(MainRes.string.content_desc_tagalong_tab),
+                                                tint = if (selectedTab == Tab.TagAlong) MaterialTheme.colorScheme.tertiary else Color.Gray
+                                            )
+                                            if (selectedTab == Tab.TagAlong) {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(20.dp)
+                                                        .height(2.dp)
+                                                        .background(
+                                                            color = MaterialTheme.colorScheme.tertiary,
+                                                            shape = RoundedCornerShape(1.dp)
+                                                        )
+                                                )
+                                            } else {
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                            }
+                                        }
+                                    },
+                                    label = { Text(stringResource(MainRes.string.tab_tagalong_label)) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                        unselectedIconColor = Color.Gray,
+                                        selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                        unselectedTextColor = Color.Gray,
+                                        indicatorColor = Color.Transparent
+                                    )
+                                )
+                            }
                             if (isCameraSupported) {
                                 NavigationBarItem(
                                     selected = false,
@@ -649,7 +785,13 @@ fun MainContainer(
                             showImportPackDialog = showGalleryImportDialog,
                             onImportPackDismiss = { showGalleryImportDialog = false },
                             showLoadedPacksDialog = showGalleryLoadedPacksDialog,
-                            onLoadedPacksDismiss = { showGalleryLoadedPacksDialog = false }
+                            onLoadedPacksDismiss = { showGalleryLoadedPacksDialog = false },
+                            targetMapCenter = targetMapCenter,
+                            tagAlongContent = tagAlongContent,
+                            onViewOnMainMap = { lat, lon ->
+                                targetMapCenter = Pair(lat, lon)
+                                selectedTab = Tab.Map
+                            }
                         )
                     }
                 }
@@ -695,7 +837,13 @@ private fun TabContent(
     showImportPackDialog: Boolean,
     onImportPackDismiss: () -> Unit,
     showLoadedPacksDialog: Boolean,
-    onLoadedPacksDismiss: () -> Unit
+    onLoadedPacksDismiss: () -> Unit,
+    targetMapCenter: Pair<Double, Double>?,
+    tagAlongContent: (@Composable (
+        onOpenSpotDetail: (Long) -> Unit,
+        onViewOnMainMap: (Double, Double) -> Unit
+    ) -> Unit)?,
+    onViewOnMainMap: (Double, Double) -> Unit
 ) {
     when (selectedTab) {
         Tab.Gallery -> GalleryScreen(
@@ -707,7 +855,23 @@ private fun TabContent(
             onLoadedPacksDismiss = onLoadedPacksDismiss
         )
         Tab.Map -> MapScreen(
-            onSpotClick = onSpotClick
+            onSpotClick = onSpotClick,
+            initialLatitude = targetMapCenter?.first,
+            initialLongitude = targetMapCenter?.second
         )
+        Tab.TagAlong -> {
+            if (tagAlongContent != null) {
+                tagAlongContent(onSpotClick, onViewOnMainMap)
+            } else {
+                GalleryScreen(
+                    onSpotClick = onSpotClick,
+                    onMenuClick = onMenuClick,
+                    showImportPackDialog = showImportPackDialog,
+                    onImportPackDismiss = onImportPackDismiss,
+                    showLoadedPacksDialog = showLoadedPacksDialog,
+                    onLoadedPacksDismiss = onLoadedPacksDismiss
+                )
+            }
+        }
     }
 }

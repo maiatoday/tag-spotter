@@ -24,6 +24,8 @@ object MainStrings {
     val tab_camera_label: StringResource = Res.string.tab_camera_label
     val content_desc_files_tab: StringResource = Res.string.content_desc_files_tab
     val tab_files_label: StringResource = Res.string.tab_files_label
+    val tab_tagalong_label: StringResource = Res.string.tab_tagalong_label
+    val content_desc_tagalong_tab: StringResource = Res.string.content_desc_tagalong_tab
     val loading_processing_image: StringResource = Res.string.loading_processing_image
 }
 

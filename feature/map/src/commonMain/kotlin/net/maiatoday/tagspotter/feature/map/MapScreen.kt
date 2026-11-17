@@ -67,6 +67,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun MapScreen(
     onSpotClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    initialLatitude: Double? = null,
+    initialLongitude: Double? = null,
     viewModel: MapViewModel = koinViewModel()
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
@@ -102,7 +104,11 @@ fun MapScreen(
         )
     }
 
-    val initialCenterState = initialCenter
+    val initialCenterState = if (initialLatitude != null && initialLongitude != null) {
+        MapPoint(initialLatitude, initialLongitude)
+    } else {
+        initialCenter
+    }
 
     Box(
         modifier = modifier

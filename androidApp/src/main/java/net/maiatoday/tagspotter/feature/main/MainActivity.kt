@@ -44,6 +44,7 @@ import net.maiatoday.tagspotter.core.database.ImportPackWorker
 import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.core.ui.theme.MyApplicationTheme
+import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongScreen
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import java.io.File
@@ -51,6 +52,7 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
   private var initialSpotId by mutableStateOf<Long?>(null)
+  private var initialTab by mutableStateOf<Tab>(Tab.Gallery)
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -60,12 +62,19 @@ class MainActivity : ComponentActivity() {
     if (intent.hasExtra("EXTRA_SPOT_ID")) {
       initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
     }
+    if (intent?.data?.toString() == "tagspotter://tagalong" ||
+        intent?.action == "net.maiatoday.tagspotter.action.TAGALONG") {
+      initialTab = Tab.TagAlong
+    }
 
     setContent {
-      MyApplicationTheme {
+      val settingsRepository: net.maiatoday.tagspotter.core.settings.SettingsRepository = koinInject()
+      val themeMode by settingsRepository.themeMode.collectAsStateWithLifecycle()
+      MyApplicationTheme(themeMode = themeMode) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           MainActivityContent(
             initialSpotId = initialSpotId,
+            initialTab = initialTab,
             onNavigateToSpotHandled = { initialSpotId = null }
           )
         }
@@ -79,6 +88,10 @@ class MainActivity : ComponentActivity() {
     handleImportIntent(intent)
     if (intent.hasExtra("EXTRA_SPOT_ID")) {
       initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
+    }
+    if (intent.data?.toString() == "tagspotter://tagalong" ||
+        intent.action == "net.maiatoday.tagspotter.action.TAGALONG") {
+      initialTab = Tab.TagAlong
     }
   }
 
@@ -156,11 +169,22 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainActivityContent(
     initialSpotId: Long?,
+    initialTab: Tab = Tab.Gallery,
     onNavigateToSpotHandled: () -> Unit,
     viewModel: MainViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    var tagAlongPhotoCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    val pickTagAlongMedia = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            tagAlongPhotoCallback?.invoke(uri.toString())
+            tagAlongPhotoCallback = null
+        }
+    }
 
     val versionName = remember {
         try {
@@ -258,10 +282,21 @@ fun MainActivityContent(
 
     MainNavigation(
         initialSpotId = initialSpotId,
+        initialTab = initialTab,
         onNavigateToSpotHandled = onNavigateToSpotHandled,
         onTriggerFiles = triggerFiles,
         versionName = versionName,
         showToast = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() },
-        onGoogleSignInClick = googleSignInTrigger
+        onGoogleSignInClick = googleSignInTrigger,
+        tagAlongContent = { onOpenSpotDetail, onViewOnMainMap ->
+            TagAlongScreen(
+                onOpenSpotDetail = onOpenSpotDetail,
+                onViewOnMainMap = onViewOnMainMap,
+                onPickPhoto = { onPicked ->
+                    tagAlongPhotoCallback = onPicked
+                    pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            )
+        }
     )
 }

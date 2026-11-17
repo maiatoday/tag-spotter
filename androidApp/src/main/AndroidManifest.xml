@@ -37,9 +37,18 @@
         <activity
             android:name=".feature.main.MainActivity"
             android:exported="true">
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tagspotter" android:host="tagalong" />
             </intent-filter>
             <intent-filter android:label="Import TagSpotter Pack">
                 <action android:name="android.intent.action.VIEW" />

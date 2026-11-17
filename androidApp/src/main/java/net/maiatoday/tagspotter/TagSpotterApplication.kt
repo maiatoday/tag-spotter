@@ -13,12 +13,26 @@ import com.google.firebase.initialize
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+import com.google.adk.kt.runners.Runner
+import net.maiatoday.tagspotter.core.agent.createAndroidTagAlongRunner
+import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.feature.main.initKoin
+import net.maiatoday.tagspotter.feature.tagalong.di.tagalongModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
+import org.koin.dsl.module
 import org.osmdroid.config.Configuration
 
 import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
+
+val androidAgentModule = module {
+    single<Runner> {
+        createAndroidTagAlongRunner(
+            hybridSpotRepository = get(),
+            locationProvider = getOrNull<LocationProvider>()
+        )
+    }
+}
 
 open class TagSpotterApplication : Application() {
 
@@ -53,7 +67,7 @@ open class TagSpotterApplication : Application() {
             )
         }
         
-        initKoin(listOf(secretsModule, androidAiModule)).apply {
+        initKoin(listOf(secretsModule, androidAiModule, androidAgentModule, tagalongModule)).apply {
             androidContext(this@TagSpotterApplication)
         }
         

@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,17 +27,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,10 +62,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.koin.compose.viewmodel.koinViewModel
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
-import net.maiatoday.tagspotter.core.a2ui.catalog.NeonA2UICatalog
 import net.maiatoday.tagspotter.core.a2ui.engine.KmpA2UIEngine
+import net.maiatoday.tagspotter.core.database.ChatSession
+import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.SpotMapView
 import net.maiatoday.tagspotter.core.ui.theme.DarkBackground
@@ -66,153 +77,75 @@ import net.maiatoday.tagspotter.core.ui.theme.DarkSurfaceVariant
 import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagAlongScreen(
-    viewModel: TagAlongViewModel? = null,
-    engine: A2UIRendererEngine = remember { KmpA2UIEngine() },
-    catalog: NeonA2UICatalog = remember { NeonA2UICatalog() },
+    viewModel: TagAlongViewModel = koinViewModel(),
+    engine: A2UIRendererEngine? = null,
     onPickPhoto: ((onPicked: (String) -> Unit) -> Unit)? = null,
+    onOpenSpotDetail: ((Long) -> Unit)? = null,
+    onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    if (viewModel != null) {
-        val uiState by viewModel.uiState.collectAsState()
-        TagAlongScreenContent(
-            uiState = uiState,
-            engine = engine,
-            catalog = catalog,
-            onSendMessage = { viewModel.sendMessage(it) },
-            onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
-            onAction = { viewModel.handleAction(it) },
-            onInputTextChanged = { viewModel.onInputTextChanged(it) },
-            onClearPhoto = { viewModel.onClearPhoto() },
-            onPickPhoto = {
-                onPickPhoto?.invoke { pickedUri ->
-                    viewModel.onPhotoAttached(pickedUri)
-                }
-            },
-            modifier = modifier
-        )
+    val availableEngines = rememberAvailableEngines()
+    var currentEngineIndex by remember { mutableIntStateOf(0) }
+    val activeEngine = engine ?: if (availableEngines.isNotEmpty()) {
+        availableEngines[currentEngineIndex % availableEngines.size]
     } else {
-        var localInputText by remember { mutableStateOf("") }
-        var localAttachedPhotoUri by remember { mutableStateOf<String?>(null) }
-        var localCenterLat by remember { mutableDoubleStateOf(52.4972) }
-        var localCenterLng by remember { mutableDoubleStateOf(13.2415) }
-        var localZoom by remember { mutableDoubleStateOf(14.0) }
-        var localFocusedTitle by remember { mutableStateOf("Teufelsberg Street Art") }
-        val localMarkers = remember { mutableStateListOf(*TagAlongViewModel.defaultBerlinMarkers().toTypedArray()) }
-        val localMessages = remember {
-            mutableStateListOf(
-                TagAlongMessage(
-                    id = "init-1",
-                    sender = TagAlongSender.AGENT,
-                    text = "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
-                ),
-                TagAlongMessage(
-                    id = "init-2",
-                    sender = TagAlongSender.AGENT,
-                    a2uiPayload = TagAlongMockFixtures.SPOT_DOSSIER_JSON
-                )
-            )
-        }
+        remember { KmpA2UIEngine() }
+    }
 
-        val uiState = TagAlongUiState(
-            messages = localMessages,
-            mapCenterLat = localCenterLat,
-            mapCenterLng = localCenterLng,
-            mapZoom = localZoom,
-            focusedTitle = localFocusedTitle,
-            mapMarkers = localMarkers,
-            inputText = localInputText,
-            attachedPhotoUri = localAttachedPhotoUri
-        )
+    LaunchedEffect(activeEngine) {
+        viewModel.attachEngine(activeEngine)
+    }
 
-        TagAlongScreenContent(
-            uiState = uiState,
-            engine = engine,
-            catalog = catalog,
-            onSendMessage = { text ->
-                if (text.isNotBlank() || localAttachedPhotoUri != null) {
-                    localMessages.add(
-                        TagAlongMessage(
-                            id = "user-${System.currentTimeMillis()}",
-                            sender = TagAlongSender.USER,
-                            text = text.ifBlank { null },
-                            photoUri = localAttachedPhotoUri
-                        )
-                    )
-                    localInputText = ""
-                    localAttachedPhotoUri = null
-                }
+    val uiState by viewModel.uiState.collectAsState()
+    val allSessions by viewModel.allSessions.collectAsState()
+    var showHistorySheet by remember { mutableStateOf(false) }
+
+    TagAlongScreenContent(
+        uiState = uiState,
+        engine = activeEngine,
+        onToggleEngine = if (availableEngines.size > 1 && engine == null) {
+            {
+                currentEngineIndex = (currentEngineIndex + 1) % availableEngines.size
+                val nextEngine = availableEngines[currentEngineIndex]
+                viewModel.switchEngine(nextEngine)
+            }
+        } else null,
+        onSendMessage = { viewModel.sendMessage(it) },
+        onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
+        onAction = { viewModel.handleAction(it) },
+        onInputTextChanged = { viewModel.onInputTextChanged(it) },
+        onClearPhoto = { viewModel.onClearPhoto() },
+        onPickPhoto = {
+            onPickPhoto?.invoke { pickedUri ->
+                viewModel.onPhotoAttached(pickedUri)
+            }
+        },
+        onNewChat = { viewModel.startNewConversation(activeEngine) },
+        onOpenHistory = { showHistorySheet = true },
+        onOpenSpotDetail = onOpenSpotDetail,
+        onViewOnMainMap = onViewOnMainMap,
+        modifier = modifier
+    )
+
+    if (showHistorySheet) {
+        HistoryBottomSheet(
+            sessions = allSessions,
+            activeSessionId = uiState.sessionId,
+            onDismissRequest = { showHistorySheet = false },
+            onSwitchSession = { sessionId ->
+                viewModel.switchSession(sessionId, activeEngine)
+                showHistorySheet = false
             },
-            onSelectMockFixture = { name, json ->
-                localMessages.add(
-                    TagAlongMessage(
-                        id = "fixture-${System.currentTimeMillis()}",
-                        sender = TagAlongSender.AGENT,
-                        text = "Here is the simulated **$name** A2UI surface:",
-                        a2uiPayload = json
-                    )
-                )
+            onDeleteSession = { sessionId ->
+                viewModel.deleteSession(sessionId, activeEngine)
             },
-            onAction = { action ->
-                when (action) {
-                    is A2UIAction.ViewOnMap -> {
-                        if (action.latitude != 0.0 && action.longitude != 0.0) {
-                            localCenterLat = action.latitude
-                            localCenterLng = action.longitude
-                            localFocusedTitle = action.title
-                        }
-                    }
-                    is A2UIAction.NavigateToStop -> {
-                        localCenterLat = action.latitude
-                        localCenterLng = action.longitude
-                        localFocusedTitle = "Stop #${action.stopIndex}: ${action.title}"
-                    }
-                    is A2UIAction.StarSpot -> {
-                        val index = localMarkers.indexOfFirst { it.title.contains(action.spotId, ignoreCase = true) }
-                        if (index != -1) {
-                            val old = localMarkers[index]
-                            localMarkers[index] = old.copy(isStarred = !old.isStarred)
-                        }
-                    }
-                    is A2UIAction.AnswerQuiz -> {
-                        localMessages.add(
-                            TagAlongMessage(
-                                id = "msg-${System.currentTimeMillis()}",
-                                sender = TagAlongSender.AGENT,
-                                text = if (action.isCorrect) "🎯 Spot on! That's the correct technique." else "❌ Not quite! Check the explanation on the card."
-                            )
-                        )
-                    }
-                    is A2UIAction.VoteOption -> {
-                        localMessages.add(
-                            TagAlongMessage(
-                                id = "msg-${System.currentTimeMillis()}",
-                                sender = TagAlongSender.AGENT,
-                                text = "🗳️ Vote recorded for '${action.optionId}'! Thanks for curating the city's street art."
-                            )
-                        )
-                    }
-                    is A2UIAction.Retry -> {
-                        localMessages.add(
-                            TagAlongMessage(
-                                id = "msg-${System.currentTimeMillis()}",
-                                sender = TagAlongSender.AGENT,
-                                text = "🔄 Retrying card render..."
-                            )
-                        )
-                    }
-                    is A2UIAction.Custom -> {}
-                }
-            },
-            onInputTextChanged = { localInputText = it },
-            onClearPhoto = { localAttachedPhotoUri = null },
-            onPickPhoto = {
-                onPickPhoto?.invoke { pickedUri ->
-                    localAttachedPhotoUri = pickedUri
-                }
-            },
-            modifier = modifier
+            onNewChat = {
+                viewModel.startNewConversation(activeEngine)
+                showHistorySheet = false
+            }
         )
     }
 }
@@ -221,13 +154,17 @@ fun TagAlongScreen(
 fun TagAlongScreenContent(
     uiState: TagAlongUiState,
     engine: A2UIRendererEngine,
-    catalog: NeonA2UICatalog,
+    onToggleEngine: (() -> Unit)? = null,
     onSendMessage: (String) -> Unit,
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
     onInputTextChanged: (String) -> Unit,
     onClearPhoto: () -> Unit,
     onPickPhoto: () -> Unit,
+    onNewChat: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
+    onOpenSpotDetail: ((Long) -> Unit)? = null,
+    onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -245,6 +182,38 @@ fun TagAlongScreenContent(
     ) {
         val isDesktopTwoPane = maxWidth >= 760.dp
 
+        val wrappedOnAction: (A2UIAction) -> Unit = { action ->
+            onAction(action)
+            if (!isDesktopTwoPane) {
+                when (action) {
+                    is A2UIAction.ViewOnMap -> {
+                        if (action.latitude != 0.0 && action.longitude != 0.0) {
+                            onViewOnMainMap?.invoke(action.latitude, action.longitude)
+                        }
+                    }
+                    is A2UIAction.NavigateToStop -> {
+                        if (action.latitude != 0.0 && action.longitude != 0.0) {
+                            onViewOnMainMap?.invoke(action.latitude, action.longitude)
+                        }
+                    }
+                    else -> {}
+                }
+            }
+            if (action is A2UIAction.OpenSpotDetail) {
+                val spotId = action.spotId.toLongOrNull()
+                if (spotId != null) {
+                    onOpenSpotDetail?.invoke(spotId)
+                }
+            } else if (action is A2UIAction.ClientEvent) {
+                if (action.name == "openSpotDetail" || action.name == "open_spot_detail" || action.name == "openDetail") {
+                    val spotId = (action.context["spotId"]?.toString() ?: action.context["id"]?.toString())?.toLongOrNull()
+                    if (spotId != null) {
+                        onOpenSpotDetail?.invoke(spotId)
+                    }
+                }
+            }
+        }
+
         if (isDesktopTwoPane) {
             Row(modifier = Modifier.fillMaxSize()) {
                 // Left Pane: Chat Stream & A2UI Render host (56% width)
@@ -257,7 +226,7 @@ fun TagAlongScreenContent(
                         messages = uiState.messages,
                         listState = listState,
                         engine = engine,
-                        catalog = catalog,
+                        onToggleEngine = onToggleEngine,
                         inputText = uiState.inputText,
                         onInputTextChanged = onInputTextChanged,
                         attachedPhotoUri = uiState.attachedPhotoUri,
@@ -265,7 +234,9 @@ fun TagAlongScreenContent(
                         onPickPhoto = onPickPhoto,
                         onSendMessage = onSendMessage,
                         onSelectMockFixture = onSelectMockFixture,
-                        onAction = onAction,
+                        onAction = wrappedOnAction,
+                        onNewChat = onNewChat,
+                        onOpenHistory = onOpenHistory,
                         isOffline = uiState.isOffline,
                         offlineMessage = uiState.offlineMessage,
                         isGenerating = uiState.isGenerating
@@ -296,53 +267,25 @@ fun TagAlongScreenContent(
                 }
             }
         } else {
-            var selectedTab by remember { mutableIntStateOf(0) }
-            Column(modifier = Modifier.fillMaxSize()) {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = DarkBackground,
-                    contentColor = DarkPrimaryContainer
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Agent Chat & A2UI", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Live Map (${uiState.mapMarkers.size})", fontWeight = FontWeight.Bold) }
-                    )
-                }
-
-                if (selectedTab == 0) {
-                    ChatPane(
-                        messages = uiState.messages,
-                        listState = listState,
-                        engine = engine,
-                        catalog = catalog,
-                        inputText = uiState.inputText,
-                        onInputTextChanged = onInputTextChanged,
-                        attachedPhotoUri = uiState.attachedPhotoUri,
-                        onClearPhoto = onClearPhoto,
-                        onPickPhoto = onPickPhoto,
-                        onSendMessage = onSendMessage,
-                        onSelectMockFixture = onSelectMockFixture,
-                        onAction = onAction,
-                        isOffline = uiState.isOffline,
-                        offlineMessage = uiState.offlineMessage,
-                        isGenerating = uiState.isGenerating
-                    )
-                } else {
-                    MapPane(
-                        latitude = uiState.mapCenterLat,
-                        longitude = uiState.mapCenterLng,
-                        zoomLevel = uiState.mapZoom,
-                        focusedTitle = uiState.focusedTitle,
-                        markers = uiState.mapMarkers
-                    )
-                }
-            }
+            ChatPane(
+                messages = uiState.messages,
+                listState = listState,
+                engine = engine,
+                onToggleEngine = onToggleEngine,
+                inputText = uiState.inputText,
+                onInputTextChanged = onInputTextChanged,
+                attachedPhotoUri = uiState.attachedPhotoUri,
+                onClearPhoto = onClearPhoto,
+                onPickPhoto = onPickPhoto,
+                onSendMessage = onSendMessage,
+                onSelectMockFixture = onSelectMockFixture,
+                onAction = wrappedOnAction,
+                onNewChat = onNewChat,
+                onOpenHistory = onOpenHistory,
+                isOffline = uiState.isOffline,
+                offlineMessage = uiState.offlineMessage,
+                isGenerating = uiState.isGenerating
+            )
         }
     }
 }
@@ -352,7 +295,7 @@ private fun ChatPane(
     messages: List<TagAlongMessage>,
     listState: LazyListState,
     engine: A2UIRendererEngine,
-    catalog: NeonA2UICatalog,
+    onToggleEngine: (() -> Unit)? = null,
     inputText: String,
     onInputTextChanged: (String) -> Unit,
     attachedPhotoUri: String?,
@@ -361,6 +304,8 @@ private fun ChatPane(
     onSendMessage: (String) -> Unit,
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
+    onNewChat: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     isOffline: Boolean = false,
     offlineMessage: String? = null,
     isGenerating: Boolean = false,
@@ -400,17 +345,56 @@ private fun ChatPane(
                         )
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, DarkTertiaryContainer)
-                    ) {
-                        Text(
-                            text = engine.engineType.name,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                            color = DarkTertiaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = DarkTertiaryContainer.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, DarkTertiaryContainer),
+                            modifier = if (onToggleEngine != null) {
+                                Modifier.clip(RoundedCornerShape(6.dp)).clickable { onToggleEngine() }
+                            } else Modifier
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = engine.engineType.name,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                    color = DarkTertiaryContainer
+                                )
+                                if (onToggleEngine != null) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "⇄",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        color = DarkTertiaryContainer
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        IconButton(
+                            onClick = onOpenHistory,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "Chat History",
+                                tint = DarkPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(
+                            onClick = onNewChat,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "New Chat",
+                                tint = DarkPrimaryContainer
+                            )
+                        }
                     }
                 }
 
@@ -497,7 +481,6 @@ private fun ChatPane(
                 ChatMessageItem(
                     message = message,
                     engine = engine,
-                    catalog = catalog,
                     onAction = onAction
                 )
             }
@@ -614,7 +597,6 @@ private fun ChatPane(
 private fun ChatMessageItem(
     message: TagAlongMessage,
     engine: A2UIRendererEngine,
-    catalog: NeonA2UICatalog,
     onAction: (A2UIAction) -> Unit
 ) {
     val isUser = message.sender == TagAlongSender.USER
@@ -665,12 +647,21 @@ private fun ChatMessageItem(
             }
         }
 
-        if (message.a2uiPayload != null) {
+        if (message.surfaceIds.isNotEmpty()) {
+            message.surfaceIds.forEach { surfaceId ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    engine.RenderSurface(
+                        surfaceId = surfaceId,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        } else if (message.a2uiPayload != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 engine.RenderSurface(
                     payloadJson = message.a2uiPayload,
-                    catalog = catalog,
                     onAction = onAction,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -749,5 +740,177 @@ private fun MapPane(
                 modifier = Modifier.fillMaxSize()
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryBottomSheet(
+    sessions: List<ChatSession>,
+    activeSessionId: String,
+    onDismissRequest: () -> Unit,
+    onSwitchSession: (String) -> Unit,
+    onDeleteSession: (String) -> Unit,
+    onNewChat: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+    ) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "CHAT HISTORY",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                    color = DarkPrimaryContainer,
+                    letterSpacing = 1.sp
+                )
+                Button(
+                    onClick = onNewChat,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkPrimaryContainer,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "New Chat",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "New Chat",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (sessions.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No conversation history yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(sessions, key = { it.sessionId }) { session ->
+                        val isActive = session.sessionId == activeSessionId
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isActive) {
+                                    DarkPrimaryContainer.copy(alpha = 0.12f)
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                }
+                            ),
+                            border = BorderStroke(
+                                width = if (isActive) 1.5.dp else 1.dp,
+                                color = if (isActive) DarkPrimaryContainer else DarkSurfaceVariant.copy(alpha = 0.4f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSwitchSession(session.sessionId) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = session.title.ifBlank { "Street Art Exploration" },
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium
+                                            ),
+                                            color = if (isActive) DarkPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1
+                                        )
+                                        if (isActive) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = DarkPrimaryContainer.copy(alpha = 0.2f),
+                                                border = BorderStroke(1.dp, DarkPrimaryContainer)
+                                            ) {
+                                                Text(
+                                                    text = "ACTIVE",
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        fontSize = 8.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    ),
+                                                    color = DarkPrimaryContainer,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = formatSessionTime(session.lastActiveAt),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { onDeleteSession(session.sessionId) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Session",
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun formatSessionTime(timestamp: Long, now: Long = epochMillis()): String {
+    val diff = now - timestamp
+    return when {
+        diff < 60_000L -> "Just now"
+        diff < 3600_000L -> "${diff / 60_000L}m ago"
+        diff < 86400_000L -> "${diff / 3600_000L}h ago"
+        diff < 7 * 86400_000L -> "${diff / 86400_000L}d ago"
+        else -> "${diff / (7 * 86400_000L)}w ago"
     }
 }

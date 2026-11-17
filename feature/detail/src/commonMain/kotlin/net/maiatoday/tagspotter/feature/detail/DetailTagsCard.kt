@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.ui.chips.NeonTagChip
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -327,25 +328,12 @@ fun DetailTagsCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         details.spot.tags.forEach { tag ->
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .border(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.secondary,
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "#$tag".uppercase(),
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                                )
-                            }
+                            NeonTagChip(
+                                tag = tag.uppercase(),
+                                leadingHash = true,
+                                accentColor = MaterialTheme.colorScheme.secondary,
+                                shapeRadius = 8.dp
+                            )
                         }
                     }
                 }

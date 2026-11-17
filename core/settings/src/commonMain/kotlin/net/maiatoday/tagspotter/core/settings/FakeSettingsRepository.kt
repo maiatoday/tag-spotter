@@ -2,10 +2,21 @@ package net.maiatoday.tagspotter.core.settings
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class FakeSettingsRepository(initialName: String = "", initialHomeCity: String = "Milan") :
-    SettingsRepository {
+class FakeSettingsRepository(
+    initialName: String = "",
+    initialHomeCity: String = "Milan",
+    initialThemeMode: ThemeMode = ThemeMode.SYSTEM
+) : SettingsRepository {
+    private val _themeMode = MutableStateFlow(initialThemeMode)
+    override val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    override fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+    }
+
     private val _photographerName = MutableStateFlow(initialName)
     override val photographerName: Flow<String> = _photographerName.asStateFlow()
 

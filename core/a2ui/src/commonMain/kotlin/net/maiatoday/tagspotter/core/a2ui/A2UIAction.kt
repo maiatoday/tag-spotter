@@ -30,6 +30,23 @@ sealed interface A2UIAction {
         val isCorrect: Boolean
     ) : A2UIAction
 
+    data class OpenSpotDetail(
+        val spotId: String
+    ) : A2UIAction
+
+    data class ClientEvent(
+        val name: String,
+        val surfaceId: String,
+        val context: Map<String, Any?> = emptyMap()
+    ) : A2UIAction
+
+    data class ClientError(
+        val code: String,
+        val surfaceId: String,
+        val message: String,
+        val context: Map<String, Any?> = emptyMap()
+    ) : A2UIAction
+
     data class Retry(
         val rawJson: String
     ) : A2UIAction

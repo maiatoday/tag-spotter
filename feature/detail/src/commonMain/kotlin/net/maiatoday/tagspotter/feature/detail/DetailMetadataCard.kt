@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.ui.chips.NeonCategoryBadge
 import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
 import net.maiatoday.tagspotter.core.ui.getCategoryCreatorPlaceholder
 import net.maiatoday.tagspotter.core.ui.getCategoryCreatorTextFieldLabel
@@ -158,19 +159,11 @@ fun DetailMetadataCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 var isCategoryDropdownExpanded by remember { mutableStateOf(false) }
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = MaterialTheme.categoryColors.getColorForCategory(details.spot.category),
-                            shape = RoundedCornerShape(6.dp)
-                        )
-                        .clickable { isCategoryDropdownExpanded = true }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = details.spot.category.replace("_", " ").uppercase(),
-                        color = Color.Black,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                Box {
+                    NeonCategoryBadge(
+                        category = details.spot.category,
+                        shortForm = false,
+                        onClick = { isCategoryDropdownExpanded = true }
                     )
                     DropdownMenu(
                         expanded = isCategoryDropdownExpanded,

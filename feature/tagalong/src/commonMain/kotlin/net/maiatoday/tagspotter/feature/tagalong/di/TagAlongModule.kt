@@ -2,6 +2,7 @@ package net.maiatoday.tagspotter.feature.tagalong.di
 
 import com.google.adk.kt.runners.Runner
 import net.maiatoday.tagspotter.core.location.LocationProvider
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongViewModel
 import org.koin.core.module.Module
@@ -14,7 +15,8 @@ val tagalongModule: Module = module {
             runner = getOrNull<Runner>(),
             chatRepository = get(),
             locationProvider = getOrNull<LocationProvider>(),
-            hybridSpotRepository = getOrNull<HybridSpotRepository>()
+            hybridSpotRepository = getOrNull<HybridSpotRepository>(),
+            photoProcessor = getOrNull<PhotoProcessor>()
         )
     }
 }

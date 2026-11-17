@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
+import net.maiatoday.tagspotter.core.settings.ThemeMode
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
@@ -69,6 +70,12 @@ class MainViewModel(
 
     private val _events = MutableSharedFlow<MainEvent>()
     val events: SharedFlow<MainEvent> = _events.asSharedFlow()
+
+    val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
+
+    fun setThemeMode(mode: ThemeMode) {
+        settingsRepository.setThemeMode(mode)
+    }
 
     val showTestData: StateFlow<Boolean> = settingsRepository.showTestData
         .stateIn(

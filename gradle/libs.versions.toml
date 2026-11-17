@@ -142,6 +142,7 @@ androidx-a2ui-engine = { module = "androidx.a2ui:a2ui-engine", version.ref = "a2
 androidx-a2ui-compose-runtime = { module = "androidx.a2ui.compose:compose-runtime", version.ref = "a2ui" }
 androidx-a2ui-compose-ui = { module = "androidx.a2ui.compose:compose-ui", version.ref = "a2ui" }
 androidx-compose-material3-a2ui = { module = "androidx.compose.material3:material3-a2ui", version.ref = "a2ui" }
+a2ui-4k = { module = "com.contextable:a2ui-4k", version = "0.10.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

@@ -6,7 +6,9 @@ import com.google.adk.kt.tools.BaseTool
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.location.LocationProvider
+import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 
 @Serializable
@@ -63,6 +65,14 @@ data class MuralIdentificationDto(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val imageUrl: String = ""
+)
+
+@Serializable
+data class SavedSpotConfirmationDto(
+    val uuid: String,
+    val title: String,
+    val category: String,
+    val isSaved: Boolean = true
 )
 
 class StreetArtTools(
@@ -228,6 +238,67 @@ class StreetArtTools(
                 )
             )
         }
+    }
+
+    @Tool(
+        name = "saveNewSpot",
+        description = "Saves a newly discovered street art mural, sculpture, or graffiti spot to the user's catalog."
+    )
+    suspend fun saveNewSpot(
+        @Param(description = "Title or name of the mural/spot") title: String,
+        @Param(description = "Category of the spot (e.g. graffiti, sculpture, nature, architecture, public_place, food)") category: String,
+        @Param(description = "Latitude GPS coordinate of the spot") latitude: Double,
+        @Param(description = "Longitude GPS coordinate of the spot") longitude: Double,
+        @Param(description = "Optional artist or crew name") artist: String? = null,
+        @Param(description = "Optional detailed description or background notes") description: String? = null,
+        @Param(description = "Optional list of style tags or keywords") tags: List<String>? = null,
+        @Param(description = "Optional image file path or URL") imageUrl: String? = null
+    ): String {
+        val normalizedCategory = category.trim().lowercase()
+        val mutableTags = (tags ?: emptyList()).map { it.trim() }.toMutableList()
+
+        val finalCategory = if (normalizedCategory in Spot.CATEGORIES) {
+            normalizedCategory
+        } else {
+            if (!mutableTags.any { it.equals(category.trim(), ignoreCase = true) }) {
+                mutableTags.add(category.trim())
+            }
+            "graffiti"
+        }
+
+        val fullDescription = if (!description.isNullOrBlank() && description.trim() != title.trim()) {
+            "${title.trim()}\n${description.trim()}"
+        } else {
+            title.trim()
+        }
+
+        val spot = Spot(
+            latitude = latitude,
+            longitude = longitude,
+            createdAt = epochMillis(),
+            description = fullDescription,
+            tags = mutableTags,
+            category = finalCategory,
+            status = "active",
+            artists = if (!artist.isNullOrBlank()) listOf(artist.trim()) else emptyList(),
+            isPublic = false
+        )
+
+        val imagePath = imageUrl ?: ""
+        hybridSpotRepository.saveSpot(
+            spot = spot,
+            imagePath = imagePath,
+            thumbnailPath = imagePath
+        )
+
+        return json.encodeToString(
+            SavedSpotConfirmationDto(
+                uuid = spot.uuid,
+                title = title,
+                category = finalCategory,
+                isSaved = true
+            )
+        )
     }
 }
 

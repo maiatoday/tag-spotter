@@ -8,9 +8,11 @@
     <string name="tab_maps_label">Maps</string>
     <string name="tab_camera_label">Camera</string>
     <string name="tab_files_label">Files</string>
+    <string name="tab_tagalong_label">TagAlong</string>
     <string name="content_desc_gallery_tab">Gallery</string>
     <string name="content_desc_maps_tab">Maps</string>
     <string name="content_desc_camera_tab">Camera</string>
     <string name="content_desc_files_tab">Files</string>
+    <string name="content_desc_tagalong_tab">TagAlong</string>
     <string name="loading_processing_image">Processing image…</string>
 </resources>
