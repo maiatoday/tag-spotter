@@ -151,7 +151,7 @@ flowchart LR
 | ✅ | **Step 4.4** | Wire Prompts to Schema, Fix Photo Bytes & Render Loop | `:core:agent`, `:feature:tagalong` | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Passed ✅) |
 | ✅ | **Step 4.5** | Theme Switching, New Chat Controls & Desktop DB Fix | `:core:settings`, `:core:database`, Apps | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests :desktopApp:assemble :androidApp:assembleDebug` (Passed ✅) |
 | ✅ | **Step 4.6** | 1-Tap Spot Saving, `Spot.CATEGORIES` & DataModel Actions | `:core:agent`, `:feature:tagalong`, `:core:sync` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (Passed ✅) |
-| ⏳ | **Step 4.7** | Conversation History Drawer / Sheet with Surface Replay | `:feature:tagalong`, `:core:database` | Steps 4.5, 4.6 | Sequential | `./gradlew :feature:tagalong:allTests` |
+| ✅ | **Step 4.7** | Conversation History Drawer / Sheet with Surface Replay | `:feature:tagalong`, `:core:database` | Steps 4.5, 4.6 | Sequential | `./gradlew :feature:tagalong:allTests` (Passed ✅) |
 | ⏳ | **Step 4.8** | Full Monorepo Regression Gate | Full Monorepo | Steps 4.1-4.7 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :desktopApp:assemble` |
 
 ### Detailed Phase 4 Checklist:
@@ -211,13 +211,13 @@ flowchart LR
     4. Forward conversational `A2uiClientEventMessage`s back to ADK `Runner` for server-side `updateDataModel`.
   - **Test:** `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (Passed ✅)
 
-- [ ] **Step 4.7: Conversation History Drawer / Sheet Implementation**
+- [x] **Step 4.7: Conversation History Drawer / Sheet Implementation**
   - **Goal:** Enable users to browse, switch between, and delete past chat sessions saved in `TagAlongDatabase`.
   - **Work Items:**
     1. Expose `allSessions: StateFlow<List<ChatSession>>` in `TagAlongViewModel`.
     2. Add History Drawer / `ModalBottomSheet` in `TagAlongScreen`.
     3. Replay stored A2UI v0.9 messages into active `A2UIRendererEngine` when switching sessions.
-  - **Test:** `./gradlew :feature:tagalong:allTests`
+  - **Test:** `./gradlew :feature:tagalong:allTests` (Passed ✅)
 
 - [ ] **Step 4.8: Full Monorepo Regression Gate**
   - **Goal:** Pass all tests and assemble all targets across the unified monorepo.
