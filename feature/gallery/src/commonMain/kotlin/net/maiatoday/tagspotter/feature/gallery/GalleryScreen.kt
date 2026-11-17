@@ -84,6 +84,7 @@ import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.ui.chips.NeonCategoryBadge
 import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.res.DateFormatter
@@ -1482,23 +1483,13 @@ fun SpotGridCard(
                     }
                 } else {
                     // Category Badge
-                    Box(
+                    NeonCategoryBadge(
+                        category = spotDetails.spot.category,
+                        shortForm = true,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
-                            .background(
-                                color = MaterialTheme.categoryColors.getColorForCategory(spotDetails.spot.category),
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = spotDetails.spot.category.take(3).uppercase(),
-                            color = Color.Black,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    )
                 }
 
                 // Imported Badge

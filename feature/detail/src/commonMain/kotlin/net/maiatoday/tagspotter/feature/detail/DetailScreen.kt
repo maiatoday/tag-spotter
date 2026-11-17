@@ -75,6 +75,7 @@ import net.maiatoday.tagspotter.core.model.SpotNote
 import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.SpotMapView
 import net.maiatoday.tagspotter.core.ui.getCategoryCreatorLabel
+import net.maiatoday.tagspotter.core.ui.image.ZoomableImageOverlay
 import net.maiatoday.tagspotter.core.ui.res.TagRes
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
 import net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper
