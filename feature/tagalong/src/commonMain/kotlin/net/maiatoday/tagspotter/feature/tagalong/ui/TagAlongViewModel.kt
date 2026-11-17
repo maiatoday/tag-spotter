@@ -8,8 +8,11 @@ import com.google.adk.kt.types.Content
 import com.google.adk.kt.types.Part
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
@@ -82,6 +85,13 @@ class TagAlongViewModel(
         )
     )
     val uiState: StateFlow<TagAlongUiState> = _uiState.asStateFlow()
+
+    val allSessions: StateFlow<List<ChatSession>> = chatRepository.getAllSessions()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
 
     var engine: A2UIRendererEngine? = null
         private set
@@ -173,6 +183,52 @@ class TagAlongViewModel(
         }
     }
 
+    fun switchSession(targetSessionId: String, rendererEngine: A2UIRendererEngine? = null) {
+        val targetEngine = rendererEngine ?: engine
+        if (rendererEngine != null && engine !== rendererEngine) {
+            attachEngine(rendererEngine)
+        }
+        targetEngine?.clearSurfaces()
+        viewModelScope.launch {
+            val dbMessages = chatRepository.getMessagesListForSession(targetSessionId)
+            val uiMessages = dbMessages.map { msg ->
+                val uiMsg = msg.toUiMessage(targetEngine)
+                val payload = msg.a2uiPayloadJson
+                if (!payload.isNullOrBlank()) {
+                    syncMapWithA2UI(payload)
+                }
+                uiMsg
+            }
+            _uiState.update {
+                it.copy(
+                    sessionId = targetSessionId,
+                    messages = uiMessages,
+                    inputText = "",
+                    attachedPhotoUri = null,
+                    isGenerating = false
+                )
+            }
+        }
+    }
+
+    fun deleteSession(sessionId: String, rendererEngine: A2UIRendererEngine? = null) {
+        val targetEngine = rendererEngine ?: engine
+        viewModelScope.launch {
+            chatRepository.deleteSession(sessionId)
+            chatRepository.deleteMessagesForSession(sessionId)
+
+            if (sessionId == activeSessionId) {
+                val remainingSessions = chatRepository.getAllSessions().first().filter { it.sessionId != sessionId }
+                if (remainingSessions.isNotEmpty()) {
+                    val nextSession = remainingSessions.first()
+                    switchSession(nextSession.sessionId, targetEngine)
+                } else {
+                    startNewConversation(targetEngine)
+                }
+            }
+        }
+    }
+
     init {
         viewModelScope.launch {
             loadSessionMessages()
@@ -181,10 +237,7 @@ class TagAlongViewModel(
     }
 
     private suspend fun loadSessionMessages() {
-        val existing = chatRepository.getMessagesListForSession(initialSessionId)
-        if (existing.isNotEmpty()) {
-            _uiState.update { it.copy(messages = existing.map { m -> m.toUiMessage() }) }
-        } else {
+        if (chatRepository.getSessionById(initialSessionId) == null) {
             chatRepository.createOrUpdateSession(
                 ChatSession(
                     sessionId = initialSessionId,
@@ -193,6 +246,11 @@ class TagAlongViewModel(
                     lastActiveAt = epochMillis()
                 )
             )
+        }
+        val existing = chatRepository.getMessagesListForSession(initialSessionId)
+        if (existing.isNotEmpty()) {
+            _uiState.update { it.copy(messages = existing.map { m -> m.toUiMessage() }) }
+        } else {
             val welcomeText = "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
             val initialMsg = TagAlongMessage(
                 id = "init-welcome",
@@ -1078,11 +1136,11 @@ class TagAlongViewModel(
         } catch (_: Exception) {}
     }
 
-    private fun ChatMessage.toUiMessage(): TagAlongMessage {
+    private fun ChatMessage.toUiMessage(targetEngine: A2UIRendererEngine? = engine): TagAlongMessage {
         val payload = a2uiPayloadJson
-        val surfaceIds = if (!payload.isNullOrBlank() && engine != null) {
+        val surfaceIds = if (!payload.isNullOrBlank() && targetEngine != null) {
             try {
-                engine!!.processProtocolMessage(payload)
+                targetEngine.processProtocolMessage(payload)
             } catch (_: Exception) {
                 emptyList()
             }
