@@ -18,7 +18,6 @@ import kotlinx.coroutines.test.setMain
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIEngineType
 import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
-import net.maiatoday.tagspotter.core.a2ui.catalog.NeonA2UICatalog
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import net.maiatoday.tagspotter.core.agent.TagAlongAgentFactory
@@ -379,14 +378,19 @@ class TagAlongViewModelTest {
         val chatRepo = FakeChatRepository()
         var clearSurfacesCalled = false
         val fakeEngine = object : A2UIRendererEngine {
-            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_BINARYTAPE
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = flowOf()
+            override fun getCatalogSchemaJson(): String = "{}"
+            override fun processProtocolMessage(json: String): List<String> = emptyList()
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {}
             override fun clearSurfaces() {
                 clearSurfacesCalled = true
             }
             @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
             override fun RenderSurface(
                 payloadJson: String,
-                catalog: NeonA2UICatalog,
                 onAction: (A2UIAction) -> Unit,
                 modifier: Modifier
             ) {}
