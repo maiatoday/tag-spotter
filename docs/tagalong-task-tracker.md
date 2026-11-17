@@ -150,7 +150,7 @@ flowchart LR
 | ✅ | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines | `:core:a2ui` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Passed ✅) |
 | ✅ | **Step 4.4** | Wire Prompts to Schema, Fix Photo Bytes & Render Loop | `:core:agent`, `:feature:tagalong` | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Passed ✅) |
 | ✅ | **Step 4.5** | Theme Switching, New Chat Controls & Desktop DB Fix | `:core:settings`, `:core:database`, Apps | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests :desktopApp:assemble :androidApp:assembleDebug` (Passed ✅) |
-| ⏳ | **Step 4.6** | 1-Tap Spot Saving, `Spot.CATEGORIES` & DataModel Actions | `:core:agent`, `:feature:tagalong`, `:core:sync` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :feature:tagalong:allTests :core:sync:allTests` |
+| ✅ | **Step 4.6** | 1-Tap Spot Saving, `Spot.CATEGORIES` & DataModel Actions | `:core:agent`, `:feature:tagalong`, `:core:sync` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (Passed ✅) |
 | ⏳ | **Step 4.7** | Conversation History Drawer / Sheet with Surface Replay | `:feature:tagalong`, `:core:database` | Steps 4.5, 4.6 | Sequential | `./gradlew :feature:tagalong:allTests` |
 | ⏳ | **Step 4.8** | Full Monorepo Regression Gate | Full Monorepo | Steps 4.1-4.7 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :desktopApp:assemble` |
 
@@ -202,14 +202,14 @@ flowchart LR
     3. Add `+` ("New Chat") button in `TagAlongScreen` top bar calling `TagAlongViewModel.startNewConversation()`.
   - **Test:** `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests :desktopApp:assemble :androidApp:assembleDebug` (Passed ✅)
 
-- [ ] **Step 4.6: 1-Tap Agentic Spot Saving, `Spot.CATEGORIES` Mapping & Two-Way DataModel Actions**
+- [x] **Step 4.6: 1-Tap Agentic Spot Saving, `Spot.CATEGORIES` Mapping & Two-Way DataModel Actions**
   - **Goal:** Allow users to save spots discovered in chat directly into shared `SpotDatabase` when all required fields are gathered, using `Spot.CATEGORIES` for `category` and `spot.tags` for street-art styles.
   - **Work Items:**
     1. Add `@Tool saveNewSpot` to `StreetArtTools.kt` validating `category in Spot.CATEGORIES` (mapping style subtypes like `"mural"` to `tags`).
     2. Wire `PhotoProcessor.extractMetadataFromUri` and `createThumbnailFromUri` into photo-attachment flow for 1-tap saving.
     3. Handle outbound `save_spot` and `toggle_star` events from `engine.outboundEvents` in `TagAlongViewModel`, persisting to `SpotRepository` and updating surface data model.
     4. Forward conversational `A2uiClientEventMessage`s back to ADK `Runner` for server-side `updateDataModel`.
-  - **Test:** `./gradlew :feature:tagalong:allTests :core:sync:allTests`
+  - **Test:** `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (Passed ✅)
 
 - [ ] **Step 4.7: Conversation History Drawer / Sheet Implementation**
   - **Goal:** Enable users to browse, switch between, and delete past chat sessions saved in `TagAlongDatabase`.
