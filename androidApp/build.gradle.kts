@@ -110,6 +110,9 @@ dependencies {
   implementation(project(":core:agent"))
   implementation(libs.google.adk.kotlin.core)
 
+  // Align gRPC dependencies to match Firebase Firestore's runtime expectations
+  implementation(enforcedPlatform("io.grpc:grpc-bom:1.62.2"))
+
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)
