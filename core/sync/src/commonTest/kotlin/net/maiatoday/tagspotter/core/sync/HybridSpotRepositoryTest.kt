@@ -60,13 +60,27 @@ class HybridSpotRepositoryTest {
     }
 
     private class TestSpotRepository(
-        private val spots: List<SpotDetails>
+        initialSpots: List<SpotDetails>
     ) : SpotRepository {
+        val spotsList = initialSpots.toMutableList()
         override var activeUid: String? = null
-        override fun getAllSpots(): Flow<List<SpotDetails>> = flowOf(spots)
+        override fun getAllSpots(): Flow<List<SpotDetails>> = flowOf(spotsList)
         override fun getSpotsByCategory(category: String): Flow<List<SpotDetails>> = flowOf(emptyList())
-        override fun getSpotById(id: Long): Flow<SpotDetails?> = flowOf(null)
-        override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long = 0L
+        override fun getSpotById(id: Long): Flow<SpotDetails?> = flowOf(spotsList.find { it.spot.id == id })
+        override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long {
+            val id = if (spot.id != 0L) spot.id else (spotsList.size + 1).toLong()
+            val saved = spot.copy(id = id)
+            spotsList.add(
+                SpotDetails(
+                    spot = saved,
+                    images = if (imagePath.isNotEmpty() || thumbnailPath.isNotEmpty()) {
+                        listOf(SpotImage(id = 1L, spotId = id, imagePath = imagePath, thumbnailPath = thumbnailPath, timestamp = 1000L))
+                    } else emptyList(),
+                    notes = emptyList()
+                )
+            )
+            return id
+        }
         override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Long, isMain: Boolean): Long = 0L
         override suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long = 0L
         override suspend fun updateSpotStatus(spotId: Long, status: String) {}
@@ -83,7 +97,12 @@ class HybridSpotRepositoryTest {
         override suspend fun saveSpotDetails(spotDetails: SpotDetails): Long = 0L
         override suspend fun importSpots(spots: List<SpotDetails>): Int = 0
         override suspend fun importPack(packFilePath: String, filesDir: String, cacheDir: String, currentPhotographerName: String, createThumbnail: suspend (String) -> String?): Int = 0
-        override suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean) {}
+        override suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean) {
+            val idx = spotsList.indexOfFirst { it.spot.id == spotId }
+            if (idx >= 0) {
+                spotsList[idx] = spotsList[idx].copy(spot = spotsList[idx].spot.copy(isStarred = isStarred))
+            }
+        }
         override suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean) {}
         override suspend fun getStarredSpots(): List<Spot> = emptyList()
         override suspend fun getStarredSpotsCount(): Int = 0
@@ -98,7 +117,10 @@ class HybridSpotRepositoryTest {
         override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {}
         override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {}
         override suspend fun clearUserCache(userUid: String) {}
-        override suspend fun saveImportedSpot(spotDetails: SpotDetails) {}
+        override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
+            val id = if (spotDetails.spot.id != 0L) spotDetails.spot.id else (spotsList.size + 1).toLong()
+            spotsList.add(spotDetails.copy(spot = spotDetails.spot.copy(id = id)))
+        }
         override fun getAllLoadedPacks(): Flow<List<LoadedPack>> = flowOf(emptyList())
         override suspend fun saveLoadedPack(pack: LoadedPack) {}
         override suspend fun deleteLoadedPack(packId: String) {}
@@ -208,5 +230,64 @@ class HybridSpotRepositoryTest {
 
         val notFound = hybridRepo.getSpotByUuid("unknown")
         assertNull(notFound)
+    }
+
+    @Test
+    fun testSaveSpotDelegatesToLocalRepository() = runTest {
+        val localRepo = TestSpotRepository(emptyList())
+        val syncManager = TestSyncManager(emptyList())
+        val hybridRepo = HybridSpotRepository(localRepo, syncManager)
+
+        val spot = Spot(
+            uuid = "new-uuid-1",
+            latitude = 52.5200,
+            longitude = 13.4050,
+            createdAt = 12345L,
+            description = "Berlin Stencil",
+            tags = listOf("stencil", "graffiti"),
+            category = "graffiti",
+            status = "active"
+        )
+
+        val savedId = hybridRepo.saveSpot(spot, imagePath = "/img/1.jpg", thumbnailPath = "/thumb/1.jpg")
+        assertTrue(savedId > 0)
+
+        val found = hybridRepo.getSpotByUuid("new-uuid-1")
+        assertNotNull(found)
+        assertEquals("Berlin Stencil", found.spot.description)
+        assertEquals("/img/1.jpg", found.images.first().imagePath)
+    }
+
+    @Test
+    fun testToggleSpotStarLocalSpot() = runTest {
+        val localSpot = createSpotDetail(uuid = "star-local", lat = 45.0, lon = 9.0)
+        val localRepo = TestSpotRepository(listOf(localSpot))
+        val syncManager = TestSyncManager(emptyList())
+        val hybridRepo = HybridSpotRepository(localRepo, syncManager)
+
+        val newStar = hybridRepo.toggleSpotStar("star-local")
+        assertTrue(newStar)
+
+        val updated = hybridRepo.getSpotByUuid("star-local")
+        assertNotNull(updated)
+        assertTrue(updated.spot.isStarred)
+
+        val toggledAgain = hybridRepo.toggleSpotStar("star-local")
+        kotlin.test.assertFalse(toggledAgain)
+    }
+
+    @Test
+    fun testToggleSpotStarRemoteSpotImportsAndStars() = runTest {
+        val remoteSpot = createSpotDetail(uuid = "star-remote", lat = 46.0, lon = 10.0)
+        val localRepo = TestSpotRepository(emptyList())
+        val syncManager = TestSyncManager(listOf(remoteSpot))
+        val hybridRepo = HybridSpotRepository(localRepo, syncManager)
+
+        val newStar = hybridRepo.toggleSpotStar("star-remote")
+        assertTrue(newStar)
+
+        val imported = hybridRepo.getSpotByUuid("star-remote")
+        assertNotNull(imported)
+        assertTrue(imported.spot.isStarred)
     }
 }

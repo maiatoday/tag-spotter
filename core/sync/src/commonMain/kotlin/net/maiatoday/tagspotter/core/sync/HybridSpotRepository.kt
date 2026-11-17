@@ -2,6 +2,7 @@ package net.maiatoday.tagspotter.core.sync
 
 import kotlinx.coroutines.flow.first
 import net.maiatoday.tagspotter.core.database.SpotRepository
+import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import kotlin.math.*
 
@@ -74,6 +75,50 @@ class HybridSpotRepository(
         if (local != null) return local
         val remote = syncManager.fetchPublicSpots()
         return remote.find { it.spot.uuid == uuid }
+    }
+
+    /**
+     * Saves a spot to the local repository with optional image and thumbnail paths.
+     */
+    suspend fun saveSpot(
+        spot: Spot,
+        imagePath: String = "",
+        thumbnailPath: String = ""
+    ): Long {
+        return localRepository.saveSpot(spot, imagePath, thumbnailPath)
+    }
+
+    /**
+     * Toggles the starred status of a spot by UUID.
+     * Looks up the spot locally first. If not found locally, searches remote public spots and imports it.
+     * Returns the new isStarred boolean value.
+     */
+    suspend fun toggleSpotStar(uuid: String): Boolean {
+        val localSpots = localRepository.getAllSpots().first()
+        val local = localSpots.find { it.spot.uuid == uuid || it.spot.id.toString() == uuid }
+        if (local != null) {
+            val newStar = !local.spot.isStarred
+            localRepository.updateSpotStarred(local.spot.id, newStar)
+            return newStar
+        }
+
+        val remote = try {
+            syncManager.fetchPublicSpots().find { it.spot.uuid == uuid || it.spot.id.toString() == uuid }
+        } catch (e: Exception) {
+            null
+        }
+
+        if (remote != null) {
+            localRepository.saveImportedSpot(remote.copy(spot = remote.spot.copy(isImported = true)))
+            val imported = localRepository.getAllSpots().first().find { it.spot.uuid == uuid || it.spot.id.toString() == uuid }
+            val newStar = !remote.spot.isStarred
+            if (imported != null) {
+                localRepository.updateSpotStarred(imported.spot.id, newStar)
+            }
+            return newStar
+        }
+
+        return false
     }
 
     private fun mergeSpots(
