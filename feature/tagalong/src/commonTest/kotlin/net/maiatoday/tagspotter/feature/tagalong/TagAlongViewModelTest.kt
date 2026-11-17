@@ -422,4 +422,47 @@ class TagAlongViewModelTest {
         assertEquals(newSessionId, uiState.sessionId)
         assertEquals(1, uiState.messages.size)
     }
+
+    @Test
+    fun testAttachEngineAndSelectMockFixturePopulatesSurfaceIds() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        var runRenderLoopCalled = false
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = flowOf()
+            override fun getCatalogSchemaJson(): String = "{}"
+            override suspend fun runRenderLoop() {
+                runRenderLoopCalled = true
+            }
+            override fun processProtocolMessage(json: String): List<String> = listOf("surface-fixture-1")
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {}
+            override fun clearSurfaces() {}
+            @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
+            override fun RenderSurface(
+                payloadJson: String,
+                onAction: (A2UIAction) -> Unit,
+                modifier: Modifier
+            ) {}
+        }
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "fixture-session"
+        )
+        advanceUntilIdle()
+
+        viewModel.attachEngine(fakeEngine)
+        advanceUntilIdle()
+        assertTrue(runRenderLoopCalled)
+
+        viewModel.selectMockFixture("SpotCard", TagAlongMockFixtures.SPOT_DOSSIER_JSON)
+        advanceUntilIdle()
+
+        val messages = viewModel.uiState.value.messages
+        val fixtureMessage = messages.last()
+        assertEquals(listOf("surface-fixture-1"), fixtureMessage.surfaceIds)
+    }
 }

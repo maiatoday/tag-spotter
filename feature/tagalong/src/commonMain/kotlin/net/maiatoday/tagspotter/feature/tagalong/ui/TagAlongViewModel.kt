@@ -3,8 +3,10 @@ package net.maiatoday.tagspotter.feature.tagalong.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.adk.kt.runners.Runner
+import com.google.adk.kt.types.Blob
 import com.google.adk.kt.types.Content
 import com.google.adk.kt.types.Part
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +30,7 @@ import net.maiatoday.tagspotter.core.database.ChatRepository
 import net.maiatoday.tagspotter.core.database.ChatSession
 import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.location.LocationProvider
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 import net.maiatoday.tagspotter.core.ui.MapMarker
 
@@ -41,6 +44,7 @@ data class TagAlongMessage(
     val sender: TagAlongSender,
     val text: String? = null,
     val a2uiPayload: String? = null,
+    val surfaceIds: List<String> = emptyList(),
     val photoUri: String? = null,
     val timestamp: Long = 0L
 )
@@ -65,6 +69,7 @@ class TagAlongViewModel(
     private val chatRepository: ChatRepository,
     private val locationProvider: LocationProvider? = null,
     private val hybridSpotRepository: HybridSpotRepository? = null,
+    private val photoProcessor: PhotoProcessor? = null,
     private val initialSessionId: String = "session-default"
 ) : ViewModel() {
 
@@ -77,9 +82,53 @@ class TagAlongViewModel(
     val uiState: StateFlow<TagAlongUiState> = _uiState.asStateFlow()
 
     var engine: A2UIRendererEngine? = null
+        private set
+
+    private var renderLoopJob: Job? = null
+    private var outboundEventsJob: Job? = null
 
     val activeSessionId: String
         get() = _uiState.value.sessionId
+
+    fun attachEngine(rendererEngine: A2UIRendererEngine) {
+        if (engine === rendererEngine && renderLoopJob?.isActive == true) return
+        engine = rendererEngine
+
+        renderLoopJob?.cancel()
+        renderLoopJob = viewModelScope.launch {
+            rendererEngine.runRenderLoop()
+        }
+
+        outboundEventsJob?.cancel()
+        outboundEventsJob = viewModelScope.launch {
+            rendererEngine.outboundEvents.collect { action ->
+                handleAction(action)
+            }
+        }
+
+        reapplyA2UIPayloads(rendererEngine)
+    }
+
+    fun switchEngine(newEngine: A2UIRendererEngine) {
+        engine?.clearSurfaces()
+        attachEngine(newEngine)
+    }
+
+    private fun reapplyA2UIPayloads(rendererEngine: A2UIRendererEngine) {
+        _uiState.update { state ->
+            val updated = state.messages.map { msg ->
+                if (!msg.a2uiPayload.isNullOrBlank()) {
+                    val ids = try {
+                        rendererEngine.processProtocolMessage(msg.a2uiPayload)
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    msg.copy(surfaceIds = ids)
+                } else msg
+            }
+            state.copy(messages = updated)
+        }
+    }
 
     fun startNewConversation(rendererEngine: A2UIRendererEngine? = null) {
         val targetEngine = rendererEngine ?: engine
@@ -298,7 +347,22 @@ class TagAlongViewModel(
             try {
                 val parts = mutableListOf<Part>()
                 if (!currentPhoto.isNullOrBlank()) {
-                    parts.add(Part(text = "User attached photo URI: $currentPhoto"))
+                    var addedBytes = false
+                    if (photoProcessor != null) {
+                        try {
+                            val bytes = photoProcessor.decodeScaledBitmap(currentPhoto, maxDimension = 1024)
+                            if (bytes != null && bytes.isNotEmpty()) {
+                                parts.add(Part(inlineData = Blob(mimeType = "image/jpeg", data = bytes)))
+                                addedBytes = true
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    val photoDescriptor = if (addedBytes) {
+                        "User attached photo (binary JPEG image included): $currentPhoto"
+                    } else {
+                        "User attached photo URI: $currentPhoto"
+                    }
+                    parts.add(Part(text = photoDescriptor))
                 }
                 if (trimmed.isNotBlank()) {
                     parts.add(Part(text = trimmed))
@@ -316,12 +380,21 @@ class TagAlongViewModel(
                     if (chunk.isNotEmpty()) {
                         accumulated += chunk
                         val (prose, a2uiPayload) = extractTextAndA2UIPayload(accumulated)
+                        val streamSurfaceIds = if (!a2uiPayload.isNullOrBlank() && engine != null) {
+                            try {
+                                engine!!.processProtocolMessage(a2uiPayload)
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
+                        } else emptyList()
+
                         _uiState.update { state ->
                             val updated = state.messages.map { msg ->
                                 if (msg.id == agentMsgId) {
                                     msg.copy(
                                         text = prose.ifBlank { null },
-                                        a2uiPayload = a2uiPayload
+                                        a2uiPayload = a2uiPayload,
+                                        surfaceIds = streamSurfaceIds
                                     )
                                 } else msg
                             }
@@ -340,12 +413,21 @@ class TagAlongViewModel(
                     finalProse
                 }
 
+                val finalSurfaceIds = if (!finalPayload.isNullOrBlank() && engine != null) {
+                    try {
+                        engine!!.processProtocolMessage(finalPayload)
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                } else emptyList()
+
                 _uiState.update { state ->
                     val updated = state.messages.map { msg ->
                         if (msg.id == agentMsgId) {
                             msg.copy(
                                 text = effectiveText.ifBlank { null },
-                                a2uiPayload = finalPayload
+                                a2uiPayload = finalPayload,
+                                surfaceIds = finalSurfaceIds
                             )
                         } else msg
                     }
@@ -392,11 +474,20 @@ class TagAlongViewModel(
     fun selectMockFixture(fixtureName: String, fixtureJson: String) {
         val fixtureMsgId = "fixture-${epochMillis()}"
         val introText = "Here is the simulated **$fixtureName** A2UI surface:"
+        val surfaceIds = if (engine != null) {
+            try {
+                engine!!.processProtocolMessage(fixtureJson)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else emptyList()
+
         val msg = TagAlongMessage(
             id = fixtureMsgId,
             sender = TagAlongSender.AGENT,
             text = introText,
             a2uiPayload = fixtureJson,
+            surfaceIds = surfaceIds,
             timestamp = epochMillis()
         )
         _uiState.update { it.copy(messages = it.messages + msg) }
@@ -822,11 +913,21 @@ class TagAlongViewModel(
     }
 
     private fun ChatMessage.toUiMessage(): TagAlongMessage {
+        val payload = a2uiPayloadJson
+        val surfaceIds = if (!payload.isNullOrBlank() && engine != null) {
+            try {
+                engine!!.processProtocolMessage(payload)
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else emptyList()
+
         return TagAlongMessage(
             id = id.toString(),
             sender = if (sender == "user") TagAlongSender.USER else TagAlongSender.AGENT,
             text = text.ifBlank { null },
             a2uiPayload = a2uiPayloadJson,
+            surfaceIds = surfaceIds,
             photoUri = imagePath,
             timestamp = timestamp
         )
