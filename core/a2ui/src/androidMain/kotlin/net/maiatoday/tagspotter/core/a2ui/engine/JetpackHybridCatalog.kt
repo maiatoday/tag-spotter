@@ -28,7 +28,8 @@ import net.maiatoday.tagspotter.core.ui.components.NeonSpotCard
 import net.maiatoday.tagspotter.core.ui.components.NeonTourCard
 import net.maiatoday.tagspotter.core.ui.components.NeonTourWaypoint
 
-const val JETPACK_HYBRID_CATALOG_ID = "https://tagspotter.maiatoday.net/a2ui/neon_hybrid_catalog/v1/catalog.json"
+const val JETPACK_HYBRID_CATALOG_ID = "net.maiatoday.tagspotter.hybrid"
+const val JETPACK_HYBRID_CATALOG_URI = "https://tagspotter.maiatoday.net/a2ui/neon_hybrid_catalog/v1/catalog.json"
 
 /**
  * Creates the Android Jetpack A2UI Hybrid Catalog combining Material 3 Basic Catalog V1
@@ -37,6 +38,7 @@ const val JETPACK_HYBRID_CATALOG_ID = "https://tagspotter.maiatoday.net/a2ui/neo
  */
 fun createJetpackHybridCatalog(
     context: Context? = null,
+    catalogId: String = JETPACK_HYBRID_CATALOG_ID,
     onFocusMap: ((Double, Double, String?) -> Unit)? = null,
     onOpenSpotDetail: ((String) -> Unit)? = null
 ): A2uiCatalog {

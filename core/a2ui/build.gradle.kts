@@ -48,6 +48,11 @@ kotlin {
                 implementation(libs.androidx.compose.material3.a2ui)
             }
         }
+        val androidHostTest by getting {
+            dependencies {
+                implementation("org.robolectric:robolectric:4.12.2")
+            }
+        }
         jvmMain {
             dependencies {
             }
