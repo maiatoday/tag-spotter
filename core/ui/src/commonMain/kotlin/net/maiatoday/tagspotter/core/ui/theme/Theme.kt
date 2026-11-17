@@ -66,6 +66,9 @@ private val UrbanLightColorScheme = lightColorScheme(
 expect fun PlatformThemeSideEffect(darkTheme: Boolean)
 
 @Composable
+expect fun StatusBarAppearanceEffect(darkIcons: Boolean)
+
+@Composable
 fun MyApplicationTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     darkTheme: Boolean = when (themeMode) {
