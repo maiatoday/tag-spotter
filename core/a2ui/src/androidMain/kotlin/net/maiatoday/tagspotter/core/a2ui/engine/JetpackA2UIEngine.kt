@@ -29,6 +29,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
@@ -47,7 +50,12 @@ class JetpackA2UIEngine(
     override val engineType: A2UIEngineType = A2UIEngineType.ANDROIDX_JETPACK_OFFICIAL
 
     val processor: androidx.a2ui.model.processor.A2uiMessageProcessor =
-        A2uiMessageProcessor(listOf(catalog))
+        A2uiMessageProcessor(
+            listOf(
+                catalog,
+                createJetpackHybridCatalog(context, catalogId = JETPACK_HYBRID_CATALOG_URI)
+            )
+        )
 
     private val parser = A2uiMessageParser()
     private val _manualActions = MutableSharedFlow<A2UIAction>(extraBufferCapacity = 64)
@@ -79,11 +87,21 @@ class JetpackA2UIEngine(
         }
     }
 
+    private fun logError(message: String, throwable: Throwable? = null) {
+        try {
+            android.util.Log.e("JetpackA2UIEngine", message, throwable)
+        } catch (_: Throwable) {
+            System.err.println("JetpackA2UIEngine: $message: ${throwable?.message}")
+            throwable?.printStackTrace(System.err)
+        }
+    }
+
     override fun processProtocolMessage(json: String): List<String> {
         val affectedSurfaces = mutableListOf<String>()
         val parsedElement = try {
             Json.parseToJsonElement(json)
         } catch (e: Exception) {
+            logError("Failed to parse JSON element", e)
             return emptyList()
         }
 
@@ -94,29 +112,119 @@ class JetpackA2UIEngine(
         }
 
         for (envelope in envelopes) {
-            val normalizedEnvelope = if (!envelope.containsKey("version")) {
-                buildJsonObject {
-                    put("version", "v0.9")
-                    for ((k, v) in envelope) {
-                        put(k, v)
-                    }
-                }
-            } else {
-                envelope
-            }
+            val normalizedEnvelope = normalizeEnvelope(envelope)
 
             try {
                 val message: A2uiServerToClientMessage = parser.parse(normalizedEnvelope.toString())
+                if (normalizedEnvelope.containsKey("createSurface")) {
+                    if (processor.activeSurfaces.value.any { it.id == message.surfaceId }) {
+                        processor.processMessage(A2uiDeleteSurfaceMessage(message.surfaceId))
+                    }
+                }
                 processor.processMessage(message)
                 if (!affectedSurfaces.contains(message.surfaceId)) {
                     affectedSurfaces.add(message.surfaceId)
                 }
-            } catch (_: Exception) {
-                // If parser fails on this envelope, continue processing remaining envelopes
+            } catch (e: Exception) {
+                logError("Failed to parse/process envelope: $normalizedEnvelope", e)
             }
         }
 
         return affectedSurfaces
+    }
+
+    private fun normalizeEnvelope(envelope: JsonObject): JsonObject {
+        return buildJsonObject {
+            val version = envelope["version"] ?: JsonPrimitive("v0.9")
+            put("version", version)
+
+            for ((key, value) in envelope) {
+                if (key == "version") continue
+
+                when (key) {
+                    "createSurface" -> {
+                        if (value is JsonObject) {
+                            put("createSurface", buildJsonObject {
+                                for ((k, v) in value) {
+                                    put(k, v)
+                                }
+                                if (!value.containsKey("catalogId")) {
+                                    put("catalogId", JsonPrimitive(JETPACK_HYBRID_CATALOG_ID))
+                                }
+                            })
+                        } else {
+                            put(key, value)
+                        }
+                    }
+                    "updateDataModel" -> {
+                        if (value is JsonObject) {
+                            put("updateDataModel", buildJsonObject {
+                                for ((k, v) in value) {
+                                    if (k == "data" && !value.containsKey("value")) {
+                                        put("value", v)
+                                    } else {
+                                        put(k, v)
+                                    }
+                                }
+                                if (!value.containsKey("path")) {
+                                    put("path", JsonPrimitive("/"))
+                                }
+                            })
+                        } else {
+                            put(key, value)
+                        }
+                    }
+                    "updateComponents" -> {
+                        if (value is JsonObject) {
+                            put("updateComponents", buildJsonObject {
+                                for ((k, v) in value) {
+                                    if (k == "components" && v is JsonArray) {
+                                        put("components", buildJsonArray {
+                                            for (comp in v) {
+                                                if (comp is JsonObject) {
+                                                    add(normalizeComponent(comp))
+                                                } else {
+                                                    add(comp)
+                                                }
+                                            }
+                                        })
+                                    } else {
+                                        put(k, v)
+                                    }
+                                }
+                            })
+                        } else {
+                            put(key, value)
+                        }
+                    }
+                    else -> put(key, value)
+                }
+            }
+        }
+    }
+
+    private fun normalizeComponent(comp: JsonObject): JsonObject {
+        return buildJsonObject {
+            val componentType = comp["component"] ?: comp["type"]
+            val id = comp["id"]
+            if (id != null) put("id", id)
+            if (componentType != null) put("component", componentType)
+
+            // Flatten properties if present
+            val props = comp["properties"]
+            if (props is JsonObject) {
+                for ((pk, pv) in props) {
+                    put(pk, pv)
+                }
+            }
+
+            // Copy any top-level properties other than id, component, type, properties
+            for ((ck, cv) in comp) {
+                if (ck != "id" && ck != "component" && ck != "type" && ck != "properties") {
+                    put(ck, cv)
+                }
+            }
+        }
     }
 
     override fun updateDataModel(surfaceId: String, path: String, value: Any?) {
