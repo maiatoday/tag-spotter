@@ -1,7 +1,4 @@
-package net.maiatoday.tagspotter.feature.detail
-
-import net.maiatoday.tagspotter.feature.detail.res.rememberDetailPlatformHelper
-import net.maiatoday.tagspotter.feature.detail.res.formatImageModel
+package net.maiatoday.tagspotter.core.ui.image
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,9 +9,6 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.PointerInputScope
-import androidx.compose.ui.input.pointer.positionChanged
-import kotlin.math.abs
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,34 +37,44 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
-
 import androidx.compose.ui.unit.dp
-
 import coil3.compose.AsyncImage
+import kotlin.math.abs
 
 @Composable
 fun ZoomableImageOverlay(
     imagePath: String,
-    thumbnailPath: String,
+    thumbnailPath: String = "",
+    isOriginalDeleted: Boolean? = null,
+    imageModel: Any? = null,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     onScaleChanged: (Float) -> Unit = {}
 ) {
-    val platformHelper = rememberDetailPlatformHelper()
+    val photoChecker = rememberPhotoDeletedChecker()
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    var isOriginalDeleted by remember { mutableStateOf(false) }
+    var detectedDeleted by remember { mutableStateOf(false) }
 
-    LaunchedEffect(imagePath) {
-        platformHelper.checkOriginalPhotoDeleted(imagePath) { deleted ->
-            isOriginalDeleted = deleted
+    val effectiveIsDeleted = isOriginalDeleted ?: detectedDeleted
+
+    LaunchedEffect(imagePath, isOriginalDeleted) {
+        if (isOriginalDeleted == null) {
+            photoChecker(imagePath) { deleted ->
+                detectedDeleted = deleted
+            }
         }
     }
 
-    val imageModel = remember(imagePath, thumbnailPath, isOriginalDeleted) {
-        formatImageModel(if (isOriginalDeleted) thumbnailPath else imagePath, if (isOriginalDeleted) "" else thumbnailPath)
+    val resolvedImageModel = remember(imageModel, imagePath, thumbnailPath, effectiveIsDeleted) {
+        imageModel ?: formatImageModel(
+            if (effectiveIsDeleted) thumbnailPath else imagePath,
+            if (effectiveIsDeleted) "" else thumbnailPath
+        )
     }
 
     Box(
@@ -113,7 +117,7 @@ fun ZoomableImageOverlay(
                 }
         ) {
             AsyncImage(
-                model = imageModel,
+                model = resolvedImageModel,
                 contentDescription = "Zoomable spot image",
                 modifier = Modifier
                     .fillMaxSize()
@@ -129,13 +133,13 @@ fun ZoomableImageOverlay(
         }
 
         // Warning Badge if Original is Deleted
-        if (isOriginalDeleted) {
+        if (effectiveIsDeleted) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp)
                     .background(Color.Black.copy(alpha = 0.8f), shape = RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.error, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.error, shape = RoundedCornerShape(8.dp))
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

@@ -63,140 +63,35 @@ import net.maiatoday.tagspotter.core.ui.theme.DarkPrimaryContainer
 import net.maiatoday.tagspotter.core.ui.theme.DarkSecondaryContainer
 import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NeonSpotCard(
     data: SpotCardData,
     onAction: (A2UIAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = BorderStroke(1.5.dp, DarkPrimaryContainer.copy(alpha = 0.8f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            if (!data.imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = data.imageUrl,
-                    contentDescription = data.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
+    net.maiatoday.tagspotter.core.ui.components.NeonSpotCard(
+        title = data.title,
+        spotId = data.spotId,
+        artist = data.artist,
+        imageUrl = data.imageUrl,
+        tags = data.tags,
+        distanceMeters = data.distanceMeters,
+        latitude = data.latitude,
+        longitude = data.longitude,
+        isStarred = data.isStarred,
+        onStarToggle = { onAction(A2UIAction.StarSpot(data.spotId)) },
+        onViewOnMap = { lat, lon, title ->
+            onAction(
+                A2UIAction.ViewOnMap(
+                    latitude = lat,
+                    longitude = lon,
+                    title = title,
+                    spotId = data.spotId
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = data.title,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (!data.artist.isNullOrBlank()) {
-                        Text(
-                            text = "By ${data.artist}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = DarkSecondaryContainer
-                        )
-                    }
-                }
-
-                if (data.distanceMeters != null) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = DarkPrimaryContainer.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, DarkPrimaryContainer)
-                    ) {
-                        Text(
-                            text = if (data.distanceMeters >= 1000) {
-                                "${(data.distanceMeters / 100.0).toInt() / 10.0} km"
-                            } else {
-                                "${data.distanceMeters.toInt()} m"
-                            },
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = DarkPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            if (data.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    data.tags.forEach { tag ->
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = DarkTertiaryContainer.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, DarkTertiaryContainer.copy(alpha = 0.5f))
-                        ) {
-                            Text(
-                                text = "#$tag",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = DarkTertiaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { onAction(A2UIAction.StarSpot(data.spotId)) },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = if (data.isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.onSurface
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (data.isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.outline
-                    )
-                ) {
-                    Text(if (data.isStarred) "★ Starred" else "☆ Star")
-                }
-
-                Button(
-                    onClick = {
-                        onAction(
-                            A2UIAction.ViewOnMap(
-                                latitude = data.latitude ?: 0.0,
-                                longitude = data.longitude ?: 0.0,
-                                title = data.title,
-                                spotId = data.spotId
-                            )
-                        )
-                    },
-                    modifier = Modifier.weight(1.5f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkPrimaryContainer,
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Text("View on Map", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
+            )
+        },
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -205,302 +100,67 @@ fun NeonTourCard(
     onAction: (A2UIAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = BorderStroke(1.5.dp, DarkTertiaryContainer.copy(alpha = 0.8f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = data.tourTitle,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (data.description.isNotBlank()) {
-                        Text(
-                            text = data.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                    border = BorderStroke(1.dp, DarkTertiaryContainer)
-                ) {
-                    Text(
-                        text = "${data.estimatedMinutes} min • ${data.totalDistanceKm} km",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = DarkTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            if (data.waypoints.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "Waypoints (${data.waypoints.size} stops)",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = DarkSecondaryContainer
+    net.maiatoday.tagspotter.core.ui.components.NeonTourCard(
+        tourTitle = data.tourTitle,
+        description = data.description,
+        estimatedMinutes = data.estimatedMinutes,
+        totalDistanceKm = data.totalDistanceKm,
+        waypoints = data.waypoints.map {
+            net.maiatoday.tagspotter.core.ui.components.NeonTourWaypoint(
+                index = it.index,
+                title = it.title,
+                address = it.address,
+                latitude = it.latitude,
+                longitude = it.longitude,
+                imageUrl = it.imageUrl,
+                completed = it.completed
+            )
+        },
+        onNavigateToStop = { stopIndex, lat, lon, title ->
+            onAction(
+                A2UIAction.NavigateToStop(
+                    stopIndex = stopIndex,
+                    latitude = lat,
+                    longitude = lon,
+                    title = title
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    data.waypoints.forEach { stop ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-                                .clickable {
-                                    onAction(
-                                        A2UIAction.NavigateToStop(
-                                            stopIndex = stop.index,
-                                            latitude = stop.latitude,
-                                            longitude = stop.longitude,
-                                            title = stop.title
-                                        )
-                                    )
-                                }
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (stop.completed) DarkPrimaryContainer else DarkTertiaryContainer.copy(alpha = 0.2f),
-                                border = BorderStroke(1.dp, if (stop.completed) DarkPrimaryContainer else DarkTertiaryContainer),
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = if (stop.completed) "✓" else "${stop.index}",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = if (stop.completed) Color.Black else DarkTertiaryContainer
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stop.title,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                if (!stop.address.isNullOrBlank()) {
-                                    Text(
-                                        text = stop.address,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                val nextStop = data.waypoints.firstOrNull { !it.completed } ?: data.waypoints.firstOrNull()
-                if (nextStop != null) {
-                    Button(
-                        onClick = {
-                            onAction(
-                                A2UIAction.NavigateToStop(
-                                    stopIndex = nextStop.index,
-                                    latitude = nextStop.latitude,
-                                    longitude = nextStop.longitude,
-                                    title = nextStop.title
-                                )
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkTertiaryContainer,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text("Navigate to Stop #${nextStop.index} (${nextStop.title})", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
+            )
+        },
+        modifier = modifier
+    )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NeonArtistBioCard(
     data: ArtistBioCardData,
     onAction: (A2UIAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = BorderStroke(1.5.dp, DarkSecondaryContainer.copy(alpha = 0.8f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (!data.avatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = data.avatarUrl,
-                        contentDescription = data.artistName,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Surface(
-                        shape = CircleShape,
-                        color = DarkSecondaryContainer.copy(alpha = 0.2f),
-                        border = BorderStroke(1.5.dp, DarkSecondaryContainer),
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = data.artistName.firstOrNull()?.uppercase() ?: "A",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = DarkSecondaryContainer
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = data.artistName,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (!data.activeYears.isNullOrBlank()) {
-                        Text(
-                            text = "Active: ${data.activeYears}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = DarkTertiaryContainer
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = data.bio,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
+    net.maiatoday.tagspotter.core.ui.components.NeonArtistBioCard(
+        artistName = data.artistName,
+        bio = data.bio,
+        avatarUrl = data.avatarUrl,
+        activeYears = data.activeYears,
+        styles = data.styles,
+        artworks = data.artworks.map {
+            net.maiatoday.tagspotter.core.ui.components.NeonArtworkThumbnail(
+                id = it.id,
+                title = it.title,
+                imageUrl = it.imageUrl
             )
-
-            if (data.styles.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    data.styles.forEach { tag ->
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = DarkSecondaryContainer.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, DarkSecondaryContainer.copy(alpha = 0.6f))
-                        ) {
-                            Text(
-                                text = tag,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = DarkSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (data.artworks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "Notable Pieces",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = DarkPrimaryContainer
+        },
+        onArtworkClick = { id, title ->
+            onAction(
+                A2UIAction.ViewOnMap(
+                    latitude = 0.0,
+                    longitude = 0.0,
+                    title = title,
+                    spotId = id
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    data.artworks.forEach { artwork ->
-                        Column(
-                            modifier = Modifier
-                                .width(100.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    onAction(
-                                        A2UIAction.ViewOnMap(
-                                            latitude = 0.0,
-                                            longitude = 0.0,
-                                            title = artwork.title,
-                                            spotId = artwork.id
-                                        )
-                                    )
-                                }
-                        ) {
-                            if (artwork.imageUrl.isNotBlank()) {
-                                AsyncImage(
-                                    model = artwork.imageUrl,
-                                    contentDescription = artwork.title,
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("🎨", fontSize = 24.sp)
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = artwork.title,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
+            )
+        },
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -736,103 +396,42 @@ fun NeonMapPinOverlayWidget(
     onAction: (A2UIAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = BorderStroke(1.5.dp, DarkTertiaryContainer.copy(alpha = 0.8f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = data.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
+    net.maiatoday.tagspotter.core.ui.components.NeonMapPinOverlayWidget(
+        title = data.title,
+        centerLatitude = data.centerLatitude,
+        centerLongitude = data.centerLongitude,
+        zoomLevel = data.zoomLevel,
+        pins = data.pins.map {
+            net.maiatoday.tagspotter.core.ui.components.NeonMapPin(
+                id = it.id,
+                title = it.title,
+                latitude = it.latitude,
+                longitude = it.longitude,
+                category = it.category
+            )
+        },
+        onPinClick = { pinId, lat, lon, title ->
+            onAction(
+                A2UIAction.ViewOnMap(
+                    latitude = lat,
+                    longitude = lon,
+                    title = title,
+                    spotId = pinId
                 )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                    border = BorderStroke(1.dp, DarkTertiaryContainer)
-                ) {
-                    Text(
-                        text = "${data.pins.size} spots",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = DarkTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                data.pins.take(4).forEach { pin ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-                            .clickable {
-                                onAction(
-                                    A2UIAction.ViewOnMap(
-                                        latitude = pin.latitude,
-                                        longitude = pin.longitude,
-                                        title = pin.title,
-                                        spotId = pin.id
-                                    )
-                                )
-                            }
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("📍", fontSize = 14.sp)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = pin.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (!pin.category.isNullOrBlank()) {
-                            Text(
-                                text = pin.category,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = DarkTertiaryContainer
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Button(
-                onClick = {
-                    onAction(
-                        A2UIAction.ViewOnMap(
-                            latitude = data.centerLatitude,
-                            longitude = data.centerLongitude,
-                            title = data.title,
-                            spotId = null
-                        )
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkTertiaryContainer,
-                    contentColor = Color.Black
+            )
+        },
+        onFocusCluster = { lat, lon, title ->
+            onAction(
+                A2UIAction.ViewOnMap(
+                    latitude = lat,
+                    longitude = lon,
+                    title = title,
+                    spotId = null
                 )
-            ) {
-                Text("Focus Map on Cluster", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
+            )
+        },
+        modifier = modifier
+    )
 }
 
 @Composable
