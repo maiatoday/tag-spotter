@@ -147,7 +147,7 @@ flowchart LR
 | :---: | :--- | :--- | :--- | :--- | :--- | :--- |
 | ✅ | **Step 4.1** | Retire `:tagalongApp:*` & Integrate TagAlong Tab | `:feature:main`, Apps | Phase 3 | Sequential | `./gradlew :feature:main:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
 | ✅ | **Step 4.2** | Shared UI Primitives Consolidation | `:core:ui`, `:feature:detail` | Step 4.1 | 🔀 *Parallel with 4.3* | `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Passed ✅) |
-| ⏳ | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines | `:core:a2ui` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests` |
+| ✅ | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines | `:core:a2ui` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Passed ✅) |
 | ⏳ | **Step 4.4** | Wire Prompts to Schema, Fix Photo Bytes & Render Loop | `:core:agent`, `:feature:tagalong` | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` |
 | ✅ | **Step 4.5** | Theme Switching, New Chat Controls & Desktop DB Fix | `:core:settings`, `:core:database`, Apps | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests :desktopApp:assemble :androidApp:assembleDebug` (Passed ✅) |
 | ⏳ | **Step 4.6** | 1-Tap Spot Saving, `Spot.CATEGORIES` & DataModel Actions | `:core:agent`, `:feature:tagalong`, `:core:sync` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :feature:tagalong:allTests :core:sync:allTests` |
@@ -175,7 +175,7 @@ flowchart LR
     4. Refactor `DetailMetadataCard.kt` and `GalleryScreen.kt` to use `NeonTagChip` and `NeonCategoryBadge`.
   - **Test:** `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Passed ✅)
 
-- [ ] **Step 4.3: Replace Hand-Rolled A2UI with Hybrid `androidx.a2ui` & `a2ui-4k` Engines (`:core:a2ui`)**
+- [x] **Step 4.3: Replace Hand-Rolled A2UI with Hybrid `androidx.a2ui` & `a2ui-4k` Engines (`:core:a2ui`)**
   - **Goal:** Delete all hand-rolled A2UI parsing/routing code and implement both real A2UI libraries side-by-side using the Hybrid Catalog (Built-in Basic Catalog primitives + 4 custom `:core:ui` domain components).
   - **Work Items:**
     1. Add `a2ui-4k = { module = "com.contextable:a2ui-4k", version = "0.10.0" }` to `gradle/libs.versions.toml` and `commonMain` of `:core:a2ui/build.gradle.kts` (alongside `androidx.a2ui.compose.runtime` in `androidMain`).
