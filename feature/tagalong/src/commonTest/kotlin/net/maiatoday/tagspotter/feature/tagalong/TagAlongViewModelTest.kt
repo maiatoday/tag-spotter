@@ -8,6 +8,9 @@ import com.google.adk.kt.types.Part
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -24,6 +27,14 @@ import net.maiatoday.tagspotter.core.agent.TagAlongAgentFactory
 import net.maiatoday.tagspotter.core.database.ChatMessage
 import net.maiatoday.tagspotter.core.database.ChatSession
 import net.maiatoday.tagspotter.core.database.FakeChatRepository
+import net.maiatoday.tagspotter.core.database.FakeSpotRepository
+import net.maiatoday.tagspotter.core.model.SharedPack
+import net.maiatoday.tagspotter.core.model.Spot
+import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.photo.FakePhotoProcessor
+import net.maiatoday.tagspotter.core.photo.PhotoMetadata
+import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
+import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongSender
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongViewModel
@@ -464,5 +475,193 @@ class TagAlongViewModelTest {
         val messages = viewModel.uiState.value.messages
         val fixtureMessage = messages.last()
         assertEquals(listOf("surface-fixture-1"), fixtureMessage.surfaceIds)
+    }
+
+    private class FakeTestSyncManager(
+        private val publicSpots: List<SpotDetails> = emptyList()
+    ) : SyncManager {
+        override val isSyncing: StateFlow<Boolean> = MutableStateFlow(false)
+        override suspend fun syncNow() {}
+        override fun startRealtimeSync(userId: String) {}
+        override fun stopRealtimeSync() {}
+        override suspend fun deleteSpot(uuid: String) {}
+        override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String = ""
+        override suspend fun importPackByCode(code: String): SharedPack = SharedPack("", "", "", "", emptyList())
+        override suspend fun saveImportedPack(sharedPack: SharedPack) {}
+        override suspend fun fetchPublicSpots(minLat: Double, maxLat: Double, minLon: Double, maxLon: Double): List<SpotDetails> = publicSpots
+    }
+
+    @Test
+    fun testSaveSpotClientEventSavesToRepositoryAndUpdatesDataModel() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val localSpotRepo = FakeSpotRepository()
+        val syncManager = FakeTestSyncManager()
+        val hybridRepo = HybridSpotRepository(localSpotRepo, syncManager)
+
+        val updatedPaths = mutableListOf<Pair<String, Any?>>()
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = flowOf()
+            override fun getCatalogSchemaJson(): String = "{}"
+            override fun processProtocolMessage(json: String): List<String> = emptyList()
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {
+                updatedPaths.add(path to value)
+            }
+            override fun clearSurfaces() {}
+            @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
+            override fun RenderSurface(
+                payloadJson: String,
+                onAction: (A2UIAction) -> Unit,
+                modifier: Modifier
+            ) {}
+        }
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            hybridSpotRepository = hybridRepo,
+            initialSessionId = "save-spot-session"
+        )
+        advanceUntilIdle()
+
+        viewModel.attachEngine(fakeEngine)
+        advanceUntilIdle()
+
+        val saveAction = A2UIAction.ClientEvent(
+            surfaceId = "surface-spot-1",
+            name = "save_spot",
+            context = mapOf(
+                "spotId" to "spot-uuid-123",
+                "title" to "Awesome Mural",
+                "artist" to "Banksy",
+                "category" to "mural",
+                "latitude" to "52.52",
+                "longitude" to "13.40",
+                "imageUrl" to "https://example.com/mural.jpg"
+            )
+        )
+
+        viewModel.handleAction(saveAction)
+        advanceUntilIdle()
+
+        val savedSpots = localSpotRepo.getAllSpots().first()
+        assertEquals(1, savedSpots.size)
+        val saved = savedSpots.first()
+        assertEquals("spot-uuid-123", saved.spot.uuid)
+        assertEquals("Awesome Mural", saved.spot.description)
+        assertEquals(listOf("Banksy"), saved.spot.artists)
+        assertEquals("graffiti", saved.spot.category) // mapped from mural to graffiti
+        assertEquals(52.52, saved.spot.latitude)
+        assertEquals(13.40, saved.spot.longitude)
+
+        assertTrue(updatedPaths.contains("/spot/isSaved" to true))
+    }
+
+    @Test
+    fun testToggleStarClientEventTogglesInRepositoryAndUpdatesDataModel() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val localSpotRepo = FakeSpotRepository()
+        val syncManager = FakeTestSyncManager()
+        val hybridRepo = HybridSpotRepository(localSpotRepo, syncManager)
+
+        localSpotRepo.saveSpot(
+            spot = Spot(
+                id = 1L,
+                uuid = "star-uuid-456",
+                description = "Starry Spot",
+                category = "graffiti",
+                latitude = 10.0,
+                longitude = 20.0,
+                createdAt = 1000L,
+                tags = listOf("graffiti"),
+                status = "active",
+                isStarred = false
+            ),
+            imagePath = "",
+            thumbnailPath = ""
+        )
+
+        val updatedPaths = mutableListOf<Pair<String, Any?>>()
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = flowOf()
+            override fun getCatalogSchemaJson(): String = "{}"
+            override fun processProtocolMessage(json: String): List<String> = emptyList()
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {
+                updatedPaths.add(path to value)
+            }
+            override fun clearSurfaces() {}
+            @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
+            override fun RenderSurface(
+                payloadJson: String,
+                onAction: (A2UIAction) -> Unit,
+                modifier: Modifier
+            ) {}
+        }
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            hybridSpotRepository = hybridRepo,
+            initialSessionId = "toggle-star-session"
+        )
+        advanceUntilIdle()
+
+        viewModel.attachEngine(fakeEngine)
+        advanceUntilIdle()
+
+        val toggleAction = A2UIAction.ClientEvent(
+            surfaceId = "surface-star-1",
+            name = "toggle_star",
+            context = mapOf("spotId" to "star-uuid-456")
+        )
+
+        viewModel.handleAction(toggleAction)
+        advanceUntilIdle()
+
+        val spotAfter = localSpotRepo.getAllSpots().first().find { it.spot.uuid == "star-uuid-456" }
+        assertNotNull(spotAfter)
+        assertTrue(spotAfter.spot.isStarred)
+        assertTrue(updatedPaths.contains("/spot/isStarred" to true))
+
+        viewModel.handleAction(toggleAction)
+        advanceUntilIdle()
+
+        val spotAfterSecond = localSpotRepo.getAllSpots().first().find { it.spot.uuid == "star-uuid-456" }
+        assertNotNull(spotAfterSecond)
+        assertFalse(spotAfterSecond.spot.isStarred)
+        assertTrue(updatedPaths.contains("/spot/isStarred" to false))
+    }
+
+    @Test
+    fun testOnPhotoAttachedExtractsMetadataAndMovesMapCenter() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val fakePhotoProcessor = FakePhotoProcessor().apply {
+            metadataResult = PhotoMetadata(latitude = 48.8566, longitude = 2.3522, timestamp = 1700000000L)
+            createThumbUriResult = "thumb_paris_path"
+        }
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            photoProcessor = fakePhotoProcessor,
+            initialSessionId = "photo-session"
+        )
+        advanceUntilIdle()
+
+        viewModel.onPhotoAttached("content://media/external/images/media/42")
+        advanceUntilIdle()
+
+        assertEquals("content://media/external/images/media/42", fakePhotoProcessor.extractMetadataFromUriCalledWith)
+        assertEquals("content://media/external/images/media/42", fakePhotoProcessor.createThumbnailFromUriCalledWith)
+
+        val state = viewModel.uiState.value
+        assertEquals("content://media/external/images/media/42", state.attachedPhotoUri)
+        assertEquals(48.8566, state.mapCenterLat)
+        assertEquals(2.3522, state.mapCenterLng)
     }
 }

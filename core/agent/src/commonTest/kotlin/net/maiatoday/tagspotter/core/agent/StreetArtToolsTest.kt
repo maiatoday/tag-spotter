@@ -63,11 +63,15 @@ class StreetArtToolsTest {
     private class FakeSpotRepository(
         private val spots: List<SpotDetails>
     ) : SpotRepository {
+        val savedSpots = mutableListOf<Spot>()
         override var activeUid: String? = null
         override fun getAllSpots(): Flow<List<SpotDetails>> = flowOf(spots)
         override fun getSpotsByCategory(category: String): Flow<List<SpotDetails>> = flowOf(emptyList())
         override fun getSpotById(id: Long): Flow<SpotDetails?> = flowOf(null)
-        override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long = 0L
+        override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long {
+            savedSpots.add(spot)
+            return savedSpots.size.toLong()
+        }
         override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Long, isMain: Boolean): Long = 0L
         override suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long = 0L
         override suspend fun updateSpotStatus(spotId: Long, status: String) {}
@@ -195,15 +199,75 @@ class StreetArtToolsTest {
     }
 
     @Test
+    fun saveNewSpot_validCategory_savesSpotAndReturnsConfirmation() = runTest {
+        val fakeRepo = FakeSpotRepository(emptyList())
+        val hybridRepo = HybridSpotRepository(fakeRepo, FakeSyncManager(emptyList()))
+        val tools = StreetArtTools(hybridRepo)
+
+        val jsonString = tools.saveNewSpot(
+            title = "Bronze Panther Statue",
+            category = "sculpture",
+            latitude = 52.5200,
+            longitude = 13.4050,
+            artist = "Inkie",
+            description = "A striking bronze panther",
+            tags = listOf("metal", "outdoor"),
+            imageUrl = "/images/panther.jpg"
+        )
+        val confirmation = json.decodeFromString<SavedSpotConfirmationDto>(jsonString)
+
+        assertTrue(confirmation.isSaved)
+        assertEquals("Bronze Panther Statue", confirmation.title)
+        assertEquals("sculpture", confirmation.category)
+        assertTrue(confirmation.uuid.isNotBlank())
+
+        assertEquals(1, fakeRepo.savedSpots.size)
+        val saved = fakeRepo.savedSpots.first()
+        assertTrue(saved.description.contains("Bronze Panther Statue"))
+        assertTrue(saved.description.contains("A striking bronze panther"))
+        assertEquals("sculpture", saved.category)
+        assertEquals(listOf("Inkie"), saved.artists)
+        assertEquals(listOf("metal", "outdoor"), saved.tags)
+    }
+
+    @Test
+    fun saveNewSpot_streetArtStyle_mapsToGraffitiAndAppendsToTags() = runTest {
+        val fakeRepo = FakeSpotRepository(emptyList())
+        val hybridRepo = HybridSpotRepository(fakeRepo, FakeSyncManager(emptyList()))
+        val tools = StreetArtTools(hybridRepo)
+
+        val jsonString = tools.saveNewSpot(
+            title = "Cosmic Alley Piece",
+            category = "mural",
+            latitude = 52.5100,
+            longitude = 13.4000,
+            artist = "Falko One",
+            tags = listOf("colorful", "elephant")
+        )
+        val confirmation = json.decodeFromString<SavedSpotConfirmationDto>(jsonString)
+
+        assertTrue(confirmation.isSaved)
+        assertEquals("Cosmic Alley Piece", confirmation.title)
+        assertEquals("graffiti", confirmation.category)
+
+        assertEquals(1, fakeRepo.savedSpots.size)
+        val saved = fakeRepo.savedSpots.first()
+        assertEquals("graffiti", saved.category)
+        assertTrue(saved.tags.contains("mural"))
+        assertTrue(saved.tags.contains("elephant"))
+    }
+
+    @Test
     fun toTools_generatesExpectedAdkTools() {
         val tools = createTools()
         val adkTools = tools.toTools()
 
-        assertEquals(4, adkTools.size)
+        assertEquals(5, adkTools.size)
         val toolNames = adkTools.map { it.name }.toSet()
         assertTrue(toolNames.contains("getNearbySpots"))
         assertTrue(toolNames.contains("generateWalkingTour"))
         assertTrue(toolNames.contains("getArtistBio"))
         assertTrue(toolNames.contains("identifyMuralByPhoto"))
+        assertTrue(toolNames.contains("saveNewSpot"))
     }
 }

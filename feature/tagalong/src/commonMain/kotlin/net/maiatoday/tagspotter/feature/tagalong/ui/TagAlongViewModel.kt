@@ -30,6 +30,8 @@ import net.maiatoday.tagspotter.core.database.ChatRepository
 import net.maiatoday.tagspotter.core.database.ChatSession
 import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.location.LocationProvider
+import net.maiatoday.tagspotter.core.model.Spot
+import net.maiatoday.tagspotter.core.model.generateUuid
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 import net.maiatoday.tagspotter.core.ui.MapMarker
@@ -256,6 +258,24 @@ class TagAlongViewModel(
 
     fun onPhotoAttached(uri: String) {
         _uiState.update { it.copy(attachedPhotoUri = uri) }
+        if (photoProcessor != null) {
+            viewModelScope.launch {
+                try {
+                    val metadata = photoProcessor.extractMetadataFromUri(uri)
+                    val photoLat = metadata?.latitude
+                    val photoLon = metadata?.longitude
+                    if (photoLat != null && photoLon != null) {
+                        _uiState.update {
+                            it.copy(
+                                mapCenterLat = photoLat,
+                                mapCenterLng = photoLon
+                            )
+                        }
+                    }
+                    photoProcessor.createThumbnailFromUri(uri)
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     fun onClearPhoto() {
@@ -552,6 +572,11 @@ class TagAlongViewModel(
                     }
                     state.copy(mapMarkers = updated)
                 }
+                if (hybridSpotRepository != null) {
+                    viewModelScope.launch {
+                        hybridSpotRepository.toggleSpotStar(action.spotId)
+                    }
+                }
             }
             is A2UIAction.AnswerQuiz -> {
                 val feedbackText = if (action.isCorrect) {
@@ -624,16 +649,157 @@ class TagAlongViewModel(
                 _uiState.update { it.copy(focusedTitle = spotTitle) }
             }
             is A2UIAction.ClientEvent -> {
-                if (action.name == "focusMap" || action.name == "viewOnMap") {
-                    val lat = (action.context["latitude"] as? Number)?.toDouble() ?: 0.0
-                    val lng = (action.context["longitude"] as? Number)?.toDouble() ?: 0.0
-                    val title = (action.context["title"] as? String) ?: "Selected Spot"
-                    if (lat != 0.0 && lng != 0.0) {
-                        _uiState.update { it.copy(mapCenterLat = lat, mapCenterLng = lng, focusedTitle = title) }
+                when (action.name) {
+                    "focusMap", "viewOnMap" -> {
+                        val lat = (action.context["latitude"] as? Number)?.toDouble()
+                            ?: (action.context["lat"] as? Number)?.toDouble() ?: 0.0
+                        val lng = (action.context["longitude"] as? Number)?.toDouble()
+                            ?: (action.context["lng"] as? Number)?.toDouble()
+                            ?: (action.context["lon"] as? Number)?.toDouble() ?: 0.0
+                        val title = (action.context["title"] as? String) ?: "Selected Spot"
+                        if (lat != 0.0 && lng != 0.0) {
+                            _uiState.update { it.copy(mapCenterLat = lat, mapCenterLng = lng, focusedTitle = title) }
+                        }
                     }
-                } else if (action.name == "openSpotDetail") {
-                    val spotId = action.context["spotId"]?.toString() ?: ""
-                    _uiState.update { it.copy(focusedTitle = "Spot #$spotId") }
+                    "openSpotDetail" -> {
+                        val spotId = action.context["spotId"]?.toString() ?: ""
+                        _uiState.update { it.copy(focusedTitle = "Spot #$spotId") }
+                    }
+                    "save_spot", "saveSpot" -> {
+                        val spotUuid = (action.context["spotId"] ?: action.context["uuid"] ?: action.context["id"])?.toString()
+                        val title = (action.context["title"] ?: action.context["name"])?.toString() ?: "Saved Mural"
+                        val artist = action.context["artist"]?.toString()
+                        var lat = (action.context["latitude"] as? Number)?.toDouble()
+                            ?: (action.context["lat"] as? Number)?.toDouble()
+                            ?: action.context["latitude"]?.toString()?.toDoubleOrNull()
+                            ?: action.context["lat"]?.toString()?.toDoubleOrNull() ?: 0.0
+                        var lon = (action.context["longitude"] as? Number)?.toDouble()
+                            ?: (action.context["lng"] as? Number)?.toDouble()
+                            ?: (action.context["lon"] as? Number)?.toDouble()
+                            ?: action.context["longitude"]?.toString()?.toDoubleOrNull()
+                            ?: action.context["lng"]?.toString()?.toDoubleOrNull()
+                            ?: action.context["lon"]?.toString()?.toDoubleOrNull() ?: 0.0
+                        val rawImageUrl = (action.context["imageUrl"] ?: action.context["photoUri"] ?: action.context["imageUri"] ?: action.context["imagePath"])?.toString()
+                            ?: _uiState.value.attachedPhotoUri ?: ""
+                        val category = action.context["category"]?.toString() ?: "graffiti"
+
+                        viewModelScope.launch {
+                            var thumbnailPath = rawImageUrl
+                            if (rawImageUrl.isNotBlank() && photoProcessor != null) {
+                                try {
+                                    val thumb = photoProcessor.createThumbnailFromUri(rawImageUrl)
+                                    if (!thumb.isNullOrBlank()) {
+                                        thumbnailPath = thumb
+                                    }
+                                    if (lat == 0.0 && lon == 0.0) {
+                                        val metadata = photoProcessor.extractMetadataFromUri(rawImageUrl)
+                                        val photoLat = metadata?.latitude
+                                        val photoLon = metadata?.longitude
+                                        if (photoLat != null && photoLon != null) {
+                                            lat = photoLat
+                                            lon = photoLon
+                                        }
+                                    }
+                                } catch (_: Exception) {}
+                            }
+
+                            if (hybridSpotRepository != null) {
+                                val normalizedCategory = category.trim().lowercase()
+                                val tagsList = (action.context["tags"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf("saved")
+                                val finalCategory = if (normalizedCategory in Spot.CATEGORIES) {
+                                    normalizedCategory
+                                } else {
+                                    if (!tagsList.any { it.equals(category.trim(), ignoreCase = true) }) {
+                                        tagsList.add(category.trim())
+                                    }
+                                    "graffiti"
+                                }
+
+                                val spot = Spot(
+                                    uuid = if (!spotUuid.isNullOrBlank()) spotUuid else generateUuid(),
+                                    latitude = lat,
+                                    longitude = lon,
+                                    createdAt = epochMillis(),
+                                    description = title,
+                                    tags = tagsList,
+                                    category = finalCategory,
+                                    status = "active",
+                                    artists = if (!artist.isNullOrBlank()) listOf(artist.trim()) else emptyList(),
+                                    isPublic = false
+                                )
+                                hybridSpotRepository.saveSpot(
+                                    spot = spot,
+                                    imagePath = rawImageUrl,
+                                    thumbnailPath = thumbnailPath
+                                )
+                            }
+
+                            engine?.updateDataModel(
+                                surfaceId = action.surfaceId,
+                                path = "/spot/isSaved",
+                                value = true
+                            )
+
+                            if (lat != 0.0 && lon != 0.0) {
+                                _uiState.update { state ->
+                                    val markers = state.mapMarkers.toMutableList()
+                                    val existingIndex = markers.indexOfFirst { it.latitude == lat && it.longitude == lon }
+                                    if (existingIndex >= 0) {
+                                        markers[existingIndex] = markers[existingIndex].copy(
+                                            title = title,
+                                            status = "Saved"
+                                        )
+                                    } else {
+                                        markers.add(
+                                            MapMarker(
+                                                id = (markers.size + 1).toLong(),
+                                                latitude = lat,
+                                                longitude = lon,
+                                                category = "Mural",
+                                                status = "Saved",
+                                                title = title,
+                                                onClick = {}
+                                            )
+                                        )
+                                    }
+                                    state.copy(
+                                        mapCenterLat = lat,
+                                        mapCenterLng = lon,
+                                        focusedTitle = title,
+                                        mapMarkers = markers
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    "toggle_star", "toggleStar" -> {
+                        val spotUuid = (action.context["spotId"] ?: action.context["uuid"] ?: action.context["id"])?.toString() ?: ""
+                        viewModelScope.launch {
+                            val newStarred = if (hybridSpotRepository != null && spotUuid.isNotBlank()) {
+                                hybridSpotRepository.toggleSpotStar(spotUuid)
+                            } else {
+                                val current = _uiState.value.mapMarkers.firstOrNull {
+                                    it.title.contains(spotUuid, ignoreCase = true) || it.id.toString() == spotUuid
+                                }?.isStarred ?: false
+                                !current
+                            }
+
+                            engine?.updateDataModel(
+                                surfaceId = action.surfaceId,
+                                path = "/spot/isStarred",
+                                value = newStarred
+                            )
+
+                            _uiState.update { state ->
+                                val updated = state.mapMarkers.map { marker ->
+                                    if (marker.title.contains(spotUuid, ignoreCase = true) || marker.id.toString() == spotUuid) {
+                                        marker.copy(isStarred = newStarred)
+                                    } else marker
+                                }
+                                state.copy(mapMarkers = updated)
+                            }
+                        }
+                    }
                 }
             }
             is A2UIAction.ClientError -> {
