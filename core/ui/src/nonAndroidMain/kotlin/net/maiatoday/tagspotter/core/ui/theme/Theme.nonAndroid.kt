@@ -6,3 +6,8 @@ import androidx.compose.runtime.Composable
 actual fun PlatformThemeSideEffect(darkTheme: Boolean) {
     // No-op for non-Android platforms
 }
+
+@Composable
+actual fun StatusBarAppearanceEffect(darkIcons: Boolean) {
+    // No-op for non-Android platforms
+}

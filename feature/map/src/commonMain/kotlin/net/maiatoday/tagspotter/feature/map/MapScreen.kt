@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -56,6 +57,7 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.ui.SpotMapView
 import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
+import net.maiatoday.tagspotter.core.ui.theme.StatusBarAppearanceEffect
 import net.maiatoday.tagspotter.feature.gallery.FilterBottomSheet
 import net.maiatoday.tagspotter.feature.map.res.MapRes
 import net.maiatoday.tagspotter.feature.map.res.stringResource
@@ -85,6 +87,8 @@ fun MapScreen(
     val darkMapEnabled by viewModel.darkMapEnabled.collectAsStateWithLifecycle()
     val isSystemDark = isSystemInDarkTheme()
     val useDarkMap = isSystemDark && darkMapEnabled
+
+    StatusBarAppearanceEffect(darkIcons = !useDarkMap)
 
     var showFilterBottomSheet by remember { mutableStateOf(false) }
 
@@ -135,23 +139,30 @@ fun MapScreen(
             )
         }
 
-        // Floating Category Filter Overlay Row
-        LazyRow(
+        // Floating Top Filter Overlay Controls
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 16.dp, start = 12.dp, end = 12.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                    shape = RoundedCornerShape(28.dp)
-                )
-                .border(
-                    width = 1.dp,
-                    color = Color.Gray.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(28.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .statusBarsPadding()
+                .padding(top = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            LazyRow(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(28.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = Color.Gray.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(28.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             val categories = listOf("All") + Spot.CATEGORIES
             items(categories) { category ->
                 val isSelected = selectedCategory == category
@@ -196,8 +207,7 @@ fun MapScreen(
         if (hasMapActiveFilters) {
             LazyRow(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 88.dp, start = 16.dp, end = 16.dp)
+                    .padding(horizontal = 16.dp)
                     .background(
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
                         shape = RoundedCornerShape(24.dp)
@@ -393,8 +403,6 @@ fun MapScreen(
             // Fallback Button
             Row(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 88.dp)
                     .background(
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
                         shape = RoundedCornerShape(20.dp)
@@ -416,6 +424,7 @@ fun MapScreen(
                 )
             }
         }
+    }
 
         // Overlay Slide-up card for Selected Pin details
         AnimatedVisibility(
