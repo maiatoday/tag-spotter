@@ -12,6 +12,7 @@ import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.adk.kt.runners.Runner
+import net.maiatoday.tagspotter.core.a2ui.engine.getJetpackHybridCatalogSchemaJson
 import net.maiatoday.tagspotter.core.agent.createAndroidTagAlongRunner
 import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.feature.main.initKoin
@@ -25,7 +26,8 @@ val androidAgentModule = module {
     single<Runner> {
         createAndroidTagAlongRunner(
             hybridSpotRepository = get(),
-            locationProvider = getOrNull<LocationProvider>()
+            locationProvider = getOrNull<LocationProvider>(),
+            catalogSchemaJson = getJetpackHybridCatalogSchemaJson(context = androidContext())
         )
     }
 }

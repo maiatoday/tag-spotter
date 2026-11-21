@@ -3,7 +3,9 @@ package net.maiatoday.tagspotter.feature.tagalong
 import com.google.adk.kt.models.LlmRequest
 import com.google.adk.kt.models.LlmResponse
 import com.google.adk.kt.models.Model
+import com.google.adk.kt.runners.Runner
 import com.google.adk.kt.types.Content
+import com.google.adk.kt.types.FunctionCall
 import com.google.adk.kt.types.Part
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,6 +25,7 @@ import net.maiatoday.tagspotter.core.a2ui.A2UIEngineType
 import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import net.maiatoday.tagspotter.core.agent.StreetArtTools
 import net.maiatoday.tagspotter.core.agent.TagAlongAgentFactory
 import net.maiatoday.tagspotter.core.database.ChatMessage
 import net.maiatoday.tagspotter.core.database.ChatSession
@@ -36,6 +39,7 @@ import net.maiatoday.tagspotter.core.photo.PhotoMetadata
 import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
+import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongRunnerProvider
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongSender
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongViewModel
 import kotlin.test.AfterTest
@@ -928,5 +932,174 @@ class TagAlongViewModelTest {
         assertEquals(null, chatRepo.getSessionById("other-session"))
         assertEquals("active-session", viewModel.activeSessionId)
         assertEquals("active-session", viewModel.uiState.value.sessionId)
+    }
+
+    @Test
+    fun testStreamingPartialsAndFinalAggregatedEventDoNotDuplicateProseOrSurface() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val fullResponse = """
+            Check out Cosmic Chameleon!
+            ```a2ui
+            ${TagAlongMockFixtures.SPOT_DOSSIER_JSON}
+            ```
+        """.trimIndent()
+        val splitIndex = fullResponse.length / 2
+        val part1 = fullResponse.substring(0, splitIndex)
+        val part2 = fullResponse.substring(splitIndex)
+
+        val streamingModel = object : Model {
+            override val name: String = "fake-streaming-model"
+            override fun generateContent(request: LlmRequest, stream: Boolean): Flow<LlmResponse> = flow {
+                emit(
+                    LlmResponse(
+                        content = Content(role = "model", parts = listOf(Part(text = part1))),
+                        partial = true
+                    )
+                )
+                emit(
+                    LlmResponse(
+                        content = Content(role = "model", parts = listOf(Part(text = part2))),
+                        partial = true
+                    )
+                )
+                // Final aggregated non-partial event repeating the full response
+                emit(
+                    LlmResponse(
+                        content = Content(role = "model", parts = listOf(Part(text = fullResponse))),
+                        partial = false
+                    )
+                )
+            }
+        }
+
+        var processPayloadCalls = 0
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = flowOf()
+            override fun getCatalogSchemaJson(): String = "{}"
+            override fun processProtocolMessage(json: String): List<String> {
+                processPayloadCalls++
+                return listOf("spot-surface-1")
+            }
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {}
+            override fun clearSurfaces() {}
+            @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
+            override fun RenderSurface(payloadJson: String, onAction: (A2UIAction) -> Unit, modifier: Modifier) {}
+        }
+
+        val runner = TagAlongAgentFactory.createRunner(TagAlongAgentFactory.createAgent(streamingModel))
+        val viewModel = TagAlongViewModel(
+            runner = runner,
+            chatRepository = chatRepo,
+            initialSessionId = "streaming-session"
+        )
+        advanceUntilIdle()
+        viewModel.attachEngine(fakeEngine)
+        advanceUntilIdle()
+
+        viewModel.sendMessage("Show me Teufelsberg")
+        advanceUntilIdle()
+
+        val agentMsg = viewModel.uiState.value.messages.last()
+        assertEquals("Check out Cosmic Chameleon!", agentMsg.text)
+        assertEquals(listOf("spot-surface-1"), agentMsg.surfaceIds)
+        assertEquals(1, processPayloadCalls, "Identical A2UI surface should only be processed once")
+    }
+
+    @Test
+    fun testIntermediateToolCallAndResponseEventsAreFiltered() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val localSpotRepo = FakeSpotRepository()
+        val hybridRepo = HybridSpotRepository(localSpotRepo, FakeTestSyncManager())
+        val tools = StreetArtTools(hybridRepo)
+
+        var callCount = 0
+        val toolCallingModel = object : Model {
+            override val name: String = "fake-tool-model"
+            override fun generateContent(request: LlmRequest, stream: Boolean): Flow<LlmResponse> = flow {
+                callCount++
+                if (callCount == 1) {
+                    emit(
+                        LlmResponse(
+                            content = Content(
+                                role = "model",
+                                parts = listOf(
+                                    Part(text = "INTERNAL_TOOL_PREAMBLE"),
+                                    Part(
+                                        functionCall = FunctionCall(
+                                            id = "call-1",
+                                            name = "getNearbySpots",
+                                            args = mapOf("latitude" to 52.5, "longitude" to 13.4)
+                                        )
+                                    )
+                                )
+                            ),
+                            partial = false
+                        )
+                    )
+                } else {
+                    emit(
+                        LlmResponse(
+                            content = Content(
+                                role = "model",
+                                parts = listOf(Part(text = "Here are the nearby murals I found!"))
+                            ),
+                            partial = false
+                        )
+                    )
+                }
+            }
+        }
+
+        val runner = TagAlongAgentFactory.createRunner(
+            model = toolCallingModel,
+            streetArtTools = tools
+        )
+        val viewModel = TagAlongViewModel(
+            runner = runner,
+            chatRepository = chatRepo,
+            initialSessionId = "tool-filter-session"
+        )
+        advanceUntilIdle()
+
+        viewModel.sendMessage("Any murals near 52.5, 13.4?")
+        advanceUntilIdle()
+
+        val agentMsg = viewModel.uiState.value.messages.last()
+        assertEquals("Here are the nearby murals I found!", agentMsg.text)
+        assertFalse(agentMsg.text!!.contains("INTERNAL_TOOL_PREAMBLE"))
+        assertEquals(2, callCount, "Expected model to be invoked twice (tool call + final response)")
+    }
+
+    @Test
+    fun testDynamicRunnerProviderTransitionsFromOfflineToLive() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        var currentRunner: Runner? = null
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "dynamic-runner-session",
+            runnerProvider = TagAlongRunnerProvider { currentRunner }
+        )
+        advanceUntilIdle()
+
+        // First send: no API key / runner yet -> offline fallback
+        viewModel.sendMessage("Hello offline")
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isOffline)
+        assertTrue(viewModel.uiState.value.messages.last().text!!.contains("offline mode"))
+
+        // Simulate user entering Gemini API key in Settings -> runnerProvider now returns live runner
+        currentRunner = TagAlongAgentFactory.createRunner(
+            TagAlongAgentFactory.createAgent(FakeLlmModel("Welcome back online!"))
+        )
+
+        viewModel.sendMessage("Hello online")
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isOffline)
+        assertEquals("Welcome back online!", viewModel.uiState.value.messages.last().text)
     }
 }

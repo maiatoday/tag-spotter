@@ -69,14 +69,21 @@ data class TagAlongUiState(
     val attachedPhotoUri: String? = null
 )
 
+fun interface TagAlongRunnerProvider {
+    fun getRunner(): Runner?
+}
+
 class TagAlongViewModel(
     private val runner: Runner? = null,
     private val chatRepository: ChatRepository,
     private val locationProvider: LocationProvider? = null,
     private val hybridSpotRepository: HybridSpotRepository? = null,
     private val photoProcessor: PhotoProcessor? = null,
-    private val initialSessionId: String = "session-default"
+    private val initialSessionId: String = "session-default",
+    private val runnerProvider: TagAlongRunnerProvider? = null
 ) : ViewModel() {
+
+    private fun resolveRunner(): Runner? = runnerProvider?.getRunner() ?: runner
 
     private val _uiState = MutableStateFlow(
         TagAlongUiState(
@@ -378,7 +385,8 @@ class TagAlongViewModel(
             )
         }
 
-        if (runner == null) {
+        val activeRunner = resolveRunner()
+        if (activeRunner == null) {
             val offlineText = "I'm currently in offline mode. You can still explore the mock catalog chips and view local murals on the map!"
             val agentMsg = TagAlongMessage(
                 id = "agent-${epochMillis()}",
@@ -422,6 +430,9 @@ class TagAlongViewModel(
 
         viewModelScope.launch {
             var accumulated = ""
+            var receivedPartials = false
+            var lastProcessedPayload: String? = null
+            var lastSurfaceIds: List<String> = emptyList()
             try {
                 val parts = mutableListOf<Part>()
                 if (!currentPhoto.isNullOrBlank()) {
@@ -447,40 +458,59 @@ class TagAlongViewModel(
                 }
                 val content = Content(role = "user", parts = parts)
 
-                runner.runAsync(
+                activeRunner.runAsync(
                     "tagalong-user",
                     _uiState.value.sessionId,
                     "inv-${epochMillis()}",
                     content,
                     emptyMap()
                 ).collect { event ->
+                    // Ignore user-echoed events and intermediate tool-call / tool-response turns.
+                    if (event.author == "user") return@collect
+                    if (event.functionCalls().isNotEmpty() || event.functionResponses().isNotEmpty()) {
+                        return@collect
+                    }
+
                     val chunk = event.content?.parts?.mapNotNull { it.text }?.joinToString("") ?: ""
-                    if (chunk.isNotEmpty()) {
+                    if (chunk.isEmpty()) return@collect
+
+                    if (event.partial) {
                         accumulated += chunk
-                        val (prose, a2uiPayload) = extractTextAndA2UIPayload(accumulated)
-                        val streamSurfaceIds = if (!a2uiPayload.isNullOrBlank() && engine != null) {
+                        receivedPartials = true
+                    } else {
+                        if (receivedPartials) {
+                            // Final non-partial aggregated event replaces accumulated partials without duplication.
+                            accumulated = chunk
+                            receivedPartials = false
+                        } else if (chunk != accumulated) {
+                            accumulated = if (accumulated.isEmpty()) chunk else "$accumulated\n$chunk"
+                        }
+                    }
+
+                    val (prose, a2uiPayload) = extractTextAndA2UIPayload(accumulated)
+                    if (!a2uiPayload.isNullOrBlank() && a2uiPayload != lastProcessedPayload) {
+                        lastProcessedPayload = a2uiPayload
+                        lastSurfaceIds = if (engine != null) {
                             try {
                                 engine!!.processProtocolMessage(a2uiPayload)
                             } catch (_: Exception) {
                                 emptyList()
                             }
                         } else emptyList()
+                        syncMapWithA2UI(a2uiPayload)
+                    }
 
-                        _uiState.update { state ->
-                            val updated = state.messages.map { msg ->
-                                if (msg.id == agentMsgId) {
-                                    msg.copy(
-                                        text = prose.ifBlank { null },
-                                        a2uiPayload = a2uiPayload,
-                                        surfaceIds = streamSurfaceIds
-                                    )
-                                } else msg
-                            }
-                            state.copy(messages = updated)
+                    _uiState.update { state ->
+                        val updated = state.messages.map { msg ->
+                            if (msg.id == agentMsgId) {
+                                msg.copy(
+                                    text = prose.ifBlank { null },
+                                    a2uiPayload = a2uiPayload,
+                                    surfaceIds = lastSurfaceIds
+                                )
+                            } else msg
                         }
-                        if (a2uiPayload != null) {
-                            syncMapWithA2UI(a2uiPayload)
-                        }
+                        state.copy(messages = updated)
                     }
                 }
 
@@ -491,13 +521,15 @@ class TagAlongViewModel(
                     finalProse
                 }
 
-                val finalSurfaceIds = if (!finalPayload.isNullOrBlank() && engine != null) {
+                val finalSurfaceIds = if (!finalPayload.isNullOrBlank() && finalPayload != lastProcessedPayload && engine != null) {
                     try {
                         engine!!.processProtocolMessage(finalPayload)
                     } catch (_: Exception) {
                         emptyList()
                     }
-                } else emptyList()
+                } else {
+                    lastSurfaceIds
+                }
 
                 _uiState.update { state ->
                     val updated = state.messages.map { msg ->

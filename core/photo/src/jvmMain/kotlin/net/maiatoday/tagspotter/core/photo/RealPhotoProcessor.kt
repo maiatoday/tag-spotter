@@ -4,6 +4,13 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.awt.Color
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.net.URI
+import javax.imageio.ImageIO
 import kotlin.random.Random
 
 class RealPhotoProcessor : PhotoProcessor {
@@ -95,28 +102,53 @@ class RealPhotoProcessor : PhotoProcessor {
 
     override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? = withContext(Dispatchers.IO) {
         try {
-            val cleanPath = cleanUriPath(imagePath)
-            val path = cleanPath.toPath()
-            if (FileSystem.SYSTEM.exists(path)) {
-                FileSystem.SYSTEM.read(path) {
-                    readByteArray()
-                }
+            val file = File(cleanUriPath(imagePath))
+            if (!file.exists()) return@withContext null
+
+            val sourceImage = ImageIO.read(file) ?: return@withContext null
+            val origWidth = sourceImage.width
+            val origHeight = sourceImage.height
+            if (origWidth <= 0 || origHeight <= 0) return@withContext null
+
+            val (targetWidth, targetHeight) = if (maxDimension > 0 && (origWidth > maxDimension || origHeight > maxDimension)) {
+                val scale = maxDimension.toDouble() / maxOf(origWidth, origHeight).toDouble()
+                (origWidth * scale).toInt().coerceAtLeast(1) to (origHeight * scale).toInt().coerceAtLeast(1)
             } else {
-                null
+                origWidth to origHeight
             }
+
+            val rgbImage = BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB)
+            val graphics = rgbImage.createGraphics()
+            try {
+                graphics.color = Color.WHITE
+                graphics.fillRect(0, 0, targetWidth, targetHeight)
+                graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+                graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+                graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                graphics.drawImage(sourceImage, 0, 0, targetWidth, targetHeight, null)
+            } finally {
+                graphics.dispose()
+            }
+
+            val baos = ByteArrayOutputStream()
+            val written = ImageIO.write(rgbImage, "jpg", baos)
+            if (written) baos.toByteArray() else null
         } catch (e: Exception) {
             null
         }
     }
 
-    private fun cleanUriPath(uriString: String): String {
-        return if (uriString.startsWith("file://")) {
-            uriString.removePrefix("file://")
-        } else if (uriString.startsWith("file:")) {
-            uriString.removePrefix("file:")
-        } else {
-            uriString
+    internal fun cleanUriPath(uriString: String): String {
+        if (uriString.startsWith("file:")) {
+            val parsed = runCatching { File(URI(uriString)).path }.getOrNull()
+            if (!parsed.isNullOrBlank()) return parsed
+            return if (uriString.startsWith("file://")) {
+                uriString.removePrefix("file://")
+            } else {
+                uriString.removePrefix("file:")
+            }
         }
+        return uriString
     }
 
     override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean = withContext(Dispatchers.IO) {

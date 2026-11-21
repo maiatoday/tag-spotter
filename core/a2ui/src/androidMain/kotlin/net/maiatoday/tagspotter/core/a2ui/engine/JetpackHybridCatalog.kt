@@ -6,6 +6,7 @@ import androidx.a2ui.compose.runtime.A2uiComponentScope
 import androidx.a2ui.compose.runtime.A2uiProperty
 import androidx.a2ui.compose.ui.A2uiCatalog
 import androidx.a2ui.compose.ui.A2uiComponent
+import androidx.a2ui.compose.ui.toJsonSchemaString
 import androidx.a2ui.compose.ui.catalog.A2uiBasicCatalogV1
 import androidx.a2ui.model.catalog.A2uiFunction
 import androidx.a2ui.model.catalog.A2uiFunctionDefinition
@@ -30,6 +31,13 @@ import net.maiatoday.tagspotter.core.ui.components.NeonTourWaypoint
 
 const val JETPACK_HYBRID_CATALOG_ID = "net.maiatoday.tagspotter.hybrid"
 const val JETPACK_HYBRID_CATALOG_URI = "https://tagspotter.maiatoday.net/a2ui/neon_hybrid_catalog/v1/catalog.json"
+
+/**
+ * Generates the Draft 2020-12 JSON Schema string for the Jetpack Hybrid A2UI catalog
+ * without starting a background [JetpackA2UIEngine] render loop.
+ */
+fun getJetpackHybridCatalogSchemaJson(context: Context? = null): String =
+    createJetpackHybridCatalog(context = context).toJsonSchemaString()
 
 /**
  * Creates the Android Jetpack A2UI Hybrid Catalog combining Material 3 Basic Catalog V1

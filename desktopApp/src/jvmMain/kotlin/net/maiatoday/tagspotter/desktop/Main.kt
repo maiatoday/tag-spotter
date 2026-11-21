@@ -9,13 +9,19 @@ import androidx.compose.ui.res.useResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.google.adk.kt.runners.Runner
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import net.maiatoday.tagspotter.core.a2ui.engine.KmpA2UIEngine
 import net.maiatoday.tagspotter.core.agent.createDesktopTagAlongRunner
+import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
+import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 import net.maiatoday.tagspotter.core.ui.theme.MyApplicationTheme
 import net.maiatoday.tagspotter.feature.main.MainNavigation
 import net.maiatoday.tagspotter.feature.main.initKoin
 import net.maiatoday.tagspotter.feature.tagalong.di.tagalongModule
+import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongRunnerProvider
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongScreen
 import org.koin.dsl.module
 import java.awt.Taskbar
@@ -25,35 +31,72 @@ import javax.imageio.ImageIO
 
 val desktopSecretsModule =
     module {
-        single<SecretsProvider> { DesktopSecretsProvider() }
+        single<SecretsProvider> {
+            DesktopSecretsProvider(
+                settingsRepositoryProvider = { getOrNull<SettingsRepository>() }
+            )
+        }
     }
 
 val desktopAgentModule =
     module {
-        val secrets = DesktopSecretsProvider()
-        val apiKey = secrets.getGeminiApiKey()
-        if (apiKey.isNotBlank()) {
-            single<Runner> {
-                createDesktopTagAlongRunner(
-                    apiKey = apiKey,
-                    hybridSpotRepository = get()
-                )
+        single<TagAlongRunnerProvider> {
+            val secretsProvider = get<SecretsProvider>()
+            val hybridSpotRepository = get<HybridSpotRepository>()
+            val locationProvider = getOrNull<LocationProvider>()
+            val catalogSchemaJson = KmpA2UIEngine().getCatalogSchemaJson()
+            val lock = Any()
+            var cachedApiKey: String? = null
+            var cachedRunner: Runner? = null
+
+            TagAlongRunnerProvider {
+                val currentKey = secretsProvider.getGeminiApiKey().trim()
+                if (currentKey.isBlank()) {
+                    return@TagAlongRunnerProvider null
+                }
+                synchronized(lock) {
+                    if (cachedRunner != null && cachedApiKey == currentKey) {
+                        cachedRunner
+                    } else {
+                        val newRunner = createDesktopTagAlongRunner(
+                            apiKey = currentKey,
+                            hybridSpotRepository = hybridSpotRepository,
+                            locationProvider = locationProvider,
+                            catalogSchemaJson = catalogSchemaJson
+                        )
+                        cachedApiKey = currentKey
+                        cachedRunner = newRunner
+                        newRunner
+                    }
+                }
             }
         }
     }
 
-class DesktopSecretsProvider : SecretsProvider {
+class DesktopSecretsProvider(
+    private val settingsRepositoryProvider: () -> SettingsRepository? = { null }
+) : SecretsProvider {
     override fun getGeminiApiKey(): String {
-        val envKey = System.getenv("GEMINI_API_KEY")
+        val envKey = System.getenv("GEMINI_API_KEY")?.trim()
         if (!envKey.isNullOrEmpty()) return envKey
 
-        val propertiesFile = File("local.properties")
-        if (propertiesFile.exists()) {
-            val props = Properties()
-            propertiesFile.inputStream().use { props.load(it) }
-            val key = props.getProperty("gemini.api.key")
-            if (!key.isNullOrEmpty()) return key
+        for (path in listOf("local.properties", "../local.properties")) {
+            val propertiesFile = File(path)
+            if (propertiesFile.exists()) {
+                val props = Properties()
+                propertiesFile.inputStream().use { props.load(it) }
+                val key = props.getProperty("gemini.api.key")?.trim()
+                if (!key.isNullOrEmpty()) return key
+            }
         }
+
+        val settingsKey = runCatching {
+            settingsRepositoryProvider()?.let { repo ->
+                runBlocking { repo.geminiApiKey.first() }
+            }?.trim()
+        }.getOrNull()
+        if (!settingsKey.isNullOrEmpty()) return settingsKey
+
         return ""
     }
 }

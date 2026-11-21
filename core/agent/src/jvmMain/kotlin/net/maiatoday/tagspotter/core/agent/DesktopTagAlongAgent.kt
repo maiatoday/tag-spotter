@@ -21,14 +21,16 @@ fun createDesktopTagAlongRunner(
     apiKey: String,
     hybridSpotRepository: HybridSpotRepository,
     locationProvider: LocationProvider? = null,
+    catalogSchemaJson: String? = null,
     modelName: String = TagAlongAgentFactory.DEFAULT_MODEL_NAME,
-    systemInstruction: String = TagAlongPrompts.SYSTEM_INSTRUCTION
+    systemInstruction: String = TagAlongPrompts.buildSystemInstruction(catalogSchemaJson)
 ): Runner {
     val model = createDesktopGeminiModel(apiKey, modelName)
     val tools = StreetArtTools(hybridSpotRepository, locationProvider)
     return TagAlongAgentFactory.createRunner(
         model = model,
         streetArtTools = tools,
+        catalogSchemaJson = catalogSchemaJson,
         systemInstruction = systemInstruction
     )
 }

@@ -1,12 +1,13 @@
 package net.maiatoday.tagspotter.core.agent
 
-import com.google.adk.kt.agents.Instruction
 import com.google.adk.kt.agents.LlmAgent
 import com.google.adk.kt.models.Model
 import com.google.adk.kt.runners.InMemoryRunner
 import com.google.adk.kt.runners.Runner
 import com.google.adk.kt.tools.BaseTool
+import com.google.adk.kt.types.Content
 import com.google.adk.kt.types.GenerateContentConfig
+import com.google.adk.kt.types.Part
 
 object TagAlongAgentFactory {
     const val AGENT_NAME = "TagAlongAgent"
@@ -22,7 +23,7 @@ object TagAlongAgentFactory {
             name = AGENT_NAME,
             model = model,
             description = "Urban street art and walking tour companion",
-            instruction = Instruction(systemInstruction),
+            staticInstruction = Content(parts = listOf(Part(text = systemInstruction))),
             tools = tools,
             generateContentConfig = GenerateContentConfig(
                 temperature = 0.7f

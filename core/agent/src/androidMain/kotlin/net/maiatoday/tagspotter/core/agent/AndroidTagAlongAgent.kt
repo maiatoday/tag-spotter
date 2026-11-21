@@ -19,14 +19,16 @@ fun createAndroidFirebaseModel(
 fun createAndroidTagAlongRunner(
     hybridSpotRepository: HybridSpotRepository,
     locationProvider: LocationProvider? = null,
+    catalogSchemaJson: String? = null,
     modelName: String = TagAlongAgentFactory.DEFAULT_MODEL_NAME,
-    systemInstruction: String = TagAlongPrompts.SYSTEM_INSTRUCTION
+    systemInstruction: String = TagAlongPrompts.buildSystemInstruction(catalogSchemaJson)
 ): Runner {
     val model = createAndroidFirebaseModel(modelName)
     val tools = StreetArtTools(hybridSpotRepository, locationProvider)
     return TagAlongAgentFactory.createRunner(
         model = model,
         streetArtTools = tools,
+        catalogSchemaJson = catalogSchemaJson,
         systemInstruction = systemInstruction
     )
 }
