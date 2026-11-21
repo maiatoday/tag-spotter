@@ -7,9 +7,12 @@ import com.google.adk.kt.types.Blob
 import com.google.adk.kt.types.Content
 import com.google.adk.kt.types.Part
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -20,6 +23,7 @@ import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -69,6 +73,11 @@ data class TagAlongUiState(
     val attachedPhotoUri: String? = null
 )
 
+sealed interface TagAlongNavEvent {
+    data class OpenSpotDetail(val spotId: Long) : TagAlongNavEvent
+    data class ViewOnMainMap(val latitude: Double, val longitude: Double) : TagAlongNavEvent
+}
+
 fun interface TagAlongRunnerProvider {
     fun getRunner(): Runner?
 }
@@ -84,6 +93,9 @@ class TagAlongViewModel(
 ) : ViewModel() {
 
     private fun resolveRunner(): Runner? = runnerProvider?.getRunner() ?: runner
+
+    private val _navigationEvents = MutableSharedFlow<TagAlongNavEvent>(extraBufferCapacity = 8)
+    val navigationEvents: SharedFlow<TagAlongNavEvent> = _navigationEvents.asSharedFlow()
 
     private val _uiState = MutableStateFlow(
         TagAlongUiState(
@@ -435,16 +447,26 @@ class TagAlongViewModel(
             var lastSurfaceIds: List<String> = emptyList()
             try {
                 val parts = mutableListOf<Part>()
+                var contextLat: Double? = null
+                var contextLon: Double? = null
+                var resolvedThumbPath: String? = null
+
                 if (!currentPhoto.isNullOrBlank()) {
                     var addedBytes = false
                     if (photoProcessor != null) {
-                        try {
+                        runCatching {
                             val bytes = photoProcessor.decodeScaledBitmap(currentPhoto, maxDimension = 1024)
                             if (bytes != null && bytes.isNotEmpty()) {
                                 parts.add(Part(inlineData = Blob(mimeType = "image/jpeg", data = bytes)))
                                 addedBytes = true
                             }
-                        } catch (_: Exception) {}
+                        }
+                        val metadata = runCatching { photoProcessor.extractMetadataFromUri(currentPhoto) }.getOrNull()
+                        if (metadata?.latitude != null && metadata.longitude != null) {
+                            contextLat = metadata.latitude
+                            contextLon = metadata.longitude
+                        }
+                        resolvedThumbPath = runCatching { photoProcessor.createThumbnailFromUri(currentPhoto) }.getOrNull()
                     }
                     val photoDescriptor = if (addedBytes) {
                         "User attached photo (binary JPEG image included): $currentPhoto"
@@ -453,6 +475,31 @@ class TagAlongViewModel(
                     }
                     parts.add(Part(text = photoDescriptor))
                 }
+
+                if (contextLat == null || contextLon == null) {
+                    val deviceLoc = runCatching { locationProvider?.getCurrentLocation() }.getOrNull()
+                    if (deviceLoc != null && (deviceLoc.latitude != 0.0 || deviceLoc.longitude != 0.0)) {
+                        contextLat = deviceLoc.latitude
+                        contextLon = deviceLoc.longitude
+                    }
+                }
+
+                val contextFields = buildList {
+                    if (contextLat != null && contextLon != null) {
+                        add("latitude=$contextLat")
+                        add("longitude=$contextLon")
+                    }
+                    if (!currentPhoto.isNullOrBlank()) {
+                        add("imagePath=$currentPhoto")
+                    }
+                    if (!resolvedThumbPath.isNullOrBlank()) {
+                        add("thumbnailPath=$resolvedThumbPath")
+                    }
+                }
+                if (contextFields.isNotEmpty()) {
+                    parts.add(Part(text = "[Context: ${contextFields.joinToString(", ")}]"))
+                }
+
                 if (trimmed.isNotBlank()) {
                     parts.add(Part(text = trimmed))
                 }
@@ -619,7 +666,7 @@ class TagAlongViewModel(
     fun handleAction(action: A2UIAction) {
         when (action) {
             is A2UIAction.ViewOnMap -> {
-                if (action.latitude != 0.0 && action.longitude != 0.0) {
+                if (action.latitude != 0.0 || action.longitude != 0.0) {
                     _uiState.update { state ->
                         val markers = state.mapMarkers.toMutableList()
                         if (markers.none { it.latitude == action.latitude && it.longitude == action.longitude }) {
@@ -642,6 +689,7 @@ class TagAlongViewModel(
                             mapMarkers = markers
                         )
                     }
+                    _navigationEvents.tryEmit(TagAlongNavEvent.ViewOnMainMap(action.latitude, action.longitude))
                 }
             }
             is A2UIAction.NavigateToStop -> {
@@ -651,6 +699,9 @@ class TagAlongViewModel(
                         mapCenterLng = action.longitude,
                         focusedTitle = "Stop #${action.stopIndex}: ${action.title}"
                     )
+                }
+                if (action.latitude != 0.0 || action.longitude != 0.0) {
+                    _navigationEvents.tryEmit(TagAlongNavEvent.ViewOnMainMap(action.latitude, action.longitude))
                 }
             }
             is A2UIAction.StarSpot -> {
@@ -669,47 +720,38 @@ class TagAlongViewModel(
                 }
             }
             is A2UIAction.AnswerQuiz -> {
-                val feedbackText = if (action.isCorrect) {
-                    "🎯 Spot on! That's the correct technique."
-                } else {
-                    "❌ Not quite! Check the explanation on the card."
-                }
-                val agentMsg = TagAlongMessage(
-                    id = "msg-${epochMillis()}",
-                    sender = TagAlongSender.AGENT,
-                    text = feedbackText,
-                    timestamp = epochMillis()
-                )
-                _uiState.update { it.copy(messages = it.messages + agentMsg) }
-                viewModelScope.launch {
-                    chatRepository.insertMessage(
-                        ChatMessage(
-                            sessionId = _uiState.value.sessionId,
-                            sender = "agent",
-                            text = feedbackText,
-                            timestamp = epochMillis()
+                if (resolveRunner() != null) {
+                    forwardClientEventToRunner(
+                        eventName = "answer_quiz",
+                        surfaceId = null,
+                        context = mapOf(
+                            "quizId" to action.quizId,
+                            "optionId" to action.optionId,
+                            "isCorrect" to action.isCorrect
                         )
                     )
+                } else {
+                    val feedbackText = if (action.isCorrect) {
+                        "🎯 Spot on! That's the correct technique."
+                    } else {
+                        "❌ Not quite! Check the explanation on the card."
+                    }
+                    appendLocalAgentFeedback(feedbackText)
                 }
             }
             is A2UIAction.VoteOption -> {
-                val voteText = "🗳️ Vote recorded for '${action.optionId}'! Thanks for curating the city's street art."
-                val agentMsg = TagAlongMessage(
-                    id = "msg-${epochMillis()}",
-                    sender = TagAlongSender.AGENT,
-                    text = voteText,
-                    timestamp = epochMillis()
-                )
-                _uiState.update { it.copy(messages = it.messages + agentMsg) }
-                viewModelScope.launch {
-                    chatRepository.insertMessage(
-                        ChatMessage(
-                            sessionId = _uiState.value.sessionId,
-                            sender = "agent",
-                            text = voteText,
-                            timestamp = epochMillis()
+                if (resolveRunner() != null) {
+                    forwardClientEventToRunner(
+                        eventName = "vote_option",
+                        surfaceId = null,
+                        context = mapOf(
+                            "pollId" to action.pollId,
+                            "optionId" to action.optionId
                         )
                     )
+                } else {
+                    val voteText = "🗳️ Vote recorded for '${action.optionId}'! Thanks for curating the city's street art."
+                    appendLocalAgentFeedback(voteText)
                 }
             }
             is A2UIAction.Retry -> {
@@ -737,23 +779,31 @@ class TagAlongViewModel(
             is A2UIAction.OpenSpotDetail -> {
                 val spotTitle = "Spot #${action.spotId}"
                 _uiState.update { it.copy(focusedTitle = spotTitle) }
+                resolveAndEmitOpenSpotDetail(action.spotId)
             }
             is A2UIAction.ClientEvent -> {
                 when (action.name) {
                     "focusMap", "viewOnMap" -> {
                         val lat = (action.context["latitude"] as? Number)?.toDouble()
-                            ?: (action.context["lat"] as? Number)?.toDouble() ?: 0.0
+                            ?: (action.context["lat"] as? Number)?.toDouble()
+                            ?: action.context["latitude"]?.toString()?.toDoubleOrNull()
+                            ?: action.context["lat"]?.toString()?.toDoubleOrNull() ?: 0.0
                         val lng = (action.context["longitude"] as? Number)?.toDouble()
                             ?: (action.context["lng"] as? Number)?.toDouble()
-                            ?: (action.context["lon"] as? Number)?.toDouble() ?: 0.0
+                            ?: (action.context["lon"] as? Number)?.toDouble()
+                            ?: action.context["longitude"]?.toString()?.toDoubleOrNull()
+                            ?: action.context["lng"]?.toString()?.toDoubleOrNull()
+                            ?: action.context["lon"]?.toString()?.toDoubleOrNull() ?: 0.0
                         val title = (action.context["title"] as? String) ?: "Selected Spot"
-                        if (lat != 0.0 && lng != 0.0) {
+                        if (lat != 0.0 || lng != 0.0) {
                             _uiState.update { it.copy(mapCenterLat = lat, mapCenterLng = lng, focusedTitle = title) }
+                            _navigationEvents.tryEmit(TagAlongNavEvent.ViewOnMainMap(lat, lng))
                         }
                     }
-                    "openSpotDetail" -> {
-                        val spotId = action.context["spotId"]?.toString() ?: ""
+                    "openSpotDetail", "open_spot_detail", "openDetail" -> {
+                        val spotId = (action.context["spotId"] ?: action.context["uuid"] ?: action.context["id"])?.toString() ?: ""
                         _uiState.update { it.copy(focusedTitle = "Spot #$spotId") }
+                        resolveAndEmitOpenSpotDetail(spotId)
                     }
                     "save_spot", "saveSpot" -> {
                         val spotUuid = (action.context["spotId"] ?: action.context["uuid"] ?: action.context["id"])?.toString()
@@ -791,6 +841,13 @@ class TagAlongViewModel(
                                         }
                                     }
                                 } catch (_: Exception) {}
+                            }
+                            if (lat == 0.0 && lon == 0.0) {
+                                val deviceLoc = runCatching { locationProvider?.getCurrentLocation() }.getOrNull()
+                                if (deviceLoc != null && (deviceLoc.latitude != 0.0 || deviceLoc.longitude != 0.0)) {
+                                    lat = deviceLoc.latitude
+                                    lon = deviceLoc.longitude
+                                }
                             }
 
                             if (hybridSpotRepository != null) {
@@ -830,7 +887,7 @@ class TagAlongViewModel(
                                 value = true
                             )
 
-                            if (lat != 0.0 && lon != 0.0) {
+                            if (lat != 0.0 || lon != 0.0) {
                                 _uiState.update { state ->
                                     val markers = state.mapMarkers.toMutableList()
                                     val existingIndex = markers.indexOfFirst { it.latitude == lat && it.longitude == lon }
@@ -890,6 +947,31 @@ class TagAlongViewModel(
                             }
                         }
                     }
+                    else -> {
+                        if (resolveRunner() != null) {
+                            forwardClientEventToRunner(
+                                eventName = action.name,
+                                surfaceId = action.surfaceId,
+                                context = action.context
+                            )
+                        } else {
+                            when (action.name) {
+                                "answer_quiz", "submit_quiz" -> {
+                                    val selected = (action.context["selectedOption"] ?: action.context["optionId"])?.toString()
+                                    val msg = if (!selected.isNullOrBlank()) {
+                                        "🎯 Answer submitted: $selected"
+                                    } else {
+                                        "🎯 Quiz answer submitted!"
+                                    }
+                                    appendLocalAgentFeedback(msg)
+                                }
+                                "vote_option", "cast_vote" -> {
+                                    val selected = (action.context["selectedOption"] ?: action.context["optionId"])?.toString() ?: "your choice"
+                                    appendLocalAgentFeedback("🗳️ Vote recorded for '$selected'! Thanks for curating the city's street art.")
+                                }
+                            }
+                        }
+                    }
                 }
             }
             is A2UIAction.ClientError -> {
@@ -899,6 +981,170 @@ class TagAlongViewModel(
                 // Custom action hook
             }
         }
+    }
+
+    private fun resolveAndEmitOpenSpotDetail(rawSpotId: String) {
+        val trimmed = rawSpotId.trim()
+        if (trimmed.isBlank()) return
+
+        val directId = trimmed.toLongOrNull()
+        if (directId != null) {
+            if (directId > 0L) {
+                _navigationEvents.tryEmit(TagAlongNavEvent.OpenSpotDetail(directId))
+            }
+            return
+        }
+
+        val repo = hybridSpotRepository ?: return
+        viewModelScope.launch {
+            val spotDetails = runCatching { repo.getSpotByUuid(trimmed) }.getOrNull()
+            val localId = spotDetails?.spot?.id ?: 0L
+            if (localId > 0L) {
+                _navigationEvents.emit(TagAlongNavEvent.OpenSpotDetail(localId))
+            }
+        }
+    }
+
+    private fun appendLocalAgentFeedback(text: String) {
+        val now = epochMillis()
+        val agentMsg = TagAlongMessage(
+            id = "msg-$now",
+            sender = TagAlongSender.AGENT,
+            text = text,
+            timestamp = now
+        )
+        _uiState.update { it.copy(messages = it.messages + agentMsg) }
+        viewModelScope.launch {
+            chatRepository.insertMessage(
+                ChatMessage(
+                    sessionId = _uiState.value.sessionId,
+                    sender = "agent",
+                    text = text,
+                    timestamp = now
+                )
+            )
+        }
+    }
+
+    private fun forwardClientEventToRunner(
+        eventName: String,
+        surfaceId: String?,
+        context: Map<String, Any?>
+    ) {
+        val activeRunner = resolveRunner() ?: return
+
+        val payloadJson = JsonObject(
+            buildMap {
+                put("name", JsonPrimitive(eventName))
+                if (!surfaceId.isNullOrBlank()) {
+                    put("surfaceId", JsonPrimitive(surfaceId))
+                }
+                put("context", context.toJsonElement())
+            }
+        ).toString()
+
+        _uiState.update { it.copy(isGenerating = true, isOffline = false, offlineMessage = null) }
+
+        viewModelScope.launch {
+            var accumulated = ""
+            var receivedPartials = false
+            var lastProcessedPayload: String? = null
+            var lastSurfaceIds: List<String> = emptyList()
+            try {
+                val content = Content(
+                    role = "user",
+                    parts = listOf(Part(text = "[A2UI ClientEvent] $payloadJson"))
+                )
+
+                activeRunner.runAsync(
+                    "tagalong-user",
+                    _uiState.value.sessionId,
+                    "inv-evt-${epochMillis()}",
+                    content,
+                    emptyMap()
+                ).collect { event ->
+                    if (event.author == "user") return@collect
+                    if (event.functionCalls().isNotEmpty() || event.functionResponses().isNotEmpty()) {
+                        return@collect
+                    }
+
+                    val chunk = event.content?.parts?.mapNotNull { it.text }?.joinToString("") ?: ""
+                    if (chunk.isEmpty()) return@collect
+
+                    if (event.partial) {
+                        accumulated += chunk
+                        receivedPartials = true
+                    } else {
+                        if (receivedPartials) {
+                            accumulated = chunk
+                            receivedPartials = false
+                        } else if (chunk != accumulated) {
+                            accumulated = if (accumulated.isEmpty()) chunk else "$accumulated\n$chunk"
+                        }
+                    }
+
+                    val (_, a2uiPayload) = extractTextAndA2UIPayload(accumulated)
+                    if (!a2uiPayload.isNullOrBlank() && a2uiPayload != lastProcessedPayload) {
+                        lastProcessedPayload = a2uiPayload
+                        lastSurfaceIds = if (engine != null) {
+                            runCatching { engine!!.processProtocolMessage(a2uiPayload) }.getOrDefault(emptyList())
+                        } else emptyList()
+                        syncMapWithA2UI(a2uiPayload)
+                    }
+                }
+
+                val (finalProse, finalPayload) = extractTextAndA2UIPayload(accumulated)
+                val finalSurfaceIds = if (!finalPayload.isNullOrBlank() && finalPayload != lastProcessedPayload && engine != null) {
+                    runCatching { engine!!.processProtocolMessage(finalPayload) }.getOrDefault(emptyList())
+                } else {
+                    lastSurfaceIds
+                }
+                if (!finalPayload.isNullOrBlank() && finalPayload != lastProcessedPayload) {
+                    syncMapWithA2UI(finalPayload)
+                }
+
+                val existingSurfaceIds = _uiState.value.messages.flatMap { it.surfaceIds }.toSet()
+                val newSurfaceIds = finalSurfaceIds.filter { it !in existingSurfaceIds }
+
+                if (finalProse.isNotBlank() || newSurfaceIds.isNotEmpty()) {
+                    val now = epochMillis()
+                    val agentMsg = TagAlongMessage(
+                        id = "agent-evt-$now",
+                        sender = TagAlongSender.AGENT,
+                        text = finalProse.ifBlank { null },
+                        a2uiPayload = if (newSurfaceIds.isNotEmpty()) finalPayload else null,
+                        surfaceIds = newSurfaceIds,
+                        timestamp = now
+                    )
+                    _uiState.update { state -> state.copy(messages = state.messages + agentMsg) }
+                    chatRepository.insertMessage(
+                        ChatMessage(
+                            sessionId = _uiState.value.sessionId,
+                            sender = "agent",
+                            text = finalProse,
+                            a2uiPayloadJson = if (newSurfaceIds.isNotEmpty()) finalPayload else null,
+                            timestamp = now
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                val errorMsg = "⚠️ Unable to process action (${e.message ?: "network error"})."
+                appendLocalAgentFeedback(errorMsg)
+            } finally {
+                _uiState.update { it.copy(isGenerating = false) }
+            }
+        }
+    }
+
+    private fun Any?.toJsonElement(): JsonElement = when (this) {
+        null -> JsonNull
+        is JsonElement -> this
+        is Boolean -> JsonPrimitive(this)
+        is Number -> JsonPrimitive(this)
+        is String -> JsonPrimitive(this)
+        is Map<*, *> -> JsonObject(entries.associate { (k, v) -> k.toString() to v.toJsonElement() })
+        is Iterable<*> -> JsonArray(map { it.toJsonElement() })
+        else -> JsonPrimitive(toString())
     }
 
     private fun extractTextAndA2UIPayload(fullText: String): Pair<String, String?> {

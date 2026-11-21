@@ -84,18 +84,33 @@ class StreetArtTools(
     }
 ) {
 
+    private suspend fun resolveCoordinates(latitude: Double?, longitude: Double?): Pair<Double, Double> {
+        val lat = latitude ?: 0.0
+        val lon = longitude ?: 0.0
+        if (lat != 0.0 || lon != 0.0) {
+            return lat to lon
+        }
+        val fallback = runCatching { locationProvider?.getCurrentLocation() }.getOrNull()
+        return if (fallback != null && (fallback.latitude != 0.0 || fallback.longitude != 0.0)) {
+            fallback.latitude to fallback.longitude
+        } else {
+            lat to lon
+        }
+    }
+
     @Tool(
         name = "getNearbySpots",
         description = "Searches for urban street art, graffiti, murals, and tags near a specific GPS location."
     )
     suspend fun getNearbySpots(
-        @Param(description = "Latitude of the center location") latitude: Double,
-        @Param(description = "Longitude of the center location") longitude: Double,
+        @Param(description = "Latitude of the center location (optional; omit or pass 0.0 to use current device GPS)") latitude: Double? = null,
+        @Param(description = "Longitude of the center location (optional; omit or pass 0.0 to use current device GPS)") longitude: Double? = null,
         @Param(description = "Radius in meters to search within, defaults to 500") radiusMeters: Double? = null
     ): String {
+        val (resolvedLat, resolvedLon) = resolveCoordinates(latitude, longitude)
         val effectiveRadiusMeters = radiusMeters ?: 500.0
         val radiusKm = effectiveRadiusMeters / 1000.0
-        val spots = hybridSpotRepository.getNearbySpots(latitude, longitude, radiusKm)
+        val spots = hybridSpotRepository.getNearbySpots(resolvedLat, resolvedLon, radiusKm)
         val summaries = spots.map { detail ->
             val primaryArtist = detail.spot.artists.firstOrNull()?.ifBlank { "Unknown Artist" } ?: "Unknown Artist"
             val derivedTitle = detail.spot.description.lines().firstOrNull()?.trim()?.take(40)?.ifBlank { "Untitled Mural" } ?: "Untitled Mural"
@@ -119,14 +134,15 @@ class StreetArtTools(
         description = "Generates a structured walking tour sequence of street art murals starting from a GPS location."
     )
     suspend fun generateWalkingTour(
-        @Param(description = "Starting latitude coordinate") latitude: Double,
-        @Param(description = "Starting longitude coordinate") longitude: Double,
+        @Param(description = "Starting latitude coordinate (optional; omit or pass 0.0 to use current device GPS)") latitude: Double? = null,
+        @Param(description = "Starting longitude coordinate (optional; omit or pass 0.0 to use current device GPS)") longitude: Double? = null,
         @Param(description = "Maximum number of mural stops, default 4") maxStops: Int? = null,
         @Param(description = "Target tour duration in minutes, default 45") maxMinutes: Int? = null
     ): String {
+        val (resolvedLat, resolvedLon) = resolveCoordinates(latitude, longitude)
         val effectiveMaxStops = (maxStops ?: 4).coerceIn(1, 10)
         val effectiveMaxMinutes = (maxMinutes ?: 45).coerceIn(10, 180)
-        val spots = hybridSpotRepository.getNearbySpots(latitude, longitude, radiusKm = 3.0)
+        val spots = hybridSpotRepository.getNearbySpots(resolvedLat, resolvedLon, radiusKm = 3.0)
             .take(effectiveMaxStops)
         val stops = spots.mapIndexed { index, detail ->
             val stopMinutes = ((index + 1) * (effectiveMaxMinutes / spots.size.coerceAtLeast(1))).coerceAtLeast(5)
@@ -193,9 +209,8 @@ class StreetArtTools(
         @Param(description = "Optional latitude coordinate where the photo was taken") latitude: Double? = null,
         @Param(description = "Optional longitude coordinate where the photo was taken") longitude: Double? = null
     ): String {
-        val lat = latitude ?: 0.0
-        val lon = longitude ?: 0.0
-        val candidates = if (lat != 0.0 && lon != 0.0) {
+        val (lat, lon) = resolveCoordinates(latitude, longitude)
+        val candidates = if (lat != 0.0 || lon != 0.0) {
             hybridSpotRepository.getNearbySpots(lat, lon, radiusKm = 1.0)
         } else {
             hybridSpotRepository.getAllSpots()
@@ -247,13 +262,14 @@ class StreetArtTools(
     suspend fun saveNewSpot(
         @Param(description = "Title or name of the mural/spot") title: String,
         @Param(description = "Category of the spot (e.g. graffiti, sculpture, nature, architecture, public_place, food)") category: String,
-        @Param(description = "Latitude GPS coordinate of the spot") latitude: Double,
-        @Param(description = "Longitude GPS coordinate of the spot") longitude: Double,
+        @Param(description = "Latitude GPS coordinate of the spot (optional; omit or pass 0.0 to use current device GPS)") latitude: Double? = null,
+        @Param(description = "Longitude GPS coordinate of the spot (optional; omit or pass 0.0 to use current device GPS)") longitude: Double? = null,
         @Param(description = "Optional artist or crew name") artist: String? = null,
         @Param(description = "Optional detailed description or background notes") description: String? = null,
         @Param(description = "Optional list of style tags or keywords") tags: List<String>? = null,
         @Param(description = "Optional image file path or URL") imageUrl: String? = null
     ): String {
+        val (resolvedLat, resolvedLon) = resolveCoordinates(latitude, longitude)
         val normalizedCategory = category.trim().lowercase()
         val mutableTags = (tags ?: emptyList()).map { it.trim() }.toMutableList()
 
@@ -273,8 +289,8 @@ class StreetArtTools(
         }
 
         val spot = Spot(
-            latitude = latitude,
-            longitude = longitude,
+            latitude = resolvedLat,
+            longitude = resolvedLon,
             createdAt = epochMillis(),
             description = fullDescription,
             tags = mutableTags,

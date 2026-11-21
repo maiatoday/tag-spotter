@@ -57,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,6 +111,26 @@ fun TagAlongScreen(
         viewModel.attachEngine(activeEngine)
     }
 
+    var isWideLayout by remember { mutableStateOf(false) }
+    val currentIsWideLayout by rememberUpdatedState(isWideLayout)
+    val currentOnOpenSpotDetail by rememberUpdatedState(onOpenSpotDetail)
+    val currentOnViewOnMainMap by rememberUpdatedState(onViewOnMainMap)
+
+    LaunchedEffect(viewModel) {
+        viewModel.navigationEvents.collect { event ->
+            when (event) {
+                is TagAlongNavEvent.OpenSpotDetail -> {
+                    currentOnOpenSpotDetail?.invoke(event.spotId)
+                }
+                is TagAlongNavEvent.ViewOnMainMap -> {
+                    if (!currentIsWideLayout) {
+                        currentOnViewOnMainMap?.invoke(event.latitude, event.longitude)
+                    }
+                }
+            }
+        }
+    }
+
     val uiState by viewModel.uiState.collectAsState()
     val allSessions by viewModel.allSessions.collectAsState()
     var showHistorySheet by remember { mutableStateOf(false) }
@@ -138,6 +159,7 @@ fun TagAlongScreen(
         onOpenHistory = { showHistorySheet = true },
         onOpenSpotDetail = onOpenSpotDetail,
         onViewOnMainMap = onViewOnMainMap,
+        onWideLayoutChanged = { isWideLayout = it },
         modifier = modifier
     )
 
@@ -176,6 +198,7 @@ fun TagAlongScreenContent(
     onOpenHistory: () -> Unit = {},
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
+    onWideLayoutChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -194,36 +217,8 @@ fun TagAlongScreenContent(
     ) {
         val isDesktopTwoPane = maxWidth >= 760.dp
 
-        val wrappedOnAction: (A2UIAction) -> Unit = { action ->
-            onAction(action)
-            if (!isDesktopTwoPane) {
-                when (action) {
-                    is A2UIAction.ViewOnMap -> {
-                        if (action.latitude != 0.0 && action.longitude != 0.0) {
-                            onViewOnMainMap?.invoke(action.latitude, action.longitude)
-                        }
-                    }
-                    is A2UIAction.NavigateToStop -> {
-                        if (action.latitude != 0.0 && action.longitude != 0.0) {
-                            onViewOnMainMap?.invoke(action.latitude, action.longitude)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-            if (action is A2UIAction.OpenSpotDetail) {
-                val spotId = action.spotId.toLongOrNull()
-                if (spotId != null) {
-                    onOpenSpotDetail?.invoke(spotId)
-                }
-            } else if (action is A2UIAction.ClientEvent) {
-                if (action.name == "openSpotDetail" || action.name == "open_spot_detail" || action.name == "openDetail") {
-                    val spotId = (action.context["spotId"]?.toString() ?: action.context["id"]?.toString())?.toLongOrNull()
-                    if (spotId != null) {
-                        onOpenSpotDetail?.invoke(spotId)
-                    }
-                }
-            }
+        LaunchedEffect(isDesktopTwoPane) {
+            onWideLayoutChanged(isDesktopTwoPane)
         }
 
         if (isDesktopTwoPane) {
@@ -246,7 +241,7 @@ fun TagAlongScreenContent(
                         onPickPhoto = onPickPhoto,
                         onSendMessage = onSendMessage,
                         onSelectMockFixture = onSelectMockFixture,
-                        onAction = wrappedOnAction,
+                        onAction = onAction,
                         onPhotoClick = { zoomedPhotoUri = it },
                         onNewChat = onNewChat,
                         onOpenHistory = onOpenHistory,
@@ -292,7 +287,7 @@ fun TagAlongScreenContent(
                 onPickPhoto = onPickPhoto,
                 onSendMessage = onSendMessage,
                 onSelectMockFixture = onSelectMockFixture,
-                onAction = wrappedOnAction,
+                onAction = onAction,
                 onPhotoClick = { zoomedPhotoUri = it },
                 onNewChat = onNewChat,
                 onOpenHistory = onOpenHistory,

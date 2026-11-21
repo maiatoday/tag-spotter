@@ -10,11 +10,13 @@ import com.google.adk.kt.types.Part
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -31,6 +33,8 @@ import net.maiatoday.tagspotter.core.database.ChatMessage
 import net.maiatoday.tagspotter.core.database.ChatSession
 import net.maiatoday.tagspotter.core.database.FakeChatRepository
 import net.maiatoday.tagspotter.core.database.FakeSpotRepository
+import net.maiatoday.tagspotter.core.location.LocationData
+import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.core.model.SharedPack
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
@@ -39,6 +43,7 @@ import net.maiatoday.tagspotter.core.photo.PhotoMetadata
 import net.maiatoday.tagspotter.core.sync.HybridSpotRepository
 import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
+import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongNavEvent
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongRunnerProvider
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongSender
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongViewModel
@@ -1101,5 +1106,294 @@ class TagAlongViewModelTest {
         advanceUntilIdle()
         assertFalse(viewModel.uiState.value.isOffline)
         assertEquals("Welcome back online!", viewModel.uiState.value.messages.last().text)
+    }
+
+    @Test
+    fun testOpenSpotDetailWithUuidResolvesToLocalRoomIdAndEmitsNavEvent() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val localSpotRepo = FakeSpotRepository()
+        val hybridRepo = HybridSpotRepository(localSpotRepo, FakeTestSyncManager())
+
+        val savedId = localSpotRepo.saveSpot(
+            spot = Spot(
+                id = 0L,
+                uuid = "uuid-cosmic-chameleon",
+                description = "Cosmic Chameleon",
+                category = "graffiti",
+                latitude = 52.4972,
+                longitude = 13.2415,
+                createdAt = 1000L,
+                tags = listOf("mural"),
+                status = "active"
+            ),
+            imagePath = "",
+            thumbnailPath = ""
+        )
+        assertTrue(savedId > 0L)
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            hybridSpotRepository = hybridRepo,
+            initialSessionId = "nav-uuid-session"
+        )
+        advanceUntilIdle()
+
+        val navEvents = mutableListOf<TagAlongNavEvent>()
+        val collectJob = launch {
+            viewModel.navigationEvents.collect { navEvents.add(it) }
+        }
+        advanceUntilIdle()
+
+        // 1. A2UIAction.OpenSpotDetail with UUID string
+        viewModel.handleAction(A2UIAction.OpenSpotDetail("uuid-cosmic-chameleon"))
+        advanceUntilIdle()
+
+        // 2. A2UIAction.ClientEvent("openSpotDetail") with UUID string
+        viewModel.handleAction(
+            A2UIAction.ClientEvent(
+                name = "openSpotDetail",
+                surfaceId = "surface-1",
+                context = mapOf("spotId" to "uuid-cosmic-chameleon")
+            )
+        )
+        advanceUntilIdle()
+
+        // 3. Direct numeric ID string
+        viewModel.handleAction(A2UIAction.OpenSpotDetail("42"))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf<TagAlongNavEvent>(
+                TagAlongNavEvent.OpenSpotDetail(savedId),
+                TagAlongNavEvent.OpenSpotDetail(savedId),
+                TagAlongNavEvent.OpenSpotDetail(42L)
+            ),
+            navEvents
+        )
+        collectJob.cancel()
+    }
+
+    @Test
+    fun testViewOnMapAndNavigateToStopEmitViewOnMainMapNavEvent() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val outbound = MutableSharedFlow<A2UIAction>(extraBufferCapacity = 8)
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = outbound
+            override fun getCatalogSchemaJson(): String = "{}"
+            override fun processProtocolMessage(json: String): List<String> = emptyList()
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {}
+            override fun clearSurfaces() {}
+            @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
+            override fun RenderSurface(payloadJson: String, onAction: (A2UIAction) -> Unit, modifier: Modifier) {}
+        }
+
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "nav-map-session"
+        )
+        advanceUntilIdle()
+        viewModel.attachEngine(fakeEngine)
+        advanceUntilIdle()
+
+        val navEvents = mutableListOf<TagAlongNavEvent>()
+        val collectJob = launch {
+            viewModel.navigationEvents.collect { navEvents.add(it) }
+        }
+        advanceUntilIdle()
+
+        // Emit ViewOnMap through inline engine.outboundEvents
+        outbound.emit(
+            A2UIAction.ViewOnMap(
+                latitude = 52.5251,
+                longitude = 13.4021,
+                title = "Cyber Samurai"
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(52.5251, viewModel.uiState.value.mapCenterLat, 0.0001)
+        assertEquals(13.4021, viewModel.uiState.value.mapCenterLng, 0.0001)
+        assertEquals("Cyber Samurai", viewModel.uiState.value.focusedTitle)
+
+        // Emit NavigateToStop directly
+        viewModel.handleAction(
+            A2UIAction.NavigateToStop(
+                stopIndex = 2,
+                latitude = 52.5015,
+                longitude = 13.4190,
+                title = "Astronaut Cosmonaut"
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf<TagAlongNavEvent>(
+                TagAlongNavEvent.ViewOnMainMap(52.5251, 13.4021),
+                TagAlongNavEvent.ViewOnMainMap(52.5015, 13.4190)
+            ),
+            navEvents
+        )
+        collectJob.cancel()
+    }
+
+    @Test
+    fun testConversationalClientEventsForwardToRunnerAndProcessUpdateDataModel() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val capturedPrompts = mutableListOf<String>()
+        val updateDataModelPayload = """
+            [{"version":"v0.9","updateDataModel":{"surfaceId":"quiz-surface-1","path":"/result","value":"Correct!"}}]
+        """.trimIndent()
+
+        val capturingModel = object : Model {
+            override val name: String = "capturing-event-model"
+            override fun generateContent(request: LlmRequest, stream: Boolean): Flow<LlmResponse> = flow {
+                val promptText = request.contents
+                    .lastOrNull { it.role == "user" }
+                    ?.parts?.mapNotNull { it.text }?.joinToString(" ") ?: ""
+                capturedPrompts.add(promptText)
+                emit(
+                    LlmResponse(
+                        content = Content(
+                            role = "model",
+                            parts = listOf(
+                                Part(
+                                    text = "Nice job!\n```a2ui\n$updateDataModelPayload\n```"
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+        }
+
+        val processedPayloads = mutableListOf<String>()
+        val fakeEngine = object : A2UIRendererEngine {
+            override val engineType: A2UIEngineType = A2UIEngineType.A2UI_KMP_4K
+            override val outboundEvents: Flow<A2UIAction> = flowOf()
+            override fun getCatalogSchemaJson(): String = "{}"
+            override fun processProtocolMessage(json: String): List<String> {
+                processedPayloads.add(json)
+                return listOf("quiz-surface-1")
+            }
+            override fun updateDataModel(surfaceId: String, path: String, value: Any?) {}
+            override fun clearSurfaces() {}
+            @Composable
+            override fun RenderSurface(surfaceId: String, modifier: Modifier) {}
+            @Composable
+            override fun RenderSurface(payloadJson: String, onAction: (A2UIAction) -> Unit, modifier: Modifier) {}
+        }
+
+        val runner = TagAlongAgentFactory.createRunner(TagAlongAgentFactory.createAgent(capturingModel))
+        val viewModel = TagAlongViewModel(
+            runner = runner,
+            chatRepository = chatRepo,
+            initialSessionId = "client-event-session"
+        )
+        advanceUntilIdle()
+        viewModel.attachEngine(fakeEngine)
+        advanceUntilIdle()
+
+        val initialUserCount = viewModel.uiState.value.messages.count { it.sender == TagAlongSender.USER }
+
+        // 1. AnswerQuiz
+        viewModel.handleAction(
+            A2UIAction.AnswerQuiz(quizId = "quiz-1", optionId = "wildstyle", isCorrect = true)
+        )
+        advanceUntilIdle()
+
+        // 2. VoteOption
+        viewModel.handleAction(
+            A2UIAction.VoteOption(pollId = "poll-1", optionId = "opt-preserve")
+        )
+        advanceUntilIdle()
+
+        // 3. Conversational ClientEvent (e.g., submit_quiz / save_draft_spot)
+        viewModel.handleAction(
+            A2UIAction.ClientEvent(
+                name = "save_draft_spot",
+                surfaceId = "draft-surface-1",
+                context = mapOf("title" to "Alley Dragon", "category" to "graffiti")
+            )
+        )
+        advanceUntilIdle()
+
+        // No raw JSON user bubbles should be added
+        val finalUserCount = viewModel.uiState.value.messages.count { it.sender == TagAlongSender.USER }
+        assertEquals(initialUserCount, finalUserCount, "Client events should not add raw JSON user chat bubbles")
+
+        // All 3 events were forwarded to the ADK Runner
+        assertEquals(3, capturedPrompts.size)
+        assertTrue(capturedPrompts[0].contains("answer_quiz") && capturedPrompts[0].contains("wildstyle"))
+        assertTrue(capturedPrompts[1].contains("vote_option") && capturedPrompts[1].contains("opt-preserve"))
+        assertTrue(capturedPrompts[2].contains("save_draft_spot") && capturedPrompts[2].contains("Alley Dragon"))
+
+        // Returned updateDataModel envelopes were processed by the engine
+        assertEquals(3, processedPayloads.size)
+        assertTrue(processedPayloads.all { it.contains("updateDataModel") })
+        assertEquals("Nice job!", viewModel.uiState.value.messages.last().text)
+    }
+
+    @Test
+    fun testSendMessageIncludesPhotoExifAndThumbnailContextWithoutShowingInUserBubble() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        val fakePhotoProcessor = FakePhotoProcessor().apply {
+            metadataResult = PhotoMetadata(latitude = 48.8566, longitude = 2.3522, timestamp = 1700000000L)
+            createThumbUriResult = "/thumbs/paris_mural.jpg"
+        }
+        val fakeLocationProvider = object : LocationProvider {
+            override suspend fun getCurrentLocation(): LocationData =
+                LocationData(latitude = 52.5200, longitude = 13.4050, isFallback = false)
+        }
+
+        val capturedUserParts = mutableListOf<String>()
+        val capturingModel = object : Model {
+            override val name: String = "capturing-context-model"
+            override fun generateContent(request: LlmRequest, stream: Boolean): Flow<LlmResponse> = flow {
+                val text = request.contents
+                    .lastOrNull { it.role == "user" }
+                    ?.parts?.mapNotNull { it.text }?.joinToString("\n") ?: ""
+                capturedUserParts.add(text)
+                emit(
+                    LlmResponse(
+                        content = Content(role = "model", parts = listOf(Part(text = "Got it!")))
+                    )
+                )
+            }
+        }
+
+        val runner = TagAlongAgentFactory.createRunner(TagAlongAgentFactory.createAgent(capturingModel))
+        val viewModel = TagAlongViewModel(
+            runner = runner,
+            chatRepository = chatRepo,
+            locationProvider = fakeLocationProvider,
+            photoProcessor = fakePhotoProcessor,
+            initialSessionId = "context-session"
+        )
+        advanceUntilIdle()
+
+        // 1. Photo attached with EXIF GPS
+        viewModel.sendMessage(text = "Identify this mural", photoUri = "content://media/mural/99")
+        advanceUntilIdle()
+
+        val photoUserBubble = viewModel.uiState.value.messages.first { it.sender == TagAlongSender.USER }
+        assertEquals("Identify this mural", photoUserBubble.text)
+        assertFalse(photoUserBubble.text!!.contains("[Context:"))
+
+        assertTrue(capturedUserParts[0].contains("latitude=48.8566"))
+        assertTrue(capturedUserParts[0].contains("longitude=2.3522"))
+        assertTrue(capturedUserParts[0].contains("imagePath=content://media/mural/99"))
+        assertTrue(capturedUserParts[0].contains("thumbnailPath=/thumbs/paris_mural.jpg"))
+
+        // 2. No photo attached -> falls back to device GPS
+        viewModel.sendMessage(text = "Find nearby murals")
+        advanceUntilIdle()
+
+        assertTrue(capturedUserParts[1].contains("latitude=52.52"))
+        assertTrue(capturedUserParts[1].contains("longitude=13.405"))
     }
 }

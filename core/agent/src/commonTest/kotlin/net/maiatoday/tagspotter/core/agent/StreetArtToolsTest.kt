@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.database.SpotRepository
+import net.maiatoday.tagspotter.core.location.LocationData
+import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.core.model.LoadedPack
 import net.maiatoday.tagspotter.core.model.SharedPack
 import net.maiatoday.tagspotter.core.model.Spot
@@ -255,6 +257,60 @@ class StreetArtToolsTest {
         assertEquals("graffiti", saved.category)
         assertTrue(saved.tags.contains("mural"))
         assertTrue(saved.tags.contains("elephant"))
+    }
+
+    @Test
+    fun getNearbySpots_fallsBackToLocationProviderWhenCoordinatesAreZero() = runTest {
+        val fakeLocationProvider = object : LocationProvider {
+            override suspend fun getCurrentLocation(): LocationData =
+                LocationData(latitude = -33.9250, longitude = 18.4240, isFallback = false)
+        }
+        val repo = HybridSpotRepository(FakeSpotRepository(sampleSpots), FakeSyncManager(emptyList()))
+        val tools = StreetArtTools(repo, fakeLocationProvider)
+
+        val jsonString = tools.getNearbySpots(latitude = 0.0, longitude = 0.0, radiusMeters = 500.0)
+        val spots = json.decodeFromString<List<SpotSummaryDto>>(jsonString)
+
+        assertEquals(3, spots.size)
+        assertEquals("Neon Cyber Panther", spots[0].title)
+    }
+
+    @Test
+    fun generateWalkingTour_fallsBackToLocationProviderWhenCoordinatesAreZero() = runTest {
+        val fakeLocationProvider = object : LocationProvider {
+            override suspend fun getCurrentLocation(): LocationData =
+                LocationData(latitude = -33.9250, longitude = 18.4240, isFallback = false)
+        }
+        val repo = HybridSpotRepository(FakeSpotRepository(sampleSpots), FakeSyncManager(emptyList()))
+        val tools = StreetArtTools(repo, fakeLocationProvider)
+
+        val jsonString = tools.generateWalkingTour(latitude = 0.0, longitude = 0.0, maxStops = 2, maxMinutes = 30)
+        val tour = json.decodeFromString<TourPlanDto>(jsonString)
+
+        assertEquals(2, tour.stops.size)
+        assertEquals("spot-1", tour.stops[0].spotId)
+    }
+
+    @Test
+    fun saveNewSpot_fallsBackToLocationProviderWhenCoordinatesAreZero() = runTest {
+        val fakeLocationProvider = object : LocationProvider {
+            override suspend fun getCurrentLocation(): LocationData =
+                LocationData(latitude = 52.5200, longitude = 13.4050, isFallback = false)
+        }
+        val fakeRepo = FakeSpotRepository(emptyList())
+        val hybridRepo = HybridSpotRepository(fakeRepo, FakeSyncManager(emptyList()))
+        val tools = StreetArtTools(hybridRepo, fakeLocationProvider)
+
+        tools.saveNewSpot(
+            title = "GPS Fallback Mural",
+            category = "graffiti",
+            latitude = 0.0,
+            longitude = 0.0
+        )
+
+        assertEquals(1, fakeRepo.savedSpots.size)
+        assertEquals(52.5200, fakeRepo.savedSpots.first().latitude, 0.0001)
+        assertEquals(13.4050, fakeRepo.savedSpots.first().longitude, 0.0001)
     }
 
     @Test

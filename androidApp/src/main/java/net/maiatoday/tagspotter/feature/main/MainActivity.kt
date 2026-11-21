@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.widget.Toast
@@ -185,6 +186,11 @@ fun MainActivityContent(
             tagAlongPhotoCallback = null
         }
     }
+    val tagAlongMediaLocationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
 
     val versionName = remember {
         try {
@@ -294,7 +300,17 @@ fun MainActivityContent(
                 onViewOnMainMap = onViewOnMainMap,
                 onPickPhoto = { onPicked ->
                     tagAlongPhotoCallback = onPicked
-                    pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val permission = Manifest.permission.ACCESS_MEDIA_LOCATION
+                        val isGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+                        if (isGranted) {
+                            pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } else {
+                            tagAlongMediaLocationPermissionLauncher.launch(permission)
+                        }
+                    } else {
+                        pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
                 }
             )
         }
