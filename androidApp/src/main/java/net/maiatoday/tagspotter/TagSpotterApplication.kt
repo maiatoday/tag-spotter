@@ -7,6 +7,7 @@ import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.di.secretsModule
 import net.maiatoday.tagspotter.di.androidAiModule
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.initialize
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
@@ -47,11 +48,22 @@ open class TagSpotterApplication : Application() {
         super.onCreate()
         
         // Initialize Firebase and App Check
-        Firebase.initialize(this)
+        val firebaseApp = Firebase.initialize(this) ?: FirebaseApp.getInstance()
         val appCheck = FirebaseAppCheck.getInstance()
         if (BuildConfig.DEBUG) {
             if (BuildConfig.APP_CHECK_DEBUG_TOKEN.isNotEmpty()) {
-                System.setProperty("com.google.firebase.appcheck.debug.store.token", BuildConfig.APP_CHECK_DEBUG_TOKEN)
+                // Firebase App Check's DebugAppCheckProvider reads the debug secret from
+                // SharedPreferences (not System.setProperty). Seed it synchronously before
+                // installing DebugAppCheckProviderFactory so local.properties' token is used.
+                getSharedPreferences(
+                    "com.google.firebase.appcheck.debug.store.${firebaseApp.persistenceKey}",
+                    MODE_PRIVATE
+                ).edit()
+                    .putString(
+                        "com.google.firebase.appcheck.debug.DEBUG_SECRET",
+                        BuildConfig.APP_CHECK_DEBUG_TOKEN
+                    )
+                    .commit()
             }
             appCheck.installAppCheckProviderFactory(
                 DebugAppCheckProviderFactory.getInstance()
