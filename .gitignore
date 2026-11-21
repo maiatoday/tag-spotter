@@ -66,4 +66,7 @@ out/
 GoogleService-Info.plist
 **/GoogleService-Info.plist
 
+# Agent artifacts
+.artifacts/
+
 

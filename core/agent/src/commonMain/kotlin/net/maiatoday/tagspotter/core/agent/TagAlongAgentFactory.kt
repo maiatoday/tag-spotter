@@ -10,7 +10,7 @@ import com.google.adk.kt.types.GenerateContentConfig
 
 object TagAlongAgentFactory {
     const val AGENT_NAME = "TagAlongAgent"
-    const val DEFAULT_MODEL_NAME = "gemini-2.5-flash"
+    const val DEFAULT_MODEL_NAME = "gemini-4-hydrogen"
 
     fun createAgent(
         model: Model,

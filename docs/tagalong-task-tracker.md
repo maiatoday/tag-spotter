@@ -14,13 +14,13 @@
 flowchart LR
     P1[Phase 1: Foundation<br><b>5 / 5 Done</b>] --> P2[Phase 2: Regression Gate<br><b>PASSED</b>]
     P2 --> P3[Phase 3: TagAlong App<br><b>6 / 6 Done</b>]
-    P3 --> P4[Phase 4: Consolidation & A2UI Hybrid<br><b>8 / 8 Done - PASSED</b>]
+    P3 --> P4[Phase 4: Consolidation & A2UI Hybrid<br><b>In Progress - Gaps Identified</b>]
 ```
 
-- **Current Active Phase:** **All Phases Complete (Phases 1-4 Complete)**
-- **Total Tasks:** Phase 1 (5) + Gate + Phase 3 (6) + Phase 4 (8) — **20 / 20 Tasks Completed**
+- **Current Active Phase:** **Phase 4 Remediation (Fixing Identified Integration & Wiring Gaps)**
+- **Total Tasks:** Phase 1 (5) + Gate + Phase 3 (6) + Phase 4 (8)
 - **TagAlong Target Platforms:** Android + Desktop (JVM)
-- **Status:** 🟢 Phase 1, Phase 2, Phase 3, & Phase 4 Complete | All Gates Passed
+- **Status:** 🟡 Phase 1–3 Complete | Phase 4 Partially Complete (Steps 4.3, 4.4, 4.5, 4.6, 4.7 have remaining wiring gaps)
 
 ---
 
@@ -144,82 +144,87 @@ flowchart LR
 > Detailed specifications in [a2ui-phase-4-and-more.md](a2ui-phase-4-and-more.md).
 
 | Status | Step ID | Task Name | Module | Prerequisite | Parallel? | Verification Command |
-| :---: | :--- | :--- | :--- | :--- | :--- | :--- |
+| :---: | :--- | :--- | :--- | :--- | :---: | :--- |
 | ✅ | **Step 4.1** | Retire `:tagalongApp:*` & Integrate TagAlong Tab | `:feature:main`, Apps | Phase 3 | Sequential | `./gradlew :feature:main:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
-| ✅ | **Step 4.2** | Shared UI Primitives Consolidation | `:core:ui`, `:feature:detail` | Step 4.1 | 🔀 *Parallel with 4.3* | `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Passed ✅) |
-| ✅ | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines | `:core:a2ui` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Passed ✅) |
-| ✅ | **Step 4.4** | Wire Prompts to Schema, Fix Photo Bytes & Render Loop | `:core:agent`, `:feature:tagalong` | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Passed ✅) |
-| ✅ | **Step 4.5** | Theme Switching, New Chat Controls & Desktop DB Fix | `:core:settings`, `:core:database`, Apps | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests :desktopApp:assemble :androidApp:assembleDebug` (Passed ✅) |
-| ✅ | **Step 4.6** | 1-Tap Spot Saving, `Spot.CATEGORIES` & DataModel Actions | `:core:agent`, `:feature:tagalong`, `:core:sync` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (Passed ✅) |
-| ✅ | **Step 4.7** | Conversation History Drawer / Sheet with Surface Replay | `:feature:tagalong`, `:core:database` | Steps 4.5, 4.6 | Sequential | `./gradlew :feature:tagalong:allTests` (Passed ✅) |
-| ✅ | **Step 4.8** | Full Monorepo Regression Gate | Full Monorepo | Steps 4.1-4.7 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
+| 🟡 | **Step 4.2** | Shared UI Primitives Consolidation | `:core:ui`, `:feature:detail` | Step 4.1 | 🔀 *Parallel with 4.3* | `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Missing `isSaved`/`onSaveSpot` on `NeonSpotCard`) |
+| 🟡 | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines | `:core:a2ui` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Unwired `A2uiFunction` callbacks & quiz/vote action format mismatch) |
+| 🟡 | **Step 4.4** | Wire Prompts to Schema, Fix Photo Bytes & Render Loop | `:core:agent`, `:feature:tagalong` | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Schema not passed to runner; ADK `staticInstruction` needed; GPS/EXIF not in prompt) |
+| 🟡 | **Step 4.5** | Theme Switching, New Chat Controls & Desktop DB Fix | `:core:settings`, `:core:database`, Apps | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests` (`TagAlongScreen` & Neon cards hardcode dark colors) |
+| 🟡 | **Step 4.6** | 1-Tap Spot Saving, `Spot.CATEGORIES` & DataModel Actions | `:core:agent`, `:feature:tagalong`, `:core:sync` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (`saveNewSpot` missing from prompt; `ClientEvent` not forwarded to ADK `Runner`) |
+| 🟡 | **Step 4.7** | Conversation History Drawer / Sheet with Surface Replay | `:feature:tagalong`, `:core:database` | Steps 4.5, 4.6 | Sequential | `./gradlew :feature:tagalong:allTests` (UI replays history, but ADK `InMemoryRunner` session is not re-seeded on switch/restart) |
+| ⏳ | **Step 4.8** | Full Monorepo Regression Gate | Full Monorepo | Steps 4.1-4.7 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :desktopApp:assemble` (Pending gap fixes) |
 
-### Detailed Phase 4 Checklist:
+### Detailed Phase 4 Checklist & Remaining Work Items:
 
 - [x] **Step 4.1: Retire `:tagalongApp:*` & Integrate TagAlong Tab into `:androidApp` & `:desktopApp`**
   - **Goal:** Consolidate TagAlong into the main Tag Spotter app on Android and Desktop so both modes share one `SpotDatabase`, one photo storage directory, and one Firebase App Check configuration.
   - **Work Items:**
-    1. Add `Tab.TagAlong` and an optional `tagAlongContent` composable slot to `MainContainer` and `MainNavigation` in `:feature:main` (`commonMain`), keeping `iOS` and `wasmJs` untouched.
-    2. Wire `:feature:tagalong`, `:core:a2ui`, and `:core:agent` dependencies and Koin modules into `:androidApp` and `:desktopApp`, passing `TagAlongScreen` into `MainNavigation`'s `tagAlongContent` slot.
-    3. Remove redundant inner `"Live Map"` `TabRow` on mobile viewports (`< 760.dp`) in `TagAlongScreen.kt`, routing mobile *"View on Map"* actions to `MainContainer`'s `Tab.Map`.
-    4. Add static Android App Shortcut (`res/xml/shortcuts.xml` for `tagspotter://tagalong`) in `:androidApp`.
-    5. Remove `:tagalongApp:android` and `:tagalongApp:desktop` from `settings.gradle.kts` and delete their module directories.
-  - **Test:** `./gradlew :feature:main:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅)
+    - [x] Add `Tab.TagAlong` and an optional `tagAlongContent` composable slot to `MainContainer` and `MainNavigation` in `:feature:main` (`commonMain`), keeping `iOS` and `wasmJs` untouched.
+    - [x] Wire `:feature:tagalong`, `:core:a2ui`, and `:core:agent` dependencies and Koin modules into `:androidApp` and `:desktopApp`, passing `TagAlongScreen` into `MainNavigation`'s `tagAlongContent` slot.
+    - [x] Remove redundant inner `"Live Map"` `TabRow` on mobile viewports (`< 760.dp`) in `TagAlongScreen.kt`, routing mobile *"View on Map"* actions to `MainContainer`'s `Tab.Map`.
+    - [x] Add static Android App Shortcut (`res/xml/shortcuts.xml` for `tagspotter://tagalong`) in `:androidApp`.
+    - [x] Remove `:tagalongApp:android` and `:tagalongApp:desktop` from `settings.gradle.kts`.
+    - [ ] Clean up leftover empty build directories under `tagalongApp/` on disk if still present.
 
-- [x] **Step 4.2: Shared UI Primitives & Stateless Card Consolidation (`:core:ui`)**
+- [ ] **Step 4.2: Shared UI Primitives & Stateless Card Consolidation (`:core:ui`)**
   - **Goal:** Move all reusable Compose UI components into `:core:ui` as stateless, library-agnostic composables shared between Tag Spotter mode, TagAlong mode, `androidx.a2ui`, and `a2ui-4k`.
   - **Work Items:**
-    1. Move `ZoomableImageOverlay.kt` from `:feature:detail` to `:core:ui/src/commonMain/.../image/`.
-    2. Create `NeonTagChip` and `NeonCategoryBadge` in `:core:ui/src/commonMain/.../chips/` using `CategoryExtensions.kt`.
-    3. Move 4 custom domain composables (`NeonSpotCard`, `NeonTourCard`, `NeonArtistBioCard`, `NeonMapPinOverlayWidget`) from `:core:a2ui` into `:core:ui/src/commonMain/.../components/`, refactored to take pure primitive parameters and event lambdas.
-    4. Refactor `DetailMetadataCard.kt` and `GalleryScreen.kt` to use `NeonTagChip` and `NeonCategoryBadge`.
-  - **Test:** `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Passed ✅)
+    - [x] Move `ZoomableImageOverlay.kt` from `:feature:detail` to `:core:ui/src/commonMain/.../image/`.
+    - [x] Create `NeonTagChip` and `NeonCategoryBadge` in `:core:ui/src/commonMain/.../chips/` using `CategoryExtensions.kt`.
+    - [x] Move 4 custom domain composables (`NeonSpotCard`, `NeonTourCard`, `NeonArtistBioCard`, `NeonMapPinOverlayWidget`) from `:core:a2ui` into `:core:ui/src/commonMain/.../components/`, refactored to take pure primitive parameters and event lambdas.
+    - [x] Refactor `DetailMetadataCard.kt` and `GalleryScreen.kt` to use `NeonTagChip` and `NeonCategoryBadge`.
+    - [ ] **Missing:** Add `isSaved: Boolean` and `onSaveSpot: (() -> Unit)?` to `NeonSpotCard` so users have a 1-tap "Save Spot" button on discovered spots (updating `/spot/isSaved` in the reactive data model).
 
-- [x] **Step 4.3: Replace Hand-Rolled A2UI with Hybrid `androidx.a2ui` & `a2ui-4k` Engines (`:core:a2ui`)**
+- [ ] **Step 4.3: Replace Hand-Rolled A2UI with Hybrid `androidx.a2ui` & `a2ui-4k` Engines (`:core:a2ui`)**
   - **Goal:** Delete all hand-rolled A2UI parsing/routing code and implement both real A2UI libraries side-by-side using the Hybrid Catalog (Built-in Basic Catalog primitives + 4 custom `:core:ui` domain components).
   - **Work Items:**
-    1. Add `a2ui-4k = { module = "com.contextable:a2ui-4k", version = "0.10.0" }` to `gradle/libs.versions.toml` and `commonMain` of `:core:a2ui/build.gradle.kts` (alongside `androidx.a2ui.compose.runtime` in `androidMain`).
-    2. Delete `A2UIPayloadParser.kt`, `A2UIComponents.kt`, and `NeonA2UICatalog.kt`.
-    3. Implement `JetpackHybridCatalog` & `JetpackA2UIEngine` (`androidMain`): combine `materialA2uiBasicCatalogV1` with custom `A2uiComponent` wrappers and local `A2uiFunction`s (`focusMap`, `openSpotDetail`). Wire `A2uiMessageProcessor`, `A2uiSurface`, and `catalog.toJsonSchemaString()`.
-    4. Implement `KmpHybridCatalog` & `KmpA2UIEngine` (`commonMain`): combine `CoreCatalog` with custom widget renderers for the 4 domain components and client functions. Wire `SurfaceStateManager` and `A2UISurface`.
-    5. Update mock fixtures in `:feature:tagalong` to valid A2UI v0.9 protocol envelopes (`createSurface`, `updateDataModel`, `updateComponents`).
-  - **Test:** `./gradlew :core:a2ui:allTests`
+    - [x] Add `a2ui-4k = { module = "com.contextable:a2ui-4k", version = "0.10.0" }` to `gradle/libs.versions.toml` and `commonMain` of `:core:a2ui/build.gradle.kts` (alongside `androidx.a2ui.compose.runtime` in `androidMain`).
+    - [x] Delete `A2UIPayloadParser.kt`, `A2UIComponents.kt`, and `NeonA2UICatalog.kt`.
+    - [x] Implement `JetpackHybridCatalog` & `JetpackA2UIEngine` (`androidMain`) and `KmpHybridCatalog` & `KmpA2UIEngine` (`commonMain`).
+    - [ ] **Missing (`JetpackA2UIEngine`):** Wire `onFocusMap` and `onOpenSpotDetail` lambdas in `JetpackA2UIEngine` when constructing `createJetpackHybridCatalog` so local `A2uiFunction` calls emit `A2UIAction.ViewOnMap` / `A2UIAction.OpenSpotDetail` via `emitAction(...)` instead of being silent no-ops.
+    - [ ] **Missing (`SpotCard` Catalog Wrappers):** Bind `isSaved` (`{"path": "/spot/isSaved"}`) and `onSaveSpot` (`save_spot` event) in both `SpotCardA2uiComponent` (`JetpackHybridCatalog.kt`) and `spotCardItem` (`KmpHybridCatalog.kt`).
+    - [ ] **Missing (Quiz & Voting Fixture Action Format):** `QUIZ_SAMPLE_JSON` and `VOTING_SAMPLE_JSON` in `TagAlongMockFixtures.kt` use `"action": {"functionCall": {"call": "clientEvent", ...}}`, which is not a registered function in `androidx.a2ui` (which expects `"action": {"event": {"name": "...", "context": {...}}}`). Align the action schema and normalize across both engines.
 
-- [x] **Step 4.4: Wire Agent Prompts to `toJsonSchemaString()`, Fix Photo Bytes & Connect Render Loop**
+- [ ] **Step 4.4: Wire Agent Prompts to `toJsonSchemaString()`, Fix Photo Bytes & Connect Render Loop**
   - **Goal:** Feed library-generated catalog JSON Schema directly into Google ADK agent prompt, send real image bytes for attached photos, and render A2UI surfaces inline by `surfaceId`.
   - **Work Items:**
-    1. Replace hardcoded schemas in `TagAlongPrompts.kt` with dynamic `buildSystemInstruction(catalogSchemaJson = engine.getCatalogSchemaJson(), ...)`.
-    2. In `TagAlongViewModel`, launch `engine.runRenderLoop()` and `engine.outboundEvents.collect { ... }`.
-    3. When photo is attached, use `PhotoProcessor` to load compressed image bytes and pass binary image `Part` to `runner.runAsync(...)`.
-    4. Support 2-state engine toggle (`ANDROIDX_JETPACK_OFFICIAL` ↔ `A2UI_KMP_4K`) in Android TagAlong header by replaying session envelopes into the newly selected engine.
-  - **Test:** `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Passed ✅)
+    - [x] In `TagAlongViewModel`, launch `engine.runRenderLoop()` and `engine.outboundEvents.collect { ... }`.
+    - [x] When photo is attached, use `PhotoProcessor` to load compressed image bytes and pass binary image `Part` to `runner.runAsync(...)`.
+    - [x] Support 2-state engine toggle (`ANDROIDX_JETPACK_OFFICIAL` ↔ `A2UI_KMP_4K`) in Android TagAlong header by replaying session envelopes into the newly selected engine.
+    - [ ] **Missing (Schema Injection):** `createAndroidTagAlongRunner` (`TagSpotterApplication.kt` / `AndroidTagAlongAgent.kt`) and `createDesktopTagAlongRunner` (`Main.kt` / `DesktopTagAlongAgent.kt`) do not pass `catalogSchemaJson = engine.getCatalogSchemaJson()` into `TagAlongPrompts.buildSystemInstruction(...)` (it currently defaults to `null`).
+    - [ ] **Missing (ADK `staticInstruction` Bug):** `TagAlongAgentFactory.createAgent` passes `systemInstruction` via `instruction = Instruction(systemInstruction)`. In `google-adk-kotlin:0.2.0`, `InstructionStateInjector` treats any `{...}` in `instruction` as a required session variable and throws `IllegalArgumentException: Context variable not found` if JSON schemas or examples are present. Must use `staticInstruction = Content(parts = listOf(Part(text = systemInstruction)))` on `LlmAgent` so JSON schemas/examples are sent verbatim without template substitution.
+    - [ ] **Missing (Concrete A2UI v0.9 Examples in Prompt):** Add clear A2UI v0.9 envelope rules (`createSurface`, `updateDataModel`, `updateComponents` with `"id": "root"`) to `TagAlongPrompts.kt` so Gemini reliably emits valid surfaces.
+    - [ ] **Missing (ADK Event Stream Filtering):** In `TagAlongViewModel.sendMessage()`, filter `runner.runAsync()` events so intermediate tool-call turns, function responses, or duplicate final aggregated events (when streaming) do not overwrite or corrupt the chat message bubble.
+    - [ ] **Missing (Model & Credentials Config):**
+      - ✅ Updated all flash models across `:core:agent`, `:core:ai` (`AndroidFirebaseAiService.kt`), and `iosApp` (`SwiftFirebaseAiService.swift`) to `"gemini-4-hydrogen"`, and migrated `SwiftFirebaseAiService.swift` off deprecated `FirebaseVertexAI` to `FirebaseAI`. Verify `firebase.appcheck.debug_token` in `local.properties`.
+      - Fix `DesktopSecretsProvider` in `desktopApp/src/jvmMain/.../Main.kt` to check `../local.properties` (since `:desktopApp:run` executes with `workingDir = desktopApp/`) and fall back to `SettingsRepository.geminiApiKey`.
 
-- [x] **Step 4.5: Theme Switching, New Conversation Controls & Desktop DB Persistence Fix**
+- [ ] **Step 4.5: Theme Switching, New Conversation Controls & Desktop DB Persistence Fix**
   - **Goal:** Provide user control over Light/Dark modes, starting fresh conversation sessions, and persistent Desktop SQLite storage.
   - **Work Items:**
-    1. Update `JvmSpotDatabase.kt` to store databases in `File(System.getProperty("user.home"), ".tagspotter/")` instead of `java.io.tmpdir`.
-    2. Introduce `ThemeMode { SYSTEM, LIGHT, DARK }` in `:core:settings` and wire theme toggle in app bar / settings.
-    3. Add `+` ("New Chat") button in `TagAlongScreen` top bar calling `TagAlongViewModel.startNewConversation()`.
-  - **Test:** `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests :desktopApp:assemble :androidApp:assembleDebug` (Passed ✅)
+    - [x] Update `JvmSpotDatabase.kt` to store databases in `File(System.getProperty("user.home"), ".tagspotter/")` instead of `java.io.tmpdir`.
+    - [x] Introduce `ThemeMode { SYSTEM, LIGHT, DARK }` in `:core:settings` and wire theme toggle in app bar / settings.
+    - [x] Add `+` ("New Chat") button in `TagAlongScreen` top bar calling `TagAlongViewModel.startNewConversation()`.
+    - [ ] **Missing (TagAlong Light/Dark Theme Support):** `TagAlongScreen.kt` and the `:core:ui` Neon cards hardcode `DarkBackground`, `DarkPrimaryContainer`, `DarkSecondaryContainer`, and `DarkTertiaryContainer` instead of reading from `MaterialTheme.colorScheme`, causing TagAlong to stay dark even when `ThemeMode.LIGHT` is selected.
 
-- [x] **Step 4.6: 1-Tap Agentic Spot Saving, `Spot.CATEGORIES` Mapping & Two-Way DataModel Actions**
+- [ ] **Step 4.6: 1-Tap Agentic Spot Saving, `Spot.CATEGORIES` Mapping & Two-Way DataModel Actions**
   - **Goal:** Allow users to save spots discovered in chat directly into shared `SpotDatabase` when all required fields are gathered, using `Spot.CATEGORIES` for `category` and `spot.tags` for street-art styles.
   - **Work Items:**
-    1. Add `@Tool saveNewSpot` to `StreetArtTools.kt` validating `category in Spot.CATEGORIES` (mapping style subtypes like `"mural"` to `tags`).
-    2. Wire `PhotoProcessor.extractMetadataFromUri` and `createThumbnailFromUri` into photo-attachment flow for 1-tap saving.
-    3. Handle outbound `save_spot` and `toggle_star` events from `engine.outboundEvents` in `TagAlongViewModel`, persisting to `SpotRepository` and updating surface data model.
-    4. Forward conversational `A2uiClientEventMessage`s back to ADK `Runner` for server-side `updateDataModel`.
-  - **Test:** `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (Passed ✅)
+    - [x] Add `@Tool saveNewSpot` to `StreetArtTools.kt` validating `category in Spot.CATEGORIES` (mapping style subtypes like `"mural"` to `tags`).
+    - [x] Wire `PhotoProcessor.extractMetadataFromUri` and `createThumbnailFromUri` into photo-attachment flow.
+    - [x] Handle outbound `save_spot` and `toggle_star` events from `engine.outboundEvents` in `TagAlongViewModel`, persisting to `SpotRepository` and updating surface data model.
+    - [ ] **Missing (`saveNewSpot` in Prompt):** `TagAlongPrompts.kt` only lists 4 tools (`getNearbySpots`, `generateWalkingTour`, `getArtistBio`, `identifyMuralByPhoto`) and omits `saveNewSpot` and missing-field A2UI form instructions.
+    - [ ] **Missing (Device GPS & Photo EXIF Context):** `StreetArtTools` accepts `locationProvider: LocationProvider?` in its constructor but never uses it; when the user asks for "nearby murals" or attaches a photo with EXIF GPS/thumbnail, those coordinates and paths are not provided to the agent or defaulted from `locationProvider.getCurrentLocation()`.
+    - [ ] **Missing (Conversational `ClientEvent` Forwarding):** In `TagAlongViewModel.handleAction()`, `A2UIAction.ClientEvent` handles `focusMap`, `openSpotDetail`, `save_spot`, and `toggle_star`, but does not handle `answer_quiz` / `vote_option` or forward conversational client events back to the ADK `Runner` for server-side `updateDataModel` updates.
 
-- [x] **Step 4.7: Conversation History Drawer / Sheet Implementation**
+- [ ] **Step 4.7: Conversation History Drawer / Sheet Implementation**
   - **Goal:** Enable users to browse, switch between, and delete past chat sessions saved in `TagAlongDatabase`.
   - **Work Items:**
-    1. Expose `allSessions: StateFlow<List<ChatSession>>` in `TagAlongViewModel`.
-    2. Add History Drawer / `ModalBottomSheet` in `TagAlongScreen`.
-    3. Replay stored A2UI v0.9 messages into active `A2UIRendererEngine` when switching sessions.
-  - **Test:** `./gradlew :feature:tagalong:allTests` (Passed ✅)
+    - [x] Expose `allSessions: StateFlow<List<ChatSession>>` in `TagAlongViewModel`.
+    - [x] Add History Drawer / `ModalBottomSheet` in `TagAlongScreen`.
+    - [x] Replay stored A2UI v0.9 messages into active `A2UIRendererEngine` when switching sessions.
+    - [ ] **Missing (ADK Session Context Continuity):** When restoring a session on app restart or switching sessions in `TagAlongViewModel`, `InMemoryRunner` has no memory of past turns persisted in `TagAlongDatabase` (`ChatRepository`), and `deleteSession` does not remove the session from `runner.sessionService`.
 
-- [x] **Step 4.8: Full Monorepo Regression Gate**
-  - **Goal:** Pass all tests and assemble all targets across the unified monorepo.
+- [ ] **Step 4.8: Full Monorepo Regression Gate**
+  - **Goal:** Pass all tests and assemble all targets across the unified monorepo after fixing all Phase 4 gaps.
   - **Command:** `./gradlew allTests :androidApp:assembleDebug :desktopApp:assemble`
-  - **Result:** ✅ Passed (942 tasks executed / up-to-date, 0 failures)

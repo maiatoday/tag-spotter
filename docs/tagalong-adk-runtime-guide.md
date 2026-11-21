@@ -79,7 +79,7 @@ sequenceDiagram
 An agent is declared in `:core:agent` as an immutable definition combining:
 1. **Instruction (System Prompt)**: Defines the persona, bounds what tools the agent can use, and dictates strict output contracts for emitting A2UI JSON payloads conforming to the Neon Urban Catalog.
 2. **Model Backend**: Pluggable backend driver:
-   * **Android**: `FirebaseModel("gemini-2.5-flash")` backed by **Firebase AI Logic** and protected by **Firebase App Check** (Play Integrity in release, Debug Provider in debug builds).
+   * **Android**: `FirebaseModel("gemini-4-hydrogen")` backed by **Firebase AI Logic** and protected by **Firebase App Check** (Play Integrity in release, Debug Provider in debug builds).
    * **Desktop JVM**: Direct `Gemini` model driver authenticated via `local.properties` API keys or `SecretsProvider`.
 3. **Tools**: List of POJO instances containing methods annotated with `@Tool` and `@Param`.
 

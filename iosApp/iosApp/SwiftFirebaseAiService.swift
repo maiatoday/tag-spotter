@@ -1,5 +1,5 @@
 import Foundation
-import FirebaseVertexAI
+import FirebaseAI
 import SharedApp
 import UIKit
 
@@ -8,7 +8,7 @@ class SwiftFirebaseAiService: NSObject, AiRecognitionService {
         return true
     }
     
-    private lazy var model = VertexAI.vertexAI().generativeModel(modelName: "gemini-3.8-flash")
+    private lazy var model = FirebaseAI.firebaseAI().generativeModel(modelName: "gemini-4-hydrogen")
     
     func identifyArtist(
         imagePath: String,
