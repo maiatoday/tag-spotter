@@ -10,12 +10,14 @@ import androidx.a2ui.model.protocol.A2uiClientEventMessage
 import androidx.a2ui.model.protocol.A2uiDeleteSurfaceMessage
 import androidx.a2ui.model.protocol.A2uiServerToClientMessage
 import androidx.a2ui.model.protocol.A2uiUpdateDataModelMessage
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.a2ui.A2uiSurface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -428,7 +430,9 @@ class JetpackA2UIEngine(
         if (surface != null) {
             A2uiSurface(
                 surfaceModel = surface,
-                modifier = modifier
+                // Bound max height so A2UI List (LazyColumn) components rendered inline inside
+                // the chat LazyColumn never crash on infinite height constraints.
+                modifier = modifier.heightIn(max = 600.dp)
             )
         }
     }
