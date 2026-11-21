@@ -328,7 +328,15 @@ class TagAlongViewModel(
         }
         val existing = chatRepository.getMessagesListForSession(initialSessionId)
         if (existing.isNotEmpty()) {
-            _uiState.update { it.copy(messages = existing.map { m -> m.toUiMessage() }) }
+            val uiMessages = existing.map { m ->
+                val uiMsg = m.toUiMessage()
+                val payload = m.a2uiPayloadJson
+                if (!payload.isNullOrBlank()) {
+                    syncMapWithA2UI(payload)
+                }
+                uiMsg
+            }
+            _uiState.update { it.copy(messages = uiMessages) }
             resolveRunner()?.let { activeRunner ->
                 ensureAndSeedAdkSession(activeRunner, initialSessionId, existing)
             }
@@ -353,16 +361,21 @@ class TagAlongViewModel(
     }
 
     private suspend fun initMapFromSources() {
+        if (_uiState.value.hasExplicitMapFocus) return
         if (locationProvider != null) {
             try {
                 val loc = locationProvider.getCurrentLocation()
-                if (loc != null && (loc.latitude != 0.0 || loc.longitude != 0.0)) {
+                if (loc != null && !loc.isFallback && (loc.latitude != 0.0 || loc.longitude != 0.0)) {
                     _uiState.update {
-                        it.copy(
-                            mapCenterLat = loc.latitude,
-                            mapCenterLng = loc.longitude,
-                            hasExplicitMapFocus = true
-                        )
+                        if (it.hasExplicitMapFocus) {
+                            it
+                        } else {
+                            it.copy(
+                                mapCenterLat = loc.latitude,
+                                mapCenterLng = loc.longitude,
+                                hasExplicitMapFocus = true
+                            )
+                        }
                     }
                 }
             } catch (_: Exception) {}
