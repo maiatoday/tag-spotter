@@ -4,6 +4,7 @@ import com.google.adk.kt.models.LlmRequest
 import com.google.adk.kt.models.LlmResponse
 import com.google.adk.kt.models.Model
 import com.google.adk.kt.runners.Runner
+import com.google.adk.kt.sessions.SessionKey
 import com.google.adk.kt.types.Content
 import com.google.adk.kt.types.FunctionCall
 import com.google.adk.kt.types.Part
@@ -53,6 +54,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -1395,5 +1397,200 @@ class TagAlongViewModelTest {
 
         assertTrue(capturedUserParts[1].contains("latitude=52.52"))
         assertTrue(capturedUserParts[1].contains("longitude=13.405"))
+    }
+
+    @Test
+    fun testSwitchSessionSeedsAdkRunnerWithPriorTurnsWithoutDuplicatingNewMessage() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(sessionId = "session-current", title = "Current", createdAt = 1000L)
+        )
+        chatRepo.createOrUpdateSession(
+            ChatSession(sessionId = "session-history", title = "Kreuzberg History", createdAt = 2000L)
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-history",
+                sender = "agent",
+                text = "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!",
+                timestamp = 2000L
+            )
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-history",
+                sender = "user",
+                text = "Who painted Astronaut Cosmonaut?",
+                timestamp = 2001L
+            )
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-history",
+                sender = "agent",
+                text = "Victor Ash painted Astronaut Cosmonaut in Kreuzberg.",
+                timestamp = 2002L
+            )
+        )
+
+        var capturedRequest: LlmRequest? = null
+        val capturingModel = object : Model {
+            override val name: String = "capturing-continuity-model"
+            override fun generateContent(request: LlmRequest, stream: Boolean): Flow<LlmResponse> = flow {
+                capturedRequest = request
+                emit(
+                    LlmResponse(
+                        content = Content(
+                            role = "model",
+                            parts = listOf(Part(text = "He painted it in 2007 for the Backjumps festival."))
+                        )
+                    )
+                )
+            }
+        }
+
+        val runner = TagAlongAgentFactory.createRunner(TagAlongAgentFactory.createAgent(capturingModel))
+        val viewModel = TagAlongViewModel(
+            runner = runner,
+            chatRepository = chatRepo,
+            initialSessionId = "session-current"
+        )
+        advanceUntilIdle()
+
+        viewModel.switchSession("session-history")
+        advanceUntilIdle()
+
+        // Session should already be created & seeded with the 2 non-welcome turns
+        val sessionKey = SessionKey(runner.appName, TagAlongViewModel.ADK_USER_ID, "session-history")
+        val seededSession = runner.sessionService.getSession(sessionKey)
+        assertNotNull(seededSession)
+        assertEquals(2, seededSession.events.size)
+
+        // Send a follow-up question
+        viewModel.sendMessage("What year was it painted?")
+        advanceUntilIdle()
+
+        val req = assertNotNull(capturedRequest)
+        val turns = req.contents.map { content ->
+            content.role to content.parts.mapNotNull { it.text }.joinToString(" ")
+        }
+
+        assertEquals(3, turns.size, "Expected 2 seeded turns + 1 new user turn, got: $turns")
+        assertEquals("user" to "Who painted Astronaut Cosmonaut?", turns[0])
+        assertEquals("model" to "Victor Ash painted Astronaut Cosmonaut in Kreuzberg.", turns[1])
+        assertEquals("user" to "What year was it painted?", turns[2])
+    }
+
+    @Test
+    fun testRestoredSessionSeedsLazilyProvidedRunnerBeforeRunAsync() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(sessionId = "session-restored", title = "Restored Chat", createdAt = 1000L)
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-restored",
+                sender = "user",
+                text = "Tell me about Teufelsberg.",
+                timestamp = 1001L
+            )
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-restored",
+                sender = "agent",
+                text = "Teufelsberg is a former listening station turned open-air street art gallery.",
+                timestamp = 1002L
+            )
+        )
+
+        var capturedRequest: LlmRequest? = null
+        val capturingModel = object : Model {
+            override val name: String = "lazy-runner-model"
+            override fun generateContent(request: LlmRequest, stream: Boolean): Flow<LlmResponse> = flow {
+                capturedRequest = request
+                emit(
+                    LlmResponse(
+                        content = Content(
+                            role = "model",
+                            parts = listOf(Part(text = "Take the S-Bahn to Heerstraße."))
+                        )
+                    )
+                )
+            }
+        }
+
+        var lazyRunner: Runner? = null
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            initialSessionId = "session-restored",
+            runnerProvider = TagAlongRunnerProvider { lazyRunner }
+        )
+        advanceUntilIdle()
+
+        // Runner becomes available later (e.g., Desktop user enters API key in Settings)
+        lazyRunner = TagAlongAgentFactory.createRunner(TagAlongAgentFactory.createAgent(capturingModel))
+
+        viewModel.sendMessage("How do I get there?")
+        advanceUntilIdle()
+
+        val req = assertNotNull(capturedRequest)
+        val turns = req.contents.map { content ->
+            content.role to content.parts.mapNotNull { it.text }.joinToString(" ")
+        }
+        assertEquals(3, turns.size, "Expected 2 restored turns + 1 new user turn without duplication, got: $turns")
+        assertEquals("user" to "Tell me about Teufelsberg.", turns[0])
+        assertEquals("model" to "Teufelsberg is a former listening station turned open-air street art gallery.", turns[1])
+        assertEquals("user" to "How do I get there?", turns[2])
+    }
+
+    @Test
+    fun testDeleteSessionRemovesSessionFromAdkRunnerSessionService() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(sessionId = "session-to-delete", title = "Delete Me", createdAt = 1000L)
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-to-delete",
+                sender = "user",
+                text = "Find murals in Mitte",
+                timestamp = 1001L
+            )
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "session-to-delete",
+                sender = "agent",
+                text = "Found Cyber Samurai in Mitte.",
+                timestamp = 1002L
+            )
+        )
+
+        val runner = TagAlongAgentFactory.createRunner(
+            TagAlongAgentFactory.createAgent(FakeLlmModel("Hello"))
+        )
+        val viewModel = TagAlongViewModel(
+            runner = runner,
+            chatRepository = chatRepo,
+            initialSessionId = "session-to-delete"
+        )
+        advanceUntilIdle()
+
+        val sessionKey = SessionKey(runner.appName, TagAlongViewModel.ADK_USER_ID, "session-to-delete")
+        assertNotNull(
+            runner.sessionService.getSession(sessionKey),
+            "Expected restored session to exist in ADK sessionService before deletion"
+        )
+
+        viewModel.deleteSession("session-to-delete")
+        advanceUntilIdle()
+
+        assertNull(
+            runner.sessionService.getSession(sessionKey),
+            "Expected deleted session to be removed from ADK sessionService"
+        )
+        assertNull(chatRepo.getSessionById("session-to-delete"))
     }
 }

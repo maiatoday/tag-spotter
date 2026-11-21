@@ -2,10 +2,13 @@ package net.maiatoday.tagspotter.feature.tagalong.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.adk.kt.events.Event
 import com.google.adk.kt.runners.Runner
+import com.google.adk.kt.sessions.SessionKey
 import com.google.adk.kt.types.Blob
 import com.google.adk.kt.types.Content
 import com.google.adk.kt.types.Part
+import net.maiatoday.tagspotter.core.agent.TagAlongAgentFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -175,7 +178,7 @@ class TagAlongViewModel(
                     lastActiveAt = now
                 )
             )
-            val welcomeText = "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
+            val welcomeText = DEFAULT_WELCOME_TEXT
             val initialMsg = TagAlongMessage(
                 id = "init-welcome-$now",
                 sender = TagAlongSender.AGENT,
@@ -227,6 +230,9 @@ class TagAlongViewModel(
                     isGenerating = false
                 )
             }
+            resolveRunner()?.let { activeRunner ->
+                ensureAndSeedAdkSession(activeRunner, targetSessionId, dbMessages)
+            }
         }
     }
 
@@ -235,6 +241,17 @@ class TagAlongViewModel(
         viewModelScope.launch {
             chatRepository.deleteSession(sessionId)
             chatRepository.deleteMessagesForSession(sessionId)
+            resolveRunner()?.let { activeRunner ->
+                runCatching {
+                    activeRunner.sessionService.deleteSession(
+                        SessionKey(
+                            appName = activeRunner.appName,
+                            userId = ADK_USER_ID,
+                            id = sessionId
+                        )
+                    )
+                }
+            }
 
             if (sessionId == activeSessionId) {
                 val remainingSessions = chatRepository.getAllSessions().first().filter { it.sessionId != sessionId }
@@ -244,6 +261,49 @@ class TagAlongViewModel(
                 } else {
                     startNewConversation(targetEngine)
                 }
+            }
+        }
+    }
+
+    private suspend fun ensureAndSeedAdkSession(
+        activeRunner: Runner,
+        sessionId: String,
+        persistedMessages: List<ChatMessage>
+    ) {
+        runCatching {
+            val sessionService = activeRunner.sessionService
+            val sessionKey = SessionKey(
+                appName = activeRunner.appName,
+                userId = ADK_USER_ID,
+                id = sessionId
+            )
+            val session = sessionService.getSession(sessionKey)
+                ?: sessionService.createSession(sessionKey)
+
+            if (session.events.isNotEmpty()) return@runCatching
+
+            val agentAuthor = activeRunner.agent.name.ifBlank { TagAlongAgentFactory.AGENT_NAME }
+            persistedMessages.forEachIndexed { index, msg ->
+                val isUser = msg.sender == "user"
+                val trimmedText = msg.text.trim()
+                if (!isUser && trimmedText == DEFAULT_WELCOME_TEXT && msg.a2uiPayloadJson.isNullOrBlank()) {
+                    return@forEachIndexed
+                }
+                val contentText = trimmedText.ifBlank { msg.a2uiPayloadJson?.trim().orEmpty() }
+                if (contentText.isBlank()) {
+                    return@forEachIndexed
+                }
+
+                val event = Event(
+                    invocationId = "seed-$sessionId-$index",
+                    author = if (isUser) "user" else agentAuthor,
+                    content = Content(
+                        role = if (isUser) "user" else "model",
+                        parts = listOf(Part(text = contentText))
+                    ),
+                    timestamp = if (msg.timestamp > 0L) msg.timestamp else epochMillis()
+                )
+                sessionService.appendEvent(session, event)
             }
         }
     }
@@ -269,8 +329,11 @@ class TagAlongViewModel(
         val existing = chatRepository.getMessagesListForSession(initialSessionId)
         if (existing.isNotEmpty()) {
             _uiState.update { it.copy(messages = existing.map { m -> m.toUiMessage() }) }
+            resolveRunner()?.let { activeRunner ->
+                ensureAndSeedAdkSession(activeRunner, initialSessionId, existing)
+            }
         } else {
-            val welcomeText = "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
+            val welcomeText = DEFAULT_WELCOME_TEXT
             val initialMsg = TagAlongMessage(
                 id = "init-welcome",
                 sender = TagAlongSender.AGENT,
@@ -368,6 +431,7 @@ class TagAlongViewModel(
 
         if (trimmed.isBlank() && currentPhoto == null) return
 
+        val currentSessionId = _uiState.value.sessionId
         val userTimestamp = epochMillis()
         val userMsg = TagAlongMessage(
             id = "user-$userTimestamp",
@@ -385,17 +449,13 @@ class TagAlongViewModel(
             )
         }
 
-        viewModelScope.launch {
-            chatRepository.insertMessage(
-                ChatMessage(
-                    sessionId = _uiState.value.sessionId,
-                    sender = "user",
-                    text = trimmed,
-                    imagePath = currentPhoto,
-                    timestamp = userTimestamp
-                )
-            )
-        }
+        val userChatMessage = ChatMessage(
+            sessionId = currentSessionId,
+            sender = "user",
+            text = trimmed,
+            imagePath = currentPhoto,
+            timestamp = userTimestamp
+        )
 
         val activeRunner = resolveRunner()
         if (activeRunner == null) {
@@ -414,9 +474,10 @@ class TagAlongViewModel(
                 )
             }
             viewModelScope.launch {
+                chatRepository.insertMessage(userChatMessage)
                 chatRepository.insertMessage(
                     ChatMessage(
-                        sessionId = _uiState.value.sessionId,
+                        sessionId = currentSessionId,
                         sender = "agent",
                         text = offlineText,
                         timestamp = agentMsg.timestamp
@@ -441,6 +502,10 @@ class TagAlongViewModel(
         }
 
         viewModelScope.launch {
+            val priorMessages = chatRepository.getMessagesListForSession(currentSessionId)
+            chatRepository.insertMessage(userChatMessage)
+            ensureAndSeedAdkSession(activeRunner, currentSessionId, priorMessages)
+
             var accumulated = ""
             var receivedPartials = false
             var lastProcessedPayload: String? = null
@@ -506,8 +571,8 @@ class TagAlongViewModel(
                 val content = Content(role = "user", parts = parts)
 
                 activeRunner.runAsync(
-                    "tagalong-user",
-                    _uiState.value.sessionId,
+                    ADK_USER_ID,
+                    currentSessionId,
                     "inv-${epochMillis()}",
                     content,
                     emptyMap()
@@ -1043,9 +1108,13 @@ class TagAlongViewModel(
             }
         ).toString()
 
+        val currentSessionId = _uiState.value.sessionId
         _uiState.update { it.copy(isGenerating = true, isOffline = false, offlineMessage = null) }
 
         viewModelScope.launch {
+            val persistedMessages = chatRepository.getMessagesListForSession(currentSessionId)
+            ensureAndSeedAdkSession(activeRunner, currentSessionId, persistedMessages)
+
             var accumulated = ""
             var receivedPartials = false
             var lastProcessedPayload: String? = null
@@ -1057,8 +1126,8 @@ class TagAlongViewModel(
                 )
 
                 activeRunner.runAsync(
-                    "tagalong-user",
-                    _uiState.value.sessionId,
+                    ADK_USER_ID,
+                    currentSessionId,
                     "inv-evt-${epochMillis()}",
                     content,
                     emptyMap()
@@ -1436,6 +1505,10 @@ class TagAlongViewModel(
     }
 
     companion object {
+        const val ADK_USER_ID = "tagalong-user"
+        private const val DEFAULT_WELCOME_TEXT =
+            "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
+
         fun defaultBerlinMarkers(): List<MapMarker> = listOf(
             MapMarker(
                 id = 1L,

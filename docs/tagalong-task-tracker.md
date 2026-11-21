@@ -153,7 +153,7 @@ flowchart LR
 | ✅ | **Step 4.4** | ADK `staticInstruction`, Schema Injection, Event Filter & API Keys | `:core:agent`, `:feature:tagalong`, Apps | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :core:photo:allTests :feature:tagalong:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
 | ✅ | **Step 4.5** | Theme-Aware Colors, Markdown Formatting & Desktop DB Fix | `:core:settings`, `:core:database`, `:core:ui`, `:feature:tagalong` | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:ui:allTests :core:database:allTests :core:settings:allTests :feature:tagalong:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
 | ✅ | **Step 4.6** | 1-Tap Spot Saving, Navigation Bridge (`uuid` → `Long`), Permissions & `ClientEvent`s | `:core:agent`, `:feature:tagalong`, `:androidApp` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
-| 🟡 | **Step 4.7** | Conversation History Sheet & ADK `InMemoryRunner` Continuity | `:feature:tagalong`, `:core:database` | Steps 4.5, 4.6 | Sequential | `./gradlew :feature:tagalong:allTests` (ADK `InMemoryRunner` session not re-seeded on switch/restart or deleted on `deleteSession`) |
+| ✅ | **Step 4.7** | Conversation History Sheet & ADK `InMemoryRunner` Continuity | `:feature:tagalong`, `:core:database` | Steps 4.5, 4.6 | Sequential | `./gradlew :feature:tagalong:allTests` (Passed ✅) |
 | ⏳ | **Step 4.8** | Manual Config Verification (`[PROMPT USER]`) + Monorepo Regression Gate | Full Monorepo | Steps 4.1-4.7 | Final Gate | `./gradlew allTests :androidApp:assembleDebug :desktopApp:assemble` (Pending gap fixes & manual config prompts) |
 
 ### Detailed Phase 4 Checklist & Remaining Work Items:
@@ -189,19 +189,19 @@ flowchart LR
     - [x] Update `TagAlongMockFixtures.MAP_OVERLAY_JSON` to `"MapPinOverlay"` and normalize `"MapPinOverlayWidget"` → `"MapPinOverlay"` in both engines.
     - [x] Align `Button` actions, `ChoicePicker` `options`/`value`, and `Text` `variant` across both engines and test all 6 valid fixtures in both `KmpA2UIEngineTest` and `JetpackA2UIEngineTest`.
 
-- [ ] **Step 4.4: Wire Agent Prompts to `toJsonSchemaString()`, Fix ADK `staticInstruction`, Photo Bytes & API Keys**
+- [x] **Step 4.4: Wire Agent Prompts to `toJsonSchemaString()`, Fix ADK `staticInstruction`, Photo Bytes & API Keys**
   - **Goal:** Feed library-generated catalog JSON Schema safely into Google ADK `LlmAgent`, filter streaming/tool events, send real image bytes, and resolve platform credentials cleanly.
   - **Work Items:**
     - [x] In `TagAlongViewModel`, launch `engine.runRenderLoop()` and `engine.outboundEvents.collect { ... }`.
     - [x] When photo is attached, use `PhotoProcessor` to load compressed image bytes and pass binary image `Part` (`Blob("image/jpeg", bytes)`) to `runner.runAsync(...)`.
     - [x] Support 2-state engine toggle (`ANDROIDX_JETPACK_OFFICIAL` ↔ `A2UI_KMP_4K`) in Android TagAlong header by replaying session envelopes into the newly selected engine.
     - [x] Updated all flash models across `:core:agent`, `:core:ai` (`AndroidFirebaseAiService.kt`), and `iosApp` (`SwiftFirebaseAiService.swift`) to `"gemini-4-hydrogen"`, and migrated `SwiftFirebaseAiService.swift` off deprecated `FirebaseVertexAI` to `FirebaseAI`.
-    - [ ] **Missing (Schema Injection):** Pass `catalogSchemaJson` (`createJetpackHybridCatalog().toJsonSchemaString()` on Android; `KmpA2UIEngine().getCatalogSchemaJson()` on Desktop) into `createAndroidTagAlongRunner` and `createDesktopTagAlongRunner` instead of leaving `catalogSchemaJson = null`.
-    - [ ] **Missing (ADK `staticInstruction` Bug):** `TagAlongAgentFactory.createAgent` passes `systemInstruction` via `instruction = Instruction(systemInstruction)`. In `google-adk-kotlin:0.2.0`, `InstructionStateInjector` parses `{...}` in `instruction` as session variables and throws `IllegalArgumentException: Context variable not found` on JSON schemas/examples. Change to `staticInstruction = Content(parts = listOf(Part(text = systemInstruction)))` on `LlmAgent` and add a `RunnerCallTest` with non-null `catalogSchemaJson`.
-    - [ ] **Missing (Concrete A2UI v0.9 Examples & `saveNewSpot` in Prompt):** Add clear A2UI v0.9 envelope rules (`createSurface`, `updateDataModel`, `updateComponents` with `"id": "root"`, `"event"` vs `"functionCall"`), `saveNewSpot` tool guidance, and missing-field A2UI form instructions to `TagAlongPrompts.kt`.
-    - [ ] **Missing (ADK Event Stream Filtering):** In `TagAlongViewModel.sendMessage()`, filter `runner.runAsync()` events so intermediate tool-call turns, function responses, or final non-partial aggregated events (when streaming) do not overwrite or duplicate chat prose/surfaces.
-    - [ ] **Missing (Desktop `RealPhotoProcessor` URI & JPEG Scaling):** `core/photo/src/jvmMain/.../RealPhotoProcessor.kt` does not URL-decode `file:` URIs (breaking filenames with spaces like `%20`) and returns raw unscaled bytes from `decodeScaledBitmap` instead of downscaling (`<= 1024px`) and encoding as JPEG (`image/jpeg`) for `Blob` uploads.
-    - [ ] **Missing (Desktop API Key Path & Live Settings Reload):** Fix `DesktopSecretsProvider` in `desktopApp/src/jvmMain/.../Main.kt` to check `GEMINI_API_KEY` env var → `local.properties` → **`../local.properties`** (since `:desktopApp:run` executes with `workingDir = desktopApp/`) → **`SettingsRepository.geminiApiKey`**, dynamically provisioning/updating `Runner` when the user enters a key in Settings without requiring an app restart.
+    - [x] Inject `catalogSchemaJson` (`getJetpackHybridCatalogSchemaJson(context)` on Android; `KmpA2UIEngine().getCatalogSchemaJson()` on Desktop) into `createAndroidTagAlongRunner` and `createDesktopTagAlongRunner`.
+    - [x] Switch `TagAlongAgentFactory.createAgent` to `staticInstruction = Content(parts = listOf(Part(text = systemInstruction)))` and add `RunnerCallTest` with non-null `catalogSchemaJson`.
+    - [x] Add concrete A2UI v0.9 envelope rules, `saveNewSpot` tool guidance, and missing-field A2UI form instructions to `TagAlongPrompts.kt`.
+    - [x] Filter `runner.runAsync()` events in `TagAlongViewModel.sendMessage()` so intermediate tool-call turns and final aggregated events do not duplicate prose or clobber surfaces.
+    - [x] Fix Desktop `RealPhotoProcessor.kt` to URL-decode `file:` URIs and resize/encode `decodeScaledBitmap` as JPEG (`<= 1024px`).
+    - [x] Fix `DesktopSecretsProvider` (`Main.kt`) to check `GEMINI_API_KEY` → `local.properties` → `../local.properties` → `SettingsRepository.geminiApiKey`, with live dynamic `TagAlongRunnerProvider` reload.
 
 - [x] **Step 4.5: Theme Switching, Markdown Formatting, New Conversation Controls & Desktop DB Persistence Fix**
   - **Goal:** Provide Light/Dark mode fidelity, clean Markdown text bubbles, fresh conversation controls, and persistent Desktop SQLite storage.
@@ -223,13 +223,13 @@ flowchart LR
     - [x] Use `locationProvider.getCurrentLocation()` in `StreetArtTools` / `TagAlongViewModel` as coordinate fallback and include extracted photo EXIF GPS + local thumbnail path in the hidden turn context.
     - [x] Handle `answer_quiz`, `vote_option`, and form submit `ClientEvent`s in `TagAlongViewModel.handleAction()`, forwarding conversational client events back to the ADK `Runner` for server-side `updateDataModel` updates.
 
-- [ ] **Step 4.7: Conversation History Drawer / Sheet & ADK Session Continuity**
+- [x] **Step 4.7: Conversation History Drawer / Sheet & ADK Session Continuity**
   - **Goal:** Enable users to browse, switch between, and delete past chat sessions saved in `TagAlongDatabase` with full ADK memory continuity.
   - **Work Items:**
     - [x] Expose `allSessions: StateFlow<List<ChatSession>>` in `TagAlongViewModel`.
     - [x] Add History Drawer / `ModalBottomSheet` in `TagAlongScreen`.
     - [x] Replay stored A2UI v0.9 messages into active `A2UIRendererEngine` when switching sessions.
-    - [ ] **Missing (ADK Session Context Continuity):** Seed `InMemoryRunner` (`runner.sessionService`) with persisted `ChatRepository` turns when restoring a session on app restart or calling `switchSession()`, and delete the session from `runner.sessionService` in `deleteSession()`.
+    - [x] Seed `InMemoryRunner` (`runner.sessionService`) with persisted `ChatRepository` turns when restoring a session on app restart or calling `switchSession()` (and lazily before `runAsync`), and delete the session from `runner.sessionService` in `deleteSession()`.
 
 - [ ] **Step 4.8: Full Monorepo Regression Gate**
   - **Goal:** Pass all tests and assemble all targets across the unified monorepo after fixing all Phase 4 gaps and running manual config verification prompts.
