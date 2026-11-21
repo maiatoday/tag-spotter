@@ -53,7 +53,7 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
   private var initialSpotId by mutableStateOf<Long?>(null)
-  private var initialTab by mutableStateOf<Tab>(Tab.Gallery)
+  private var initialTab by mutableStateOf<Tab?>(null)
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -76,7 +76,8 @@ class MainActivity : ComponentActivity() {
           MainActivityContent(
             initialSpotId = initialSpotId,
             initialTab = initialTab,
-            onNavigateToSpotHandled = { initialSpotId = null }
+            onNavigateToSpotHandled = { initialSpotId = null },
+            onInitialTabHandled = { initialTab = null }
           )
         }
       }
@@ -170,8 +171,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainActivityContent(
     initialSpotId: Long?,
-    initialTab: Tab = Tab.Gallery,
+    initialTab: Tab? = null,
     onNavigateToSpotHandled: () -> Unit,
+    onInitialTabHandled: () -> Unit = {},
     viewModel: MainViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
@@ -290,6 +292,7 @@ fun MainActivityContent(
         initialSpotId = initialSpotId,
         initialTab = initialTab,
         onNavigateToSpotHandled = onNavigateToSpotHandled,
+        onInitialTabHandled = onInitialTabHandled,
         onTriggerFiles = triggerFiles,
         versionName = versionName,
         showToast = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() },

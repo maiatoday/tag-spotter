@@ -2,7 +2,11 @@ package net.maiatoday.tagspotter.feature.main
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -16,8 +20,9 @@ import net.maiatoday.tagspotter.feature.settings.SettingsScreen
 @Composable
 fun MainNavigation(
     initialSpotId: Long? = null,
-    initialTab: Tab = Tab.Gallery,
+    initialTab: Tab? = null,
     onNavigateToSpotHandled: () -> Unit = {},
+    onInitialTabHandled: () -> Unit = {},
     onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
     versionName: String,
     showToast: (String) -> Unit,
@@ -27,6 +32,14 @@ fun MainNavigation(
         onViewOnMainMap: (Double, Double) -> Unit
     ) -> Unit)? = null
 ) {
+    val defaultTab = if (tagAlongContent != null) Tab.TagAlong else Tab.Gallery
+    val resolvedInitialTab = when {
+        initialTab == Tab.TagAlong && tagAlongContent == null -> Tab.Gallery
+        initialTab != null -> initialTab
+        else -> defaultTab
+    }
+    var selectedTab by rememberSaveable { mutableStateOf(resolvedInitialTab) }
+
     val config = remember {
         SavedStateConfiguration {
             serializersModule = SerializersModule {
@@ -44,6 +57,20 @@ fun MainNavigation(
         config,
         Main
     )
+
+    LaunchedEffect(initialTab) {
+        if (initialTab != null) {
+            selectedTab = if (initialTab == Tab.TagAlong && tagAlongContent == null) {
+                Tab.Gallery
+            } else {
+                initialTab
+            }
+            while (backStack.size > 1) {
+                backStack.removeLastOrNull()
+            }
+            onInitialTabHandled()
+        }
+    }
 
     LaunchedEffect(initialSpotId) {
         if (initialSpotId != null) {
@@ -64,6 +91,8 @@ fun MainNavigation(
         entryProvider = entryProvider {
             entry<Main> {
                 MainContainer(
+                    selectedTab = selectedTab,
+                    onSelectTab = { selectedTab = it },
                     onSpotClick = { spotId -> backStack.add(DetailKey(spotId)) },
                     onPhotoCaptured = { imagePath, thumbnailPath, lat, lng, isFallback, defaultCategory, captureTime ->
                         backStack.add(TaggingKey(imagePath, thumbnailPath, lat, lng, isFallback, defaultCategory, captureTime))
@@ -72,7 +101,6 @@ fun MainNavigation(
                     onTriggerFiles = onTriggerFiles,
                     versionName = versionName,
                     showToast = showToast,
-                    initialTab = initialTab,
                     tagAlongContent = tagAlongContent
                 )
             }

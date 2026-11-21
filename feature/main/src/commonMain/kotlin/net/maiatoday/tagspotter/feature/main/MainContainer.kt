@@ -82,6 +82,8 @@ enum class Tab {
 
 @Composable
 fun MainContainer(
+    selectedTab: Tab,
+    onSelectTab: (Tab) -> Unit,
     onSpotClick: (Long) -> Unit,
     onPhotoCaptured: (String, String, Double, Double, Boolean, String, Long?) -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -89,19 +91,13 @@ fun MainContainer(
     versionName: String,
     showToast: (String) -> Unit,
     modifier: Modifier = Modifier,
-    initialTab: Tab = Tab.Gallery,
     tagAlongContent: (@Composable (
         onOpenSpotDetail: (Long) -> Unit,
         onViewOnMainMap: (Double, Double) -> Unit
     ) -> Unit)? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
-    var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
     var targetMapCenter by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-
-    LaunchedEffect(initialTab) {
-        selectedTab = initialTab
-    }
     val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showTestData by viewModel.showTestData.collectAsStateWithLifecycle()
@@ -257,7 +253,7 @@ fun MainContainer(
                                 scope.launch {
                                     drawerState.close()
                                 }
-                                selectedTab = Tab.Gallery
+                                onSelectTab(Tab.Gallery)
                                 showGalleryImportDialog = true
                             },
                             icon = {
@@ -279,7 +275,7 @@ fun MainContainer(
                                 scope.launch {
                                     drawerState.close()
                                 }
-                                selectedTab = Tab.Gallery
+                                onSelectTab(Tab.Gallery)
                                 showGalleryLoadedPacksDialog = true
                             },
                             icon = {
@@ -444,7 +440,7 @@ fun MainContainer(
                         val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                         NavigationRailItem(
                             selected = selectedTab == Tab.Gallery,
-                            onClick = { selectedTab = Tab.Gallery },
+                            onClick = { onSelectTab(Tab.Gallery) },
                             icon = {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
@@ -479,7 +475,7 @@ fun MainContainer(
                         )
                         NavigationRailItem(
                             selected = selectedTab == Tab.Map,
-                            onClick = { selectedTab = Tab.Map },
+                            onClick = { onSelectTab(Tab.Map) },
                             icon = {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
@@ -515,7 +511,7 @@ fun MainContainer(
                         if (tagAlongContent != null) {
                             NavigationRailItem(
                                 selected = selectedTab == Tab.TagAlong,
-                                onClick = { selectedTab = Tab.TagAlong },
+                                onClick = { onSelectTab(Tab.TagAlong) },
                                 icon = {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
@@ -609,7 +605,7 @@ fun MainContainer(
                             tagAlongContent = tagAlongContent,
                             onViewOnMainMap = { lat, lon ->
                                 targetMapCenter = Pair(lat, lon)
-                                selectedTab = Tab.Map
+                                onSelectTab(Tab.Map)
                             }
                         )
                     }
@@ -625,7 +621,7 @@ fun MainContainer(
                         ) {
                             NavigationBarItem(
                                 selected = selectedTab == Tab.Gallery,
-                                onClick = { selectedTab = Tab.Gallery },
+                                onClick = { onSelectTab(Tab.Gallery) },
                                 icon = {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
@@ -660,7 +656,7 @@ fun MainContainer(
                             )
                             NavigationBarItem(
                                 selected = selectedTab == Tab.Map,
-                                onClick = { selectedTab = Tab.Map },
+                                onClick = { onSelectTab(Tab.Map) },
                                 icon = {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
@@ -696,7 +692,7 @@ fun MainContainer(
                             if (tagAlongContent != null) {
                                 NavigationBarItem(
                                     selected = selectedTab == Tab.TagAlong,
-                                    onClick = { selectedTab = Tab.TagAlong },
+                                    onClick = { onSelectTab(Tab.TagAlong) },
                                     icon = {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Icon(
@@ -790,7 +786,7 @@ fun MainContainer(
                             tagAlongContent = tagAlongContent,
                             onViewOnMainMap = { lat, lon ->
                                 targetMapCenter = Pair(lat, lon)
-                                selectedTab = Tab.Map
+                                onSelectTab(Tab.Map)
                             }
                         )
                     }
