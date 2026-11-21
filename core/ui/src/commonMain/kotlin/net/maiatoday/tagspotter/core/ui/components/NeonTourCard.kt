@@ -26,13 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import net.maiatoday.tagspotter.core.ui.theme.DarkPrimaryContainer
-import net.maiatoday.tagspotter.core.ui.theme.DarkSecondaryContainer
-import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
 
 data class NeonTourWaypoint(
     val index: Int,
@@ -63,7 +59,7 @@ fun NeonTourCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        border = BorderStroke(1.5.dp, DarkTertiaryContainer.copy(alpha = 0.8f))
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.8f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -90,13 +86,13 @@ fun NeonTourCard(
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                    border = BorderStroke(1.dp, DarkTertiaryContainer)
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.16f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
                 ) {
                     Text(
                         text = "$estimatedMinutes min • $totalDistanceKm km",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = DarkTertiaryContainer,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -107,7 +103,7 @@ fun NeonTourCard(
                 Text(
                     text = "Waypoints (${waypoints.size} stops)",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = DarkSecondaryContainer
+                    color = MaterialTheme.colorScheme.secondary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -131,10 +127,18 @@ fun NeonTourCard(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = if (stop.completed) DarkPrimaryContainer else DarkTertiaryContainer.copy(alpha = 0.2f),
+                                color = if (stop.completed) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.16f)
+                                },
                                 border = BorderStroke(
                                     1.dp,
-                                    if (stop.completed) DarkPrimaryContainer else DarkTertiaryContainer
+                                    if (stop.completed) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.tertiaryContainer
+                                    }
                                 ),
                                 modifier = Modifier.size(24.dp)
                             ) {
@@ -142,7 +146,11 @@ fun NeonTourCard(
                                     Text(
                                         text = if (stop.completed) "✓" else "${stop.index}",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = if (stop.completed) Color.Black else DarkTertiaryContainer
+                                        color = if (stop.completed) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.tertiaryContainer
+                                        }
                                     )
                                 }
                             }
@@ -182,8 +190,8 @@ fun NeonTourCard(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkTertiaryContainer,
-                            contentColor = Color.Black
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     ) {
                         Text("Navigate to Stop #${nextStop.index} (${nextStop.title})", fontWeight = FontWeight.Bold)

@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -28,6 +30,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -50,19 +54,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil3.compose.AsyncImage
 import org.koin.compose.viewmodel.koinViewModel
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
@@ -71,11 +84,8 @@ import net.maiatoday.tagspotter.core.database.ChatSession
 import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.ui.MapMarker
 import net.maiatoday.tagspotter.core.ui.SpotMapView
-import net.maiatoday.tagspotter.core.ui.theme.DarkBackground
-import net.maiatoday.tagspotter.core.ui.theme.DarkPrimaryContainer
-import net.maiatoday.tagspotter.core.ui.theme.DarkSecondaryContainer
-import net.maiatoday.tagspotter.core.ui.theme.DarkSurfaceVariant
-import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
+import net.maiatoday.tagspotter.core.ui.image.ZoomableImageOverlay
+import net.maiatoday.tagspotter.core.ui.image.formatImageModel
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -169,6 +179,7 @@ fun TagAlongScreenContent(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
+    var zoomedPhotoUri by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -179,7 +190,7 @@ fun TagAlongScreenContent(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         val isDesktopTwoPane = maxWidth >= 760.dp
 
@@ -236,6 +247,7 @@ fun TagAlongScreenContent(
                         onSendMessage = onSendMessage,
                         onSelectMockFixture = onSelectMockFixture,
                         onAction = wrappedOnAction,
+                        onPhotoClick = { zoomedPhotoUri = it },
                         onNewChat = onNewChat,
                         onOpenHistory = onOpenHistory,
                         isOffline = uiState.isOffline,
@@ -249,7 +261,7 @@ fun TagAlongScreenContent(
                     modifier = Modifier
                         .width(1.dp)
                         .fillMaxHeight()
-                        .background(DarkSurfaceVariant)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
                 )
 
                 // Right Pane: Synchronized Mini Map & Live Info (44% width)
@@ -281,11 +293,25 @@ fun TagAlongScreenContent(
                 onSendMessage = onSendMessage,
                 onSelectMockFixture = onSelectMockFixture,
                 onAction = wrappedOnAction,
+                onPhotoClick = { zoomedPhotoUri = it },
                 onNewChat = onNewChat,
                 onOpenHistory = onOpenHistory,
                 isOffline = uiState.isOffline,
                 offlineMessage = uiState.offlineMessage,
                 isGenerating = uiState.isGenerating
+            )
+        }
+    }
+
+    val activeZoomPhoto = zoomedPhotoUri
+    if (activeZoomPhoto != null) {
+        Dialog(
+            onDismissRequest = { zoomedPhotoUri = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            ZoomableImageOverlay(
+                imagePath = activeZoomPhoto,
+                onClose = { zoomedPhotoUri = null }
             )
         }
     }
@@ -305,6 +331,7 @@ private fun ChatPane(
     onSendMessage: (String) -> Unit,
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
+    onPhotoClick: (String) -> Unit = {},
     onNewChat: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     isOffline: Boolean = false,
@@ -312,11 +339,17 @@ private fun ChatPane(
     isGenerating: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val submitMessage: () -> Unit = {
+        if (inputText.isNotBlank() || attachedPhotoUri != null) {
+            onSendMessage(inputText)
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         // App Header Banner
         Surface(
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            border = BorderStroke(1.dp, DarkPrimaryContainer.copy(alpha = 0.3f)),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -332,29 +365,29 @@ private fun ChatPane(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
-                            color = DarkPrimaryContainer,
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             modifier = Modifier.size(10.dp)
                         ) {}
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "TAGALONG",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                            color = DarkPrimaryContainer,
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             letterSpacing = 1.sp
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "COMPANION",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = DarkSecondaryContainer
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, DarkTertiaryContainer),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.16f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer),
                             modifier = if (onToggleEngine != null) {
                                 Modifier.clip(RoundedCornerShape(6.dp)).clickable { onToggleEngine() }
                             } else Modifier
@@ -366,14 +399,14 @@ private fun ChatPane(
                                 Text(
                                     text = engine.engineType.name,
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                    color = DarkTertiaryContainer
+                                    color = MaterialTheme.colorScheme.tertiaryContainer
                                 )
                                 if (onToggleEngine != null) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "⇄",
                                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                        color = DarkTertiaryContainer
+                                        color = MaterialTheme.colorScheme.tertiaryContainer
                                     )
                                 }
                             }
@@ -386,7 +419,7 @@ private fun ChatPane(
                             Icon(
                                 imageVector = Icons.Default.History,
                                 contentDescription = "Chat History",
-                                tint = DarkPrimaryContainer
+                                tint = MaterialTheme.colorScheme.primaryContainer
                             )
                         }
                         Spacer(modifier = Modifier.width(4.dp))
@@ -397,7 +430,7 @@ private fun ChatPane(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "New Chat",
-                                tint = DarkPrimaryContainer
+                                tint = MaterialTheme.colorScheme.primaryContainer
                             )
                         }
                     }
@@ -421,8 +454,8 @@ private fun ChatPane(
                     TagAlongMockFixtures.ALL_FIXTURES.forEach { (name, json) ->
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = DarkBackground,
-                            border = BorderStroke(1.dp, DarkPrimaryContainer.copy(alpha = 0.5f)),
+                            color = MaterialTheme.colorScheme.background,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable { onSelectMockFixture(name, json) }
@@ -430,7 +463,7 @@ private fun ChatPane(
                             Text(
                                 text = "+ $name",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = DarkPrimaryContainer,
+                                color = MaterialTheme.colorScheme.primaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -442,8 +475,8 @@ private fun ChatPane(
         // Inline Offline Fallback Banner
         if (isOffline) {
             Surface(
-                color = Color(0xFF332200),
-                border = BorderStroke(1.dp, Color(0xFFFFB300)),
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f)),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -459,12 +492,12 @@ private fun ChatPane(
                         Text(
                             text = "OFFLINE FALLBACK MODE",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFFFFB300)
+                            color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Text(
                             text = offlineMessage ?: "Agent running locally. Cloud generative features paused.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
                         )
                     }
                 }
@@ -486,7 +519,8 @@ private fun ChatPane(
                 ChatMessageItem(
                     message = message,
                     engine = engine,
-                    onAction = onAction
+                    onAction = onAction,
+                    onPhotoClick = onPhotoClick
                 )
             }
 
@@ -500,14 +534,14 @@ private fun ChatPane(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = DarkPrimaryContainer,
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             modifier = Modifier.size(8.dp)
                         ) {}
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "TagAlong is analyzing urban art...",
                             style = MaterialTheme.typography.labelSmall,
-                            color = DarkPrimaryContainer
+                            color = MaterialTheme.colorScheme.primaryContainer
                         )
                     }
                 }
@@ -518,12 +552,17 @@ private fun ChatPane(
 
         // Input & Attachment Bar
         Surface(
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-            border = BorderStroke(1.dp, DarkSurfaceVariant),
-            modifier = Modifier.fillMaxWidth()
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 if (attachedPhotoUri != null) {
+                    val previewModel = remember(attachedPhotoUri) {
+                        formatImageModel(attachedPhotoUri, "")
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -531,21 +570,37 @@ private fun ChatPane(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = DarkSecondaryContainer.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, DarkSecondaryContainer),
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary),
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("🖼️ Photo Attached", style = MaterialTheme.typography.labelSmall, color = DarkSecondaryContainer)
-                                Spacer(modifier = Modifier.width(6.dp))
+                                AsyncImage(
+                                    model = previewModel,
+                                    contentDescription = "Attached photo preview",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { onPhotoClick(attachedPhotoUri) }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Photo Attached",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "✕",
-                                    color = DarkSecondaryContainer,
-                                    modifier = Modifier.clickable { onClearPhoto() }
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier
+                                        .clickable { onClearPhoto() }
+                                        .padding(horizontal = 2.dp)
                                 )
                             }
                         }
@@ -560,9 +615,9 @@ private fun ChatPane(
                     OutlinedButton(
                         onClick = onPickPhoto,
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = DarkTertiaryContainer
+                            contentColor = MaterialTheme.colorScheme.tertiaryContainer
                         ),
-                        border = BorderStroke(1.dp, DarkTertiaryContainer),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer),
                         modifier = Modifier.height(52.dp)
                     ) {
                         Text("📷")
@@ -572,20 +627,35 @@ private fun ChatPane(
                         value = inputText,
                         onValueChange = onInputTextChanged,
                         placeholder = { Text("Ask TagAlong (e.g., 'Find neon murals in Mitte')...") },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onPreviewKeyEvent { keyEvent ->
+                                if (
+                                    keyEvent.type == KeyEventType.KeyDown &&
+                                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) &&
+                                    !keyEvent.isShiftPressed
+                                ) {
+                                    submitMessage()
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = DarkPrimaryContainer,
+                            focusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { submitMessage() }),
                         singleLine = true
                     )
 
                     Button(
-                        onClick = { onSendMessage(inputText) },
+                        onClick = submitMessage,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkPrimaryContainer,
-                            contentColor = Color.Black
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         ),
                         modifier = Modifier.height(52.dp),
                         shape = RoundedCornerShape(12.dp)
@@ -602,15 +672,25 @@ private fun ChatPane(
 private fun ChatMessageItem(
     message: TagAlongMessage,
     engine: A2UIRendererEngine,
-    onAction: (A2UIAction) -> Unit
+    onAction: (A2UIAction) -> Unit,
+    onPhotoClick: (String) -> Unit = {}
 ) {
     val isUser = message.sender == TagAlongSender.USER
+    val codeBg = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
+    val codeFg = MaterialTheme.colorScheme.tertiaryContainer
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         if (!message.text.isNullOrBlank()) {
+            val formattedText = remember(message.text, codeBg, codeFg) {
+                parseInlineMarkdown(
+                    text = message.text,
+                    codeBackground = codeBg,
+                    codeColor = codeFg
+                )
+            }
             Card(
                 shape = RoundedCornerShape(
                     topStart = 16.dp,
@@ -619,16 +699,24 @@ private fun ChatMessageItem(
                     bottomEnd = if (isUser) 4.dp else 16.dp
                 ),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isUser) DarkSecondaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (isUser) {
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    }
                 ),
                 border = BorderStroke(
                     1.dp,
-                    if (isUser) DarkSecondaryContainer else DarkSurfaceVariant
+                    if (isUser) {
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    }
                 ),
                 modifier = Modifier.fillMaxWidth(if (isUser) 0.85f else 0.95f)
             ) {
                 Text(
-                    text = message.text,
+                    text = formattedText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(12.dp)
@@ -636,18 +724,27 @@ private fun ChatMessageItem(
             }
         }
 
-        if (message.photoUri != null) {
-            Spacer(modifier = Modifier.height(4.dp))
+        if (!message.photoUri.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            val imageModel = remember(message.photoUri) {
+                formatImageModel(message.photoUri, "")
+            }
             Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = DarkSecondaryContainer.copy(alpha = 0.15f),
-                border = BorderStroke(1.dp, DarkSecondaryContainer)
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onPhotoClick(message.photoUri) }
             ) {
-                Text(
-                    text = "📎 Attached Photo: ${message.photoUri}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = DarkSecondaryContainer,
-                    modifier = Modifier.padding(8.dp)
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = "Attached photo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .widthIn(max = 240.dp)
+                        .heightIn(min = 100.dp, max = 180.dp)
+                        .fillMaxWidth(0.65f)
                 )
             }
         }
@@ -684,15 +781,17 @@ private fun MapPane(
     markers: List<MapMarker>,
     modifier: Modifier = Modifier
 ) {
+    val useDarkMap = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Map Top Bar
         Surface(
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-            border = BorderStroke(1.dp, DarkTertiaryContainer.copy(alpha = 0.3f)),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -707,7 +806,7 @@ private fun MapPane(
                     Text(
                         text = "LIVE URBAN MAP",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = DarkTertiaryContainer
+                        color = MaterialTheme.colorScheme.tertiaryContainer
                     )
                     Text(
                         text = focusedTitle,
@@ -718,13 +817,13 @@ private fun MapPane(
 
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = DarkTertiaryContainer.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, DarkTertiaryContainer)
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
                 ) {
                     Text(
                         text = "${(latitude * 1000).toInt() / 1000.0}, ${(longitude * 1000).toInt() / 1000.0}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = DarkTertiaryContainer,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
@@ -742,7 +841,7 @@ private fun MapPane(
                 longitude = longitude,
                 zoomLevel = zoomLevel,
                 markers = markers,
-                useDarkMap = true,
+                useDarkMap = useDarkMap,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -780,14 +879,14 @@ fun HistoryBottomSheet(
                 Text(
                     text = "CHAT HISTORY",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                    color = DarkPrimaryContainer,
+                    color = MaterialTheme.colorScheme.primaryContainer,
                     letterSpacing = 1.sp
                 )
                 Button(
                     onClick = onNewChat,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkPrimaryContainer,
-                        contentColor = Color.Black
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
@@ -833,14 +932,18 @@ fun HistoryBottomSheet(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isActive) {
-                                    DarkPrimaryContainer.copy(alpha = 0.12f)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
                                 } else {
                                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                                 }
                             ),
                             border = BorderStroke(
                                 width = if (isActive) 1.5.dp else 1.dp,
-                                color = if (isActive) DarkPrimaryContainer else DarkSurfaceVariant.copy(alpha = 0.4f)
+                                color = if (isActive) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                                }
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -860,15 +963,15 @@ fun HistoryBottomSheet(
                                             style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium
                                             ),
-                                            color = if (isActive) DarkPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                            color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1
                                         )
                                         if (isActive) {
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
-                                                color = DarkPrimaryContainer.copy(alpha = 0.2f),
-                                                border = BorderStroke(1.dp, DarkPrimaryContainer)
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer)
                                             ) {
                                                 Text(
                                                     text = "ACTIVE",
@@ -876,7 +979,7 @@ fun HistoryBottomSheet(
                                                         fontSize = 8.sp,
                                                         fontWeight = FontWeight.Bold
                                                     ),
-                                                    color = DarkPrimaryContainer,
+                                                    color = MaterialTheme.colorScheme.primaryContainer,
                                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                                 )
                                             }

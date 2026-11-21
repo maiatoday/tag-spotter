@@ -39,7 +39,11 @@ class DataStoreSettingsRepository(
                 }
                 .collect { preferences ->
                     val modeStr = preferences[THEME_MODE]
-                    _themeMode.value = modeStr?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
+                    if (modeStr != null) {
+                        runCatching { ThemeMode.valueOf(modeStr) }.getOrNull()?.let { savedMode ->
+                            _themeMode.value = savedMode
+                        }
+                    }
                 }
         }
     }

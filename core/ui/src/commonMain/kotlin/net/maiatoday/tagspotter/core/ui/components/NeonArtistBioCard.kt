@@ -35,9 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.ui.chips.NeonTagChip
-import net.maiatoday.tagspotter.core.ui.theme.DarkPrimaryContainer
-import net.maiatoday.tagspotter.core.ui.theme.DarkSecondaryContainer
-import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
 
 data class NeonArtworkThumbnail(
     val id: String,
@@ -67,7 +64,7 @@ fun NeonArtistBioCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        border = BorderStroke(1.5.dp, DarkSecondaryContainer.copy(alpha = 0.8f))
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -86,15 +83,15 @@ fun NeonArtistBioCard(
                 } else {
                     Surface(
                         shape = CircleShape,
-                        color = DarkSecondaryContainer.copy(alpha = 0.2f),
-                        border = BorderStroke(1.5.dp, DarkSecondaryContainer),
+                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.16f),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary),
                         modifier = Modifier.size(56.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = artistName.firstOrNull()?.uppercase() ?: "A",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = DarkSecondaryContainer
+                                color = MaterialTheme.colorScheme.secondary
                             )
                         }
                     }
@@ -112,7 +109,7 @@ fun NeonArtistBioCard(
                         Text(
                             text = "Active: $activeYears",
                             style = MaterialTheme.typography.bodySmall,
-                            color = DarkTertiaryContainer
+                            color = MaterialTheme.colorScheme.tertiaryContainer
                         )
                     }
                 }
@@ -135,7 +132,7 @@ fun NeonArtistBioCard(
                         NeonTagChip(
                             tag = style,
                             leadingHash = false,
-                            accentColor = DarkSecondaryContainer,
+                            accentColor = MaterialTheme.colorScheme.secondary,
                             onClick = onStyleClick?.let { { it(style) } }
                         )
                     }
@@ -147,7 +144,7 @@ fun NeonArtistBioCard(
                 Text(
                     text = "Notable Pieces",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = DarkPrimaryContainer
+                    color = MaterialTheme.colorScheme.primaryContainer
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(

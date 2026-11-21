@@ -38,8 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.ui.chips.NeonTagChip
-import net.maiatoday.tagspotter.core.ui.theme.DarkPrimaryContainer
-import net.maiatoday.tagspotter.core.ui.theme.DarkSecondaryContainer
 
 /**
  * Pure, stateless Compose Multiplatform card for displaying a spot.
@@ -75,7 +73,7 @@ fun NeonSpotCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        border = BorderStroke(1.5.dp, DarkPrimaryContainer.copy(alpha = 0.8f))
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             if (!imageUrl.isNullOrBlank()) {
@@ -106,7 +104,7 @@ fun NeonSpotCard(
                         Text(
                             text = "By $artist",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = DarkSecondaryContainer
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -114,8 +112,8 @@ fun NeonSpotCard(
                 if (distanceMeters != null) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = DarkPrimaryContainer.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, DarkPrimaryContainer)
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Text(
                             text = if (distanceMeters >= 1000) {
@@ -124,7 +122,7 @@ fun NeonSpotCard(
                                 "${distanceMeters.toInt()} m"
                             },
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = DarkPrimaryContainer,
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -207,11 +205,11 @@ private fun SpotStarButton(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = if (isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.onSurface
+            contentColor = if (isStarred) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
         ),
         border = BorderStroke(
             1.dp,
-            if (isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.outline
+            if (isStarred) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline
         )
     ) {
         Text(
@@ -268,8 +266,8 @@ private fun SpotViewOnMapButton(
         onClick = onClick,
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
-            containerColor = DarkPrimaryContainer,
-            contentColor = Color.Black
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         )
     ) {
         Text(

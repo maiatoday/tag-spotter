@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
 
 /**
  * Reusable stateless neon-styled chip for tags and styles.
@@ -24,7 +23,7 @@ fun NeonTagChip(
     modifier: Modifier = Modifier,
     isSelected: Boolean = false,
     onClick: (() -> Unit)? = null,
-    accentColor: Color = DarkTertiaryContainer,
+    accentColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
     leadingHash: Boolean = true,
     shapeRadius: Dp = 6.dp
 ) {

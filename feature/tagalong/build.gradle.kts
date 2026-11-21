@@ -37,6 +37,7 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
                 implementation(compose.components.resources)
+                implementation(libs.coil.compose)
 
                 implementation(libs.koin.core)
                 implementation(libs.kotlinx.serialization.json)

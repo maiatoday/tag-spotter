@@ -23,12 +23,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.maiatoday.tagspotter.core.ui.chips.NeonCategoryBadge
-import net.maiatoday.tagspotter.core.ui.theme.DarkTertiaryContainer
 
 data class NeonMapPin(
     val id: String,
@@ -58,7 +56,7 @@ fun NeonMapPinOverlayWidget(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        border = BorderStroke(1.5.dp, DarkTertiaryContainer.copy(alpha = 0.8f))
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.8f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -73,13 +71,13 @@ fun NeonMapPinOverlayWidget(
                 )
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = DarkTertiaryContainer.copy(alpha = 0.2f),
-                    border = BorderStroke(1.dp, DarkTertiaryContainer)
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.16f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
                 ) {
                     Text(
                         text = "${pins.size} spots",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = DarkTertiaryContainer,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -131,8 +129,8 @@ fun NeonMapPinOverlayWidget(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkTertiaryContainer,
-                    contentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 )
             ) {
                 Text("Focus Map on Cluster", fontWeight = FontWeight.Bold)
