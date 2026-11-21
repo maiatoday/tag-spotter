@@ -30,6 +30,7 @@ kotlin {
                 implementation(project(":core:ui"))
                 implementation(project(":core:a2ui"))
                 implementation(project(":core:agent"))
+                implementation(project(":feature:map"))
                 implementation(libs.google.adk.kotlin.core)
 
                 implementation(compose.runtime)

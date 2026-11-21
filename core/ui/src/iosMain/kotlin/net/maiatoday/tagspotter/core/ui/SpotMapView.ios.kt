@@ -2,7 +2,10 @@
 package net.maiatoday.tagspotter.core.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
 import platform.CoreLocation.CLLocationCoordinate2DMake
@@ -45,6 +48,9 @@ actual fun SpotMapView(
             showsUserLocation = true
         }
     }
+    var lastCameraTarget by remember {
+        mutableStateOf(Triple(latitude, longitude, zoomLevel))
+    }
 
     // Set map delegate to handle overlays and custom pin colors/interactions
     val delegate = remember(markers) {
@@ -64,6 +70,14 @@ actual fun SpotMapView(
             mapView
         },
         update = { view ->
+            val newCameraTarget = Triple(latitude, longitude, zoomLevel)
+            if (newCameraTarget != lastCameraTarget) {
+                lastCameraTarget = newCameraTarget
+                val meters = 100000.0 / (zoomLevel * zoomLevel)
+                val region = MKCoordinateRegionMakeWithDistance(coordinate, meters, meters)
+                view.setRegion(region, animated = true)
+            }
+
             // Clear existing annotations and overlays
             view.removeAnnotations(view.annotations)
             view.removeOverlays(view.overlays)

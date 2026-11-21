@@ -62,7 +62,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -84,9 +83,9 @@ import net.maiatoday.tagspotter.core.a2ui.engine.KmpA2UIEngine
 import net.maiatoday.tagspotter.core.database.ChatSession
 import net.maiatoday.tagspotter.core.database.epochMillis
 import net.maiatoday.tagspotter.core.ui.MapMarker
-import net.maiatoday.tagspotter.core.ui.SpotMapView
 import net.maiatoday.tagspotter.core.ui.image.ZoomableImageOverlay
 import net.maiatoday.tagspotter.core.ui.image.formatImageModel
+import net.maiatoday.tagspotter.feature.map.MapScreen
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -266,11 +265,12 @@ fun TagAlongScreenContent(
                         .fillMaxHeight()
                 ) {
                     MapPane(
-                        latitude = uiState.mapCenterLat,
-                        longitude = uiState.mapCenterLng,
+                        latitude = if (uiState.hasExplicitMapFocus) uiState.mapCenterLat else null,
+                        longitude = if (uiState.hasExplicitMapFocus) uiState.mapCenterLng else null,
                         zoomLevel = uiState.mapZoom,
                         focusedTitle = uiState.focusedTitle,
-                        markers = uiState.mapMarkers
+                        extraMarkers = uiState.mapMarkers,
+                        onSpotClick = { spotId -> onOpenSpotDetail?.invoke(spotId) }
                     )
                 }
             }
@@ -769,15 +769,14 @@ private fun ChatMessageItem(
 
 @Composable
 private fun MapPane(
-    latitude: Double,
-    longitude: Double,
+    latitude: Double?,
+    longitude: Double?,
     zoomLevel: Double,
     focusedTitle: String,
-    markers: List<MapMarker>,
+    extraMarkers: List<MapMarker>,
+    onSpotClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val useDarkMap = MaterialTheme.colorScheme.background.luminance() < 0.5f
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -797,7 +796,7 @@ private fun MapPane(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "LIVE URBAN MAP",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -810,33 +809,36 @@ private fun MapPane(
                     )
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
-                ) {
-                    Text(
-                        text = "${(latitude * 1000).toInt() / 1000.0}, ${(longitude * 1000).toInt() / 1000.0}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                    )
+                if (latitude != null && longitude != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
+                    ) {
+                        Text(
+                            text = "${(latitude * 1000).toInt() / 1000.0}, ${(longitude * 1000).toInt() / 1000.0}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
         }
 
-        // Live Map Container
+        // Live Map Container reusing MapScreen (with filter chips and selected spot detail card)
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            SpotMapView(
-                latitude = latitude,
-                longitude = longitude,
+            MapScreen(
+                onSpotClick = onSpotClick,
+                initialLatitude = latitude,
+                initialLongitude = longitude,
                 zoomLevel = zoomLevel,
-                markers = markers,
-                useDarkMap = useDarkMap,
+                extraMarkers = extraMarkers,
+                applyStatusBarInsets = false,
                 modifier = Modifier.fillMaxSize()
             )
         }

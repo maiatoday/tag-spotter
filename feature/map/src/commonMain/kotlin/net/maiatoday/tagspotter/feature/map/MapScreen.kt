@@ -63,6 +63,7 @@ import net.maiatoday.tagspotter.feature.map.res.MapRes
 import net.maiatoday.tagspotter.feature.map.res.stringResource
 import net.maiatoday.tagspotter.feature.map.res.formatImageModel
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.abs
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -71,6 +72,9 @@ fun MapScreen(
     modifier: Modifier = Modifier,
     initialLatitude: Double? = null,
     initialLongitude: Double? = null,
+    zoomLevel: Double = 14.0,
+    extraMarkers: List<MapMarker> = emptyList(),
+    applyStatusBarInsets: Boolean = true,
     viewModel: MapViewModel = koinViewModel()
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
@@ -88,12 +92,14 @@ fun MapScreen(
     val isSystemDark = isSystemInDarkTheme()
     val useDarkMap = isSystemDark && darkMapEnabled
 
-    StatusBarAppearanceEffect(darkIcons = !useDarkMap)
+    if (applyStatusBarInsets) {
+        StatusBarAppearanceEffect(darkIcons = !useDarkMap)
+    }
 
     var showFilterBottomSheet by remember { mutableStateOf(false) }
 
-    // Map spots to MapMarkers
-    val markers = spots.map { spotDetails ->
+    // Map DB spots to MapMarkers and append any non-duplicate extra markers (e.g. A2UI tour stops / suggestions)
+    val dbMarkers = spots.map { spotDetails ->
         MapMarker(
             id = spotDetails.spot.id,
             latitude = spotDetails.spot.latitude,
@@ -107,6 +113,12 @@ fun MapScreen(
             }
         )
     }
+    val additionalMarkers = extraMarkers.filter { extra ->
+        dbMarkers.none { db ->
+            abs(db.latitude - extra.latitude) < 1e-5 && abs(db.longitude - extra.longitude) < 1e-5
+        }
+    }
+    val markers = dbMarkers + additionalMarkers
 
     val initialCenterState = if (initialLatitude != null && initialLongitude != null) {
         MapPoint(initialLatitude, initialLongitude)
@@ -123,7 +135,7 @@ fun MapScreen(
             SpotMapView(
                 latitude = initialCenterState.latitude,
                 longitude = initialCenterState.longitude,
-                zoomLevel = 14.0,
+                zoomLevel = zoomLevel,
                 markers = markers,
                 useDarkMap = useDarkMap,
                 modifier = Modifier.fillMaxSize(),
@@ -143,7 +155,7 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .statusBarsPadding()
+                .then(if (applyStatusBarInsets) Modifier.statusBarsPadding() else Modifier)
                 .padding(top = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)

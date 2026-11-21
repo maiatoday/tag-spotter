@@ -69,8 +69,9 @@ data class TagAlongUiState(
     val offlineMessage: String? = null,
     val mapCenterLat: Double = 52.4972,
     val mapCenterLng: Double = 13.2415,
+    val hasExplicitMapFocus: Boolean = false,
     val mapZoom: Double = 14.0,
-    val focusedTitle: String = "Teufelsberg Street Art",
+    val focusedTitle: String = "Nearby Street Art",
     val mapMarkers: List<MapMarker> = emptyList(),
     val inputText: String = "",
     val attachedPhotoUri: String? = null
@@ -102,8 +103,7 @@ class TagAlongViewModel(
 
     private val _uiState = MutableStateFlow(
         TagAlongUiState(
-            sessionId = initialSessionId,
-            mapMarkers = defaultBerlinMarkers()
+            sessionId = initialSessionId
         )
     )
     val uiState: StateFlow<TagAlongUiState> = _uiState.asStateFlow()
@@ -356,35 +356,12 @@ class TagAlongViewModel(
         if (locationProvider != null) {
             try {
                 val loc = locationProvider.getCurrentLocation()
-                if (loc != null) {
-                    _uiState.update { it.copy(mapCenterLat = loc.latitude, mapCenterLng = loc.longitude) }
-                }
-            } catch (_: Exception) {}
-        }
-
-        if (hybridSpotRepository != null) {
-            try {
-                val spots = hybridSpotRepository.getAllSpots()
-                if (spots.isNotEmpty()) {
-                    val markers = spots.mapIndexed { index, s ->
-                        MapMarker(
-                            id = (index + 1).toLong(),
-                            latitude = s.spot.latitude,
-                            longitude = s.spot.longitude,
-                            category = s.spot.category.ifBlank { "Mural" },
-                            status = if (s.spot.isPublic) "Public" else "Saved",
-                            title = s.spot.description.lines().firstOrNull()?.trim()?.take(30)?.ifBlank { "Mural #${index + 1}" } ?: "Mural #${index + 1}",
-                            isStarred = s.spot.isStarred,
-                            onClick = {}
-                        )
-                    }
-                    _uiState.update { state ->
-                        val first = spots.first()
-                        state.copy(
-                            mapMarkers = markers,
-                            mapCenterLat = if (locationProvider == null) first.spot.latitude else state.mapCenterLat,
-                            mapCenterLng = if (locationProvider == null) first.spot.longitude else state.mapCenterLng,
-                            focusedTitle = first.spot.description.lines().firstOrNull()?.trim()?.take(30) ?: state.focusedTitle
+                if (loc != null && (loc.latitude != 0.0 || loc.longitude != 0.0)) {
+                    _uiState.update {
+                        it.copy(
+                            mapCenterLat = loc.latitude,
+                            mapCenterLng = loc.longitude,
+                            hasExplicitMapFocus = true
                         )
                     }
                 }
@@ -408,7 +385,8 @@ class TagAlongViewModel(
                         _uiState.update {
                             it.copy(
                                 mapCenterLat = photoLat,
-                                mapCenterLng = photoLon
+                                mapCenterLng = photoLon,
+                                hasExplicitMapFocus = true
                             )
                         }
                     }
@@ -750,6 +728,7 @@ class TagAlongViewModel(
                         state.copy(
                             mapCenterLat = action.latitude,
                             mapCenterLng = action.longitude,
+                            hasExplicitMapFocus = true,
                             focusedTitle = action.title,
                             mapMarkers = markers
                         )
@@ -762,6 +741,7 @@ class TagAlongViewModel(
                     state.copy(
                         mapCenterLat = action.latitude,
                         mapCenterLng = action.longitude,
+                        hasExplicitMapFocus = true,
                         focusedTitle = "Stop #${action.stopIndex}: ${action.title}"
                     )
                 }
@@ -861,7 +841,14 @@ class TagAlongViewModel(
                             ?: action.context["lon"]?.toString()?.toDoubleOrNull() ?: 0.0
                         val title = (action.context["title"] as? String) ?: "Selected Spot"
                         if (lat != 0.0 || lng != 0.0) {
-                            _uiState.update { it.copy(mapCenterLat = lat, mapCenterLng = lng, focusedTitle = title) }
+                            _uiState.update {
+                                it.copy(
+                                    mapCenterLat = lat,
+                                    mapCenterLng = lng,
+                                    hasExplicitMapFocus = true,
+                                    focusedTitle = title
+                                )
+                            }
                             _navigationEvents.tryEmit(TagAlongNavEvent.ViewOnMainMap(lat, lng))
                         }
                     }
@@ -977,6 +964,7 @@ class TagAlongViewModel(
                                     state.copy(
                                         mapCenterLat = lat,
                                         mapCenterLng = lon,
+                                        hasExplicitMapFocus = true,
                                         focusedTitle = title,
                                         mapMarkers = markers
                                     )
@@ -1374,6 +1362,7 @@ class TagAlongViewModel(
                                 state.copy(
                                     mapCenterLat = lat,
                                     mapCenterLng = lon,
+                                    hasExplicitMapFocus = true,
                                     focusedTitle = title,
                                     mapMarkers = markers
                                 )
@@ -1424,6 +1413,7 @@ class TagAlongViewModel(
                                 state.copy(
                                     mapCenterLat = if (firstLat != 0.0) firstLat else state.mapCenterLat,
                                     mapCenterLng = if (firstLon != 0.0) firstLon else state.mapCenterLng,
+                                    hasExplicitMapFocus = (firstLat != 0.0 || firstLon != 0.0) || state.hasExplicitMapFocus,
                                     focusedTitle = "$tourTitle (Stop #1: $firstTitle)",
                                     mapMarkers = markers
                                 )
@@ -1472,6 +1462,7 @@ class TagAlongViewModel(
                             state.copy(
                                 mapCenterLat = if (centerLat != 0.0) centerLat else state.mapCenterLat,
                                 mapCenterLng = if (centerLon != 0.0) centerLon else state.mapCenterLng,
+                                hasExplicitMapFocus = (centerLat != 0.0 || centerLon != 0.0) || state.hasExplicitMapFocus,
                                 mapZoom = zoom,
                                 focusedTitle = overlayTitle,
                                 mapMarkers = markers
@@ -1508,38 +1499,5 @@ class TagAlongViewModel(
         const val ADK_USER_ID = "tagalong-user"
         private const val DEFAULT_WELCOME_TEXT =
             "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
-
-        fun defaultBerlinMarkers(): List<MapMarker> = listOf(
-            MapMarker(
-                id = 1L,
-                latitude = 52.4972,
-                longitude = 13.2415,
-                category = "Mural",
-                status = "Public",
-                title = "Cosmic Chameleon (Teufelsberg)",
-                isStarred = true,
-                onClick = {}
-            ),
-            MapMarker(
-                id = 2L,
-                latitude = 52.5251,
-                longitude = 13.4021,
-                category = "Stencil",
-                status = "Public",
-                title = "The Cyber Samurai (Mitte)",
-                isStarred = false,
-                onClick = {}
-            ),
-            MapMarker(
-                id = 3L,
-                latitude = 52.5015,
-                longitude = 13.4190,
-                category = "Mural",
-                status = "Public",
-                title = "Astronaut Cosmonaut (Kreuzberg)",
-                isStarred = true,
-                onClick = {}
-            )
-        )
     }
 }

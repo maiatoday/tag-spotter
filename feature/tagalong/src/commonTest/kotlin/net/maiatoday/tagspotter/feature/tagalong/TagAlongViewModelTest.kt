@@ -311,6 +311,8 @@ class TagAlongViewModelTest {
         )
         advanceUntilIdle()
 
+        assertFalse(viewModel.uiState.value.hasExplicitMapFocus)
+
         // 1. ViewOnMap action
         viewModel.handleAction(
             A2UIAction.ViewOnMap(
@@ -319,6 +321,7 @@ class TagAlongViewModelTest {
                 title = "Rosenthaler Mural"
             )
         )
+        assertTrue(viewModel.uiState.value.hasExplicitMapFocus)
         assertEquals(52.5300, viewModel.uiState.value.mapCenterLat)
         assertEquals(13.4100, viewModel.uiState.value.mapCenterLng)
         assertEquals("Rosenthaler Mural", viewModel.uiState.value.focusedTitle)
@@ -337,9 +340,9 @@ class TagAlongViewModelTest {
         assertEquals("Stop #3: Urban Spree", viewModel.uiState.value.focusedTitle)
 
         // 3. StarSpot action
-        val initialStarred = viewModel.uiState.value.mapMarkers.first { it.title.contains("Cosmic Chameleon") }.isStarred
-        viewModel.handleAction(A2UIAction.StarSpot("Cosmic Chameleon"))
-        val toggledStarred = viewModel.uiState.value.mapMarkers.first { it.title.contains("Cosmic Chameleon") }.isStarred
+        val initialStarred = viewModel.uiState.value.mapMarkers.first { it.title.contains("Rosenthaler Mural") }.isStarred
+        viewModel.handleAction(A2UIAction.StarSpot("Rosenthaler Mural"))
+        val toggledStarred = viewModel.uiState.value.mapMarkers.first { it.title.contains("Rosenthaler Mural") }.isStarred
         assertEquals(!initialStarred, toggledStarred)
 
         // 4. AnswerQuiz action
