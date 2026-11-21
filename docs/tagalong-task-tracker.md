@@ -244,8 +244,8 @@ flowchart LR
 
 - [x] **`androidApp/google-services.json`:** Present in workspace.
 - [x] **Desktop Firebase Sync Properties (`firebase.api.key`, `firebase.project.id`, `firebase.storage.bucket`):** Present in root `local.properties`.
-- [ ] **`[PROMPT USER — Gate M1]` Desktop Gemini API Key (`gemini.api.key`):** Currently **missing** from `local.properties`. Prompt user to add `gemini.api.key=<KEY>` to root `local.properties`, export `GEMINI_API_KEY`, or enter it in **Settings → Gemini API Key** in the Desktop app before live Desktop chat testing.
-- [ ] **`[PROMPT USER — Gate M2]` Firebase Console AI Logic & `gemini-4-hydrogen` Model Check:** Prompt user to confirm **Firebase AI Logic** is enabled in Firebase Console and that `gemini-4-hydrogen` is available for the project (or provide an alternate model ID if needed).
-- [ ] **`[PROMPT USER — Gate M3]` Android Firebase App Check Debug Token (`firebase.appcheck.debug_token`):** Currently **missing** from `local.properties`. Prompt user to register the debug secret UUID in **Firebase Console → App Check → Apps (`net.maiatoday.tagspotter`) → Manage debug tokens** and add `firebase.appcheck.debug_token=<UUID>` to root `local.properties` before live Android debug chat testing.
-- [ ] **`[PROMPT USER — Gate M4]` Deploy Firestore & Storage Rules (`/public_spots`):** Prompt user to confirm whether `firestore.rules` and `storage.rules` have been deployed (`firebase deploy --only firestore:rules,storage`) before testing live community `/public_spots` sharing/discovery.
+- [x] **`[PROMPT USER — Gate M1]` Desktop Gemini API Key (`gemini.api.key`):** Present in root `local.properties` (verified).
+- [x] **`[PROMPT USER — Gate M2]` Firebase Console AI Logic & `gemini-4-hydrogen` Model Check:** Verified via `gcloud` (`firebasevertexai.googleapis.com`, `generativelanguage.googleapis.com`, `aiplatform.googleapis.com` enabled on `tagspotter-d58b1`) and Gemini API (`gemini-4-hydrogen` accessible).
+- [x] **`[PROMPT USER — Gate M3]` Android Firebase App Check Debug Token (`firebase.appcheck.debug_token`):** Present in root `local.properties` (verified).
+- [x] **`[PROMPT USER — Gate M4]` Deploy Firestore & Storage Rules (`/public_spots`):** Deployed `firestore.rules` and `storage.rules` to `tagspotter-d58b1` via `firebase-tools`.
 - [ ] **`[PROMPT USER — Gate M5]` Android Runtime Permissions & Emulator Mock GPS:** Prompt user to grant **Location** and **Photos & media location** permissions on the device/emulator (and set mock GPS coordinates if testing on an emulator).
