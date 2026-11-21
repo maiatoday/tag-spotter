@@ -149,7 +149,7 @@ flowchart LR
 | :---: | :--- | :--- | :--- | :--- | :---: | :--- |
 | ✅ | **Step 4.1** | Retire `:tagalongApp:*`, Integrate Tab & Single `SpotDatabase` | `:feature:main`, Apps | Phase 3 | Sequential | `./gradlew :feature:main:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
 | ✅ | **Step 4.2** | Shared UI Primitives Consolidation & 1-Tap Save UI | `:core:ui`, `:feature:detail` | Step 4.1 | 🔀 *Parallel with 4.3* | `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Passed ✅) |
-| 🟡 | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines & Fixture Parity | `:core:a2ui`, `:feature:tagalong` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Unwired `A2uiFunction` callbacks, `MapPinOverlayWidget` name mismatch & quiz/vote action format) |
+| ✅ | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines & Fixture Parity | `:core:a2ui`, `:feature:tagalong` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Passed ✅) |
 | 🟡 | **Step 4.4** | ADK `staticInstruction`, Schema Injection, Event Filter & API Keys | `:core:agent`, `:feature:tagalong`, Apps | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Schema not passed; `staticInstruction` required; `../local.properties` & dynamic Settings API key) |
 | 🟡 | **Step 4.5** | Theme-Aware Colors, Markdown Formatting & Desktop DB Fix | `:core:settings`, `:core:database`, `:core:ui`, `:feature:tagalong` | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests` (`TagAlongScreen` & Neon cards hardcode dark colors; raw `**markdown**` text) |
 | 🟡 | **Step 4.6** | 1-Tap Spot Saving, Navigation Bridge (`uuid` → `Long`), Permissions & `ClientEvent`s | `:core:agent`, `:feature:tagalong`, `:androidApp` | Step 4.4 | 🔀 *Parallel with 4.5* | `./gradlew :core:agent:allTests :feature:tagalong:allTests :core:sync:allTests` (Inline surfaces bypass `onViewOnMainMap`/`onOpenSpotDetail`; `uuid.toLongOrNull()` fails; `ACCESS_MEDIA_LOCATION` missing) |
@@ -178,16 +178,16 @@ flowchart LR
     - [x] Refactor `DetailMetadataCard.kt` and `GalleryScreen.kt` to use `NeonTagChip` and `NeonCategoryBadge`.
     - [x] Add `isSaved: Boolean = false` and `onSaveSpot: (() -> Unit)? = null` to `NeonSpotCard` so users have a 1-tap **"Save Spot"** / **"✓ Saved"** button on discovered spots (updating `/spot/isSaved` in the reactive data model).
 
-- [ ] **Step 4.3: Replace Hand-Rolled A2UI with Hybrid `androidx.a2ui` & `a2ui-4k` Engines (`:core:a2ui`)**
+- [x] **Step 4.3: Replace Hand-Rolled A2UI with Hybrid `androidx.a2ui` & `a2ui-4k` Engines (`:core:a2ui`)**
   - **Goal:** Delete all hand-rolled A2UI parsing/routing code and implement both real A2UI libraries side-by-side with full schema/action parity.
   - **Work Items:**
     - [x] Add `a2ui-4k = { module = "com.contextable:a2ui-4k", version = "0.10.0" }` to `gradle/libs.versions.toml` and `commonMain` of `:core:a2ui/build.gradle.kts` (alongside `androidx.a2ui:*:1.0.0-alpha02` in `androidMain`).
     - [x] Delete `A2UIPayloadParser.kt`, `A2UIComponents.kt`, and `NeonA2UICatalog.kt`.
     - [x] Implement `JetpackHybridCatalog` & `JetpackA2UIEngine` (`androidMain`) and `KmpHybridCatalog` & `KmpA2UIEngine` (`commonMain`).
-    - [ ] **Missing (`JetpackA2UIEngine` Callbacks):** Wire `onFocusMap` and `onOpenSpotDetail` lambdas in `JetpackA2UIEngine` when constructing `createJetpackHybridCatalog` so local `A2uiFunction` calls emit `A2UIAction.ViewOnMap` / `A2UIAction.OpenSpotDetail` via `emitAction(...)` instead of being silent no-ops.
-    - [ ] **Missing (`SpotCard` Catalog Wrappers):** Bind `isSaved` (`{"path": "/spot/isSaved"}`) and `onSaveSpot` (`save_spot` event) in both `SpotCardA2uiComponent` (`JetpackHybridCatalog.kt`) and `spotCardItem` (`KmpHybridCatalog.kt`).
-    - [ ] **Missing (`MapPinOverlay` Name Mismatch):** `TagAlongMockFixtures.MAP_OVERLAY_JSON` uses `"type": "MapPinOverlayWidget"`, whereas both catalogs register `"MapPinOverlay"`. Update the fixture to `"MapPinOverlay"` and normalize `"MapPinOverlayWidget"` → `"MapPinOverlay"` in both engines so LLM variations render cleanly.
-    - [ ] **Missing (Quiz & Voting Fixture Action & Property Parity):** `QUIZ_SAMPLE_JSON` and `VOTING_SAMPLE_JSON` in `TagAlongMockFixtures.kt` use `"action": {"functionCall": {"call": "clientEvent", ...}}`, which fails in `androidx.a2ui` (expects `"action": {"event": {"name": "...", "context": {...}}}`). Align `Button` actions, `ChoicePicker` `options`/`value`, and `Text` `variant` across both engines and test **all 6 valid fixtures** in both `KmpA2UIEngineTest` and `JetpackA2UIEngineTest` (Robolectric).
+    - [x] Wire `onFocusMap` and `onOpenSpotDetail` lambdas in `JetpackA2UIEngine` when constructing `createJetpackHybridCatalog` so local `A2uiFunction` calls emit `A2UIAction.ViewOnMap` / `A2UIAction.OpenSpotDetail` via `emitAction(...)`.
+    - [x] Bind `isSaved` (`{"path": "/spot/isSaved"}`) and `onSaveSpot` (`save_spot` event) in both `SpotCardA2uiComponent` (`JetpackHybridCatalog.kt`) and `spotCardItem` (`KmpHybridCatalog.kt`).
+    - [x] Update `TagAlongMockFixtures.MAP_OVERLAY_JSON` to `"MapPinOverlay"` and normalize `"MapPinOverlayWidget"` → `"MapPinOverlay"` in both engines.
+    - [x] Align `Button` actions, `ChoicePicker` `options`/`value`, and `Text` `variant` across both engines and test all 6 valid fixtures in both `KmpA2UIEngineTest` and `JetpackA2UIEngineTest`.
 
 - [ ] **Step 4.4: Wire Agent Prompts to `toJsonSchemaString()`, Fix ADK `staticInstruction`, Photo Bytes & API Keys**
   - **Goal:** Feed library-generated catalog JSON Schema safely into Google ADK `LlmAgent`, filter streaming/tool events, send real image bytes, and resolve platform credentials cleanly.

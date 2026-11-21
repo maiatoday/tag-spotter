@@ -20,7 +20,8 @@ object TagAlongMockFixtures {
                 "title": "Cosmic Chameleon",
                 "artist": "AeroFlux",
                 "imageUrl": "https://picsum.photos/seed/teufelsberg/800/500",
-                "isStarred": false
+                "isStarred": false,
+                "isSaved": false
               }
             }
           },
@@ -41,7 +42,8 @@ object TagAlongMockFixtures {
                     "distanceMeters": 180.0,
                     "latitude": 52.4972,
                     "longitude": 13.2415,
-                    "isStarred": {"path": "/spot/isStarred"}
+                    "isStarred": {"path": "/spot/isStarred"},
+                    "isSaved": {"path": "/spot/isSaved"}
                   }
                 }
               ]
@@ -222,7 +224,7 @@ object TagAlongMockFixtures {
                   "type": "Text",
                   "properties": {
                     "text": "Style Quiz: Street Art Techniques",
-                    "variant": "H3"
+                    "variant": "h3"
                   }
                 },
                 {
@@ -230,7 +232,7 @@ object TagAlongMockFixtures {
                   "type": "Text",
                   "properties": {
                     "text": "Which visual hallmark identifies this artwork as a 'Wheatpaste' rather than a pure stencil?",
-                    "variant": "Body"
+                    "variant": "body"
                   }
                 },
                 {
@@ -238,9 +240,9 @@ object TagAlongMockFixtures {
                   "type": "ChoicePicker",
                   "properties": {
                     "options": [
-                      {"id": "opt-1", "label": "Paper wrinkling and layered adhesion edges"},
-                      {"id": "opt-2", "label": "Overspray halo and crisp masking tape marks"},
-                      {"id": "opt-3", "label": "High-gloss protective resin varnish"}
+                      {"value": "opt-1", "label": "Paper wrinkling and layered adhesion edges"},
+                      {"value": "opt-2", "label": "Overspray halo and crisp masking tape marks"},
+                      {"value": "opt-3", "label": "High-gloss protective resin varnish"}
                     ],
                     "value": {"path": "/selectedOption"}
                   }
@@ -251,10 +253,9 @@ object TagAlongMockFixtures {
                   "properties": {
                     "child": "btn_label",
                     "action": {
-                      "functionCall": {
-                        "call": "clientEvent",
-                        "args": {
-                          "name": "answer_quiz",
+                      "event": {
+                        "name": "answer_quiz",
+                        "context": {
                           "quizId": "quiz-berlin-styles-01",
                           "selectedOption": {"path": "/selectedOption"}
                         }
@@ -308,7 +309,7 @@ object TagAlongMockFixtures {
                   "type": "Text",
                   "properties": {
                     "text": "Community Wall Preservation",
-                    "variant": "H3"
+                    "variant": "h3"
                   }
                 },
                 {
@@ -316,7 +317,7 @@ object TagAlongMockFixtures {
                   "type": "Text",
                   "properties": {
                     "text": "Should the RAW-Gelände 'Phoenix Wall' be sealed with anti-graffiti clearcoat or kept open for fresh tags?",
-                    "variant": "Body"
+                    "variant": "body"
                   }
                 },
                 {
@@ -324,9 +325,9 @@ object TagAlongMockFixtures {
                   "type": "ChoicePicker",
                   "properties": {
                     "options": [
-                      {"id": "preserve", "label": "Preserve Phoenix Wall (Seal it)"},
-                      {"id": "keep-open", "label": "Keep it Open (Freedom to repaint)"},
-                      {"id": "community-vote", "label": "Host a local artist jam instead"}
+                      {"value": "preserve", "label": "Preserve Phoenix Wall (Seal it)"},
+                      {"value": "keep-open", "label": "Keep it Open (Freedom to repaint)"},
+                      {"value": "community-vote", "label": "Host a local artist jam instead"}
                     ],
                     "value": {"path": "/selectedOption"}
                   }
@@ -337,10 +338,9 @@ object TagAlongMockFixtures {
                   "properties": {
                     "child": "v_btn_label",
                     "action": {
-                      "functionCall": {
-                        "call": "clientEvent",
-                        "args": {
-                          "name": "vote_option",
+                      "event": {
+                        "name": "vote_option",
+                        "context": {
                           "pollId": "poll-wall-curation-01",
                           "selectedOption": {"path": "/selectedOption"}
                         }
@@ -377,7 +377,7 @@ object TagAlongMockFixtures {
               "components": [
                 {
                   "id": "root",
-                  "type": "MapPinOverlayWidget",
+                  "type": "MapPinOverlay",
                   "properties": {
                     "title": "Kreuzberg Neon Cluster",
                     "centerLatitude": 52.4990,

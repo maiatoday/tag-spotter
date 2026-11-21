@@ -117,7 +117,7 @@ fun createJetpackHybridCatalog(
     val customFunctions = listOf(focusMapFunction, openSpotDetailFunction)
 
     return A2uiCatalog(
-        catalogId = JETPACK_HYBRID_CATALOG_ID,
+        catalogId = catalogId,
         components = basicCatalog.components + customComponents,
         functions = basicCatalog.functions + customFunctions,
         isInline = true
@@ -131,16 +131,18 @@ object SpotCardA2uiComponent : A2uiComponent {
     val spotIdProp = A2uiProperty.string("spotId", description = "Unique ID of the spot")
     val titleProp = A2uiProperty.dynamicString("title", required = true, description = "Title of the spot")
     val artistProp = A2uiProperty.dynamicString("artist", description = "Artist name")
+    val categoryProp = A2uiProperty.dynamicString("category", description = "Spot category (e.g. graffiti, sculpture)")
     val imageUrlProp = A2uiProperty.dynamicString("imageUrl", description = "Spot photo URL")
     val tagsProp = A2uiProperty.stringList("tags", description = "List of tags")
     val distanceMetersProp = A2uiProperty.dynamicNumber("distanceMeters", description = "Distance in meters")
     val latitudeProp = A2uiProperty.dynamicNumber("latitude", description = "Latitude")
     val longitudeProp = A2uiProperty.dynamicNumber("longitude", description = "Longitude")
     val isStarredProp = A2uiProperty.dynamicBoolean("isStarred", description = "Whether spot is starred")
+    val isSavedProp = A2uiProperty.dynamicBoolean("isSaved", description = "Whether spot is saved to local collection")
 
     override val properties: List<A2uiProperty<*>> = listOf(
-        spotIdProp, titleProp, artistProp, imageUrlProp, tagsProp,
-        distanceMetersProp, latitudeProp, longitudeProp, isStarredProp
+        spotIdProp, titleProp, artistProp, categoryProp, imageUrlProp, tagsProp,
+        distanceMetersProp, latitudeProp, longitudeProp, isStarredProp, isSavedProp
     )
 
     @Composable
@@ -148,6 +150,7 @@ object SpotCardA2uiComponent : A2uiComponent {
         val title = properties.bind(titleProp) ?: ""
         val spotId = properties[spotIdProp] ?: ""
         val artist = properties.bind(artistProp)
+        val category = properties.bind(categoryProp) ?: "graffiti"
         val imageUrl = properties.bind(imageUrlProp)
         val tags = properties[tagsProp] ?: emptyList()
         val distanceMeters = properties.bind(distanceMetersProp)?.toDouble()
@@ -155,6 +158,8 @@ object SpotCardA2uiComponent : A2uiComponent {
         val longitude = properties.bind(longitudeProp)?.toDouble()
         val isStarred = properties.bind(isStarredProp) ?: false
         val starUpdater = properties.bindUpdater(isStarredProp)
+        val isSaved = properties.bind(isSavedProp) ?: false
+        val savedUpdater = properties.bindUpdater(isSavedProp)
 
         NeonSpotCard(
             title = title,
@@ -176,6 +181,28 @@ object SpotCardA2uiComponent : A2uiComponent {
                                 "spotId" to spotId,
                                 "isStarred" to !isStarred
                             )
+                        )
+                    )
+                )
+            },
+            isSaved = isSaved,
+            onSaveSpot = {
+                savedUpdater?.invoke(true)
+                val contextMap = buildMap<String, Any> {
+                    put("spotId", spotId)
+                    put("title", title)
+                    if (!artist.isNullOrBlank()) put("artist", artist)
+                    put("category", category)
+                    if (latitude != null) put("latitude", latitude)
+                    if (longitude != null) put("longitude", longitude)
+                    if (!imageUrl.isNullOrBlank()) put("imageUrl", imageUrl)
+                    put("tags", tags)
+                }
+                dispatchAction(
+                    mapOf(
+                        "event" to mapOf(
+                            "name" to "save_spot",
+                            "context" to contextMap
                         )
                     )
                 )

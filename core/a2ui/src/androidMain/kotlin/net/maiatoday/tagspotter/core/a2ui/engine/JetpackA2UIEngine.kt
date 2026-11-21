@@ -28,11 +28,14 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIEngineType
@@ -43,22 +46,42 @@ import net.maiatoday.tagspotter.core.a2ui.A2UIRendererEngine
  */
 class JetpackA2UIEngine(
     context: Context? = null,
-    val catalog: A2uiCatalog = createJetpackHybridCatalog(context),
+    catalog: A2uiCatalog? = null,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) : A2UIRendererEngine {
 
     override val engineType: A2UIEngineType = A2UIEngineType.ANDROIDX_JETPACK_OFFICIAL
 
+    private val _manualActions = MutableSharedFlow<A2UIAction>(extraBufferCapacity = 64)
+
+    private val onFocusMapCallback: (Double, Double, String?) -> Unit = { lat, lon, title ->
+        emitAction(A2UIAction.ViewOnMap(lat, lon, title ?: ""))
+    }
+    private val onOpenSpotDetailCallback: (String) -> Unit = { spotId ->
+        emitAction(A2UIAction.OpenSpotDetail(spotId))
+    }
+
+    val catalog: A2uiCatalog = catalog ?: createJetpackHybridCatalog(
+        context = context,
+        catalogId = JETPACK_HYBRID_CATALOG_ID,
+        onFocusMap = onFocusMapCallback,
+        onOpenSpotDetail = onOpenSpotDetailCallback
+    )
+
     val processor: androidx.a2ui.model.processor.A2uiMessageProcessor =
         A2uiMessageProcessor(
             listOf(
-                catalog,
-                createJetpackHybridCatalog(context, catalogId = JETPACK_HYBRID_CATALOG_URI)
+                this.catalog,
+                createJetpackHybridCatalog(
+                    context = context,
+                    catalogId = JETPACK_HYBRID_CATALOG_URI,
+                    onFocusMap = onFocusMapCallback,
+                    onOpenSpotDetail = onOpenSpotDetailCallback
+                )
             )
         )
 
     private val parser = A2uiMessageParser()
-    private val _manualActions = MutableSharedFlow<A2UIAction>(extraBufferCapacity = 64)
     private var loopJob: Job? = null
 
     init {
@@ -102,6 +125,13 @@ class JetpackA2UIEngine(
             Json.parseToJsonElement(json)
         } catch (e: Exception) {
             logError("Failed to parse JSON element", e)
+            emitAction(
+                A2UIAction.ClientError(
+                    code = "PARSE_ERROR",
+                    surfaceId = "",
+                    message = e.message ?: "Failed to parse A2UI JSON payload"
+                )
+            )
             return emptyList()
         }
 
@@ -127,6 +157,13 @@ class JetpackA2UIEngine(
                 }
             } catch (e: Exception) {
                 logError("Failed to parse/process envelope: $normalizedEnvelope", e)
+                emitAction(
+                    A2UIAction.ClientError(
+                        code = "PARSE_ERROR",
+                        surfaceId = "",
+                        message = e.message ?: "Failed to parse/process A2UI envelope"
+                    )
+                )
             }
         }
 
@@ -204,26 +241,98 @@ class JetpackA2UIEngine(
     }
 
     private fun normalizeComponent(comp: JsonObject): JsonObject {
+        val rawType = (comp["component"] ?: comp["type"])?.jsonPrimitive?.contentOrNull
+        val normalizedType = rawType?.let { normalizeComponentType(it) }
+        val mergedProps = linkedMapOf<String, JsonElement>()
+
+        // Flatten properties if present
+        val props = comp["properties"]
+        if (props is JsonObject) {
+            for ((pk, pv) in props) {
+                mergedProps[pk] = pv
+            }
+        }
+
+        // Copy any top-level properties other than id, component, type, properties
+        for ((ck, cv) in comp) {
+            if (ck != "id" && ck != "component" && ck != "type" && ck != "properties") {
+                mergedProps[ck] = cv
+            }
+        }
+
         return buildJsonObject {
-            val componentType = comp["component"] ?: comp["type"]
             val id = comp["id"]
             if (id != null) put("id", id)
-            if (componentType != null) put("component", componentType)
-
-            // Flatten properties if present
-            val props = comp["properties"]
-            if (props is JsonObject) {
-                for ((pk, pv) in props) {
-                    put(pk, pv)
-                }
+            if (normalizedType != null) {
+                put("component", JsonPrimitive(normalizedType))
+            } else {
+                val componentType = comp["component"] ?: comp["type"]
+                if (componentType != null) put("component", componentType)
             }
 
-            // Copy any top-level properties other than id, component, type, properties
-            for ((ck, cv) in comp) {
-                if (ck != "id" && ck != "component" && ck != "type" && ck != "properties") {
-                    put(ck, cv)
+            for ((pk, pv) in mergedProps) {
+                put(pk, normalizeComponentProperty(normalizedType, pk, pv))
+            }
+        }
+    }
+
+    private fun normalizeComponentType(type: String): String = when (type) {
+        "MapPinOverlayWidget", "NeonMapPinOverlayWidget" -> "MapPinOverlay"
+        else -> type
+    }
+
+    private fun normalizeComponentProperty(
+        componentType: String?,
+        key: String,
+        value: JsonElement
+    ): JsonElement {
+        return when {
+            componentType == "Text" && key == "variant" && value is JsonPrimitive && value.isString -> {
+                JsonPrimitive(value.content.lowercase())
+            }
+            componentType == "ChoicePicker" && key == "options" && value is JsonArray -> {
+                buildJsonArray {
+                    for (item in value) {
+                        if (item is JsonObject) {
+                            add(buildJsonObject {
+                                for ((ok, ov) in item) {
+                                    if (ok == "id" && !item.containsKey("value")) {
+                                        put("value", ov)
+                                    } else {
+                                        put(ok, ov)
+                                    }
+                                }
+                            })
+                        } else {
+                            add(item)
+                        }
+                    }
                 }
             }
+            componentType == "Button" && key == "action" && value is JsonObject -> {
+                normalizeAction(value)
+            }
+            else -> value
+        }
+    }
+
+    private fun normalizeAction(action: JsonObject): JsonObject {
+        val fnCall = action["functionCall"] as? JsonObject ?: return action
+        val callName = fnCall["call"]?.jsonPrimitive?.contentOrNull
+        if (callName != "clientEvent") return action
+        val args = fnCall["args"] as? JsonObject ?: return action
+        val eventName = args["name"]?.jsonPrimitive?.contentOrNull ?: return action
+        return buildJsonObject {
+            put("event", buildJsonObject {
+                put("name", JsonPrimitive(eventName))
+                put("context", buildJsonObject {
+                    for ((k, v) in args) {
+                        if (k != "name") {
+                            put(k, v)
+                        }
+                    }
+                })
+            })
         }
     }
 
@@ -266,12 +375,20 @@ class JetpackA2UIEngine(
                         }
                         "vote_option" -> {
                             val pollId = msg.context["pollId"]?.toString() ?: ""
-                            val optionId = msg.context["optionId"]?.toString() ?: ""
+                            val rawOption = msg.context["optionId"] ?: msg.context["selectedOption"]
+                            val optionId = when (rawOption) {
+                                is List<*> -> rawOption.firstOrNull()?.toString() ?: ""
+                                else -> rawOption?.toString() ?: ""
+                            }
                             A2UIAction.VoteOption(pollId, optionId)
                         }
                         "answer_quiz" -> {
                             val quizId = msg.context["quizId"]?.toString() ?: ""
-                            val optionId = msg.context["optionId"]?.toString() ?: ""
+                            val rawOption = msg.context["optionId"] ?: msg.context["selectedOption"]
+                            val optionId = when (rawOption) {
+                                is List<*> -> rawOption.firstOrNull()?.toString() ?: ""
+                                else -> rawOption?.toString() ?: ""
+                            }
                             val isCorrect = (msg.context["isCorrect"] as? Boolean) ?: false
                             A2UIAction.AnswerQuiz(quizId, optionId, isCorrect)
                         }

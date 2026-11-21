@@ -21,6 +21,7 @@ class TagAlongMockFixturesTest {
         assertNotNull(dataModel)
         assertEquals("Cosmic Chameleon", dataModel.getString("/spot/title"))
         assertEquals("AeroFlux", dataModel.getString("/spot/artist"))
+        assertEquals(false, dataModel.getBoolean("/spot/isSaved"))
     }
 
     @Test
@@ -82,6 +83,7 @@ class TagAlongMockFixturesTest {
         val surface = engine.stateManager.getSurface("map-surface-1")
         assertNotNull(surface)
         assertTrue(surface.components.containsKey("root"))
+        assertEquals("MapPinOverlay", surface.components["root"]?.widgetType)
     }
 
     @Test

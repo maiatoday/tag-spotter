@@ -43,12 +43,14 @@ fun createKmpHybridCatalog(): Catalog {
             val title = data["title"].asString(dataContext) ?: ""
             val spotId = data["spotId"].asString(dataContext) ?: componentId
             val artist = data["artist"].asString(dataContext)
+            val category = data["category"].asString(dataContext) ?: "graffiti"
             val imageUrl = data["imageUrl"].asString(dataContext)
             val tags = data["tags"].asStringList(dataContext) ?: emptyList()
             val distanceMeters = data["distanceMeters"].asDouble(dataContext)
             val latitude = data["latitude"].asDouble(dataContext)
             val longitude = data["longitude"].asDouble(dataContext)
             val isStarred = data["isStarred"].asBoolean(dataContext) ?: false
+            val isSaved = data["isSaved"].asBoolean(dataContext) ?: false
 
             NeonSpotCard(
                 title = title,
@@ -74,6 +76,31 @@ fun createKmpHybridCatalog(): Catalog {
                             context = buildJsonObject {
                                 put("spotId", spotId)
                                 put("isStarred", !isStarred)
+                            }
+                        )
+                    )
+                },
+                isSaved = isSaved,
+                onSaveSpot = {
+                    val path = data["isSaved"].asPath()
+                    if (path != null) {
+                        dataContext.update(path, true)
+                    }
+                    onEvent(
+                        ActionEvent(
+                            name = "save_spot",
+                            surfaceId = "",
+                            sourceComponentId = componentId,
+                            timestamp = "",
+                            context = buildJsonObject {
+                                put("spotId", spotId)
+                                put("title", title)
+                                if (!artist.isNullOrBlank()) put("artist", artist)
+                                put("category", category)
+                                if (latitude != null) put("latitude", latitude)
+                                if (longitude != null) put("longitude", longitude)
+                                if (!imageUrl.isNullOrBlank()) put("imageUrl", imageUrl)
+                                put("tags", JsonArray(tags.map { JsonPrimitive(it) }))
                             }
                         )
                     )

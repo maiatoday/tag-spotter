@@ -23,6 +23,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -30,6 +31,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import net.maiatoday.tagspotter.core.a2ui.A2UIAction
 import net.maiatoday.tagspotter.core.a2ui.A2UIEngineType
@@ -147,20 +149,30 @@ class KmpA2UIEngine : A2UIRendererEngine {
             if (uc != null && componentsArray != null) {
                 val normalizedComponents = JsonArray(componentsArray.map { elem ->
                     if (elem is JsonObject) {
-                        val compType = elem["component"]?.jsonPrimitive?.contentOrNull
+                        val rawCompType = elem["component"]?.jsonPrimitive?.contentOrNull
                             ?: elem["type"]?.jsonPrimitive?.contentOrNull
                             ?: "Box"
+                        val compType = normalizeComponentType(rawCompType)
                         val props = elem["properties"]?.jsonObject
 
-                        buildJsonObject {
-                            for ((k, v) in elem) {
-                                put(k, v)
+                        val mergedProps = linkedMapOf<String, JsonElement>()
+                        if (props != null) {
+                            for ((pk, pv) in props) {
+                                mergedProps[pk] = pv
                             }
+                        }
+                        for ((k, v) in elem) {
+                            if (k != "id" && k != "component" && k != "type" && k != "properties") {
+                                mergedProps[k] = v
+                            }
+                        }
+
+                        buildJsonObject {
+                            val id = elem["id"]
+                            if (id != null) put("id", id)
                             put("component", compType)
-                            if (props != null) {
-                                for ((pk, pv) in props) {
-                                    put(pk, pv)
-                                }
+                            for ((pk, pv) in mergedProps) {
+                                put(pk, normalizeComponentProperty(compType, pk, pv))
                             }
                         }
                     } else {
@@ -191,6 +203,66 @@ class KmpA2UIEngine : A2UIRendererEngine {
         }
 
         return current
+    }
+
+    private fun normalizeComponentType(type: String): String = when (type) {
+        "MapPinOverlayWidget", "NeonMapPinOverlayWidget" -> "MapPinOverlay"
+        else -> type
+    }
+
+    private fun normalizeComponentProperty(
+        componentType: String,
+        key: String,
+        value: JsonElement
+    ): JsonElement {
+        return when {
+            componentType == "Text" && key == "variant" && value is JsonPrimitive && value.isString -> {
+                JsonPrimitive(value.content.lowercase())
+            }
+            componentType == "ChoicePicker" && key == "options" && value is JsonArray -> {
+                buildJsonArray {
+                    for (item in value) {
+                        if (item is JsonObject) {
+                            add(buildJsonObject {
+                                for ((ok, ov) in item) {
+                                    if (ok == "id" && !item.containsKey("value")) {
+                                        put("value", ov)
+                                    } else {
+                                        put(ok, ov)
+                                    }
+                                }
+                            })
+                        } else {
+                            add(item)
+                        }
+                    }
+                }
+            }
+            componentType == "Button" && key == "action" && value is JsonObject -> {
+                normalizeAction(value)
+            }
+            else -> value
+        }
+    }
+
+    private fun normalizeAction(action: JsonObject): JsonObject {
+        val fnCall = action["functionCall"] as? JsonObject ?: return action
+        val callName = fnCall["call"]?.jsonPrimitive?.contentOrNull
+        if (callName != "clientEvent") return action
+        val args = fnCall["args"] as? JsonObject ?: return action
+        val eventName = args["name"]?.jsonPrimitive?.contentOrNull ?: return action
+        return buildJsonObject {
+            put("event", buildJsonObject {
+                put("name", JsonPrimitive(eventName))
+                put("context", buildJsonObject {
+                    for ((k, v) in args) {
+                        if (k != "name") {
+                            put(k, v)
+                        }
+                    }
+                })
+            })
+        }
     }
 
     private fun extractSurfaceId(obj: JsonObject): String? {
@@ -303,19 +375,19 @@ class KmpA2UIEngine : A2UIRendererEngine {
                     }
                     "answer_quiz" -> {
                         val quizId = ctx["quizId"]?.jsonPrimitive?.contentOrNull ?: ""
-                        val optionId = ctx["optionId"]?.jsonPrimitive?.contentOrNull ?: ""
+                        val optionId = extractOptionId(ctx["optionId"] ?: ctx["selectedOption"])
                         val isCorrect = ctx["isCorrect"]?.jsonPrimitive?.booleanOrNull ?: false
                         A2UIAction.AnswerQuiz(quizId, optionId, isCorrect)
                     }
                     "vote_option" -> {
                         val pollId = ctx["pollId"]?.jsonPrimitive?.contentOrNull ?: ""
-                        val optionId = ctx["optionId"]?.jsonPrimitive?.contentOrNull ?: ""
+                        val optionId = extractOptionId(ctx["optionId"] ?: ctx["selectedOption"])
                         A2UIAction.VoteOption(pollId, optionId)
                     }
                     else -> {
                         val map = mutableMapOf<String, Any?>()
                         for ((k, v) in ctx) {
-                            map[k] = v.jsonPrimitive.contentOrNull
+                            map[k] = v.toNativeValue()
                         }
                         A2UIAction.ClientEvent(name = event.name, surfaceId = effectiveSurfaceId, context = map)
                     }
@@ -338,6 +410,22 @@ class KmpA2UIEngine : A2UIRendererEngine {
             is DataChangeEvent -> null
         }
     }
+
+    private fun extractOptionId(element: JsonElement?): String = when (element) {
+        is JsonPrimitive -> element.contentOrNull ?: ""
+        is JsonArray -> element.firstOrNull()?.jsonPrimitive?.contentOrNull ?: ""
+        else -> ""
+    }
+}
+
+internal fun JsonElement.toNativeValue(): Any? = when (this) {
+    is JsonNull -> null
+    is JsonPrimitive -> when {
+        isString -> content
+        else -> booleanOrNull ?: longOrNull ?: doubleOrNull ?: contentOrNull
+    }
+    is JsonArray -> map { it.toNativeValue() }
+    is JsonObject -> entries.associate { (k, v) -> k to v.toNativeValue() }
 }
 
 internal fun Any?.toJsonElement(): JsonElement {
