@@ -6,16 +6,23 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.BookmarkAdded
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -27,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.ui.chips.NeonTagChip
@@ -49,6 +57,8 @@ fun NeonSpotCard(
     longitude: Double? = null,
     isStarred: Boolean = false,
     onStarToggle: () -> Unit = {},
+    isSaved: Boolean = false,
+    onSaveSpot: (() -> Unit)? = null,
     onViewOnMap: (latitude: Double, longitude: Double, title: String) -> Unit = { _, _, _ -> },
     onCardClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -135,41 +145,139 @@ fun NeonSpotCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onStarToggle,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = if (isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.onSurface
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.outline
-                    )
+            val viewOnMapClick = {
+                onViewOnMap(
+                    latitude ?: 0.0,
+                    longitude ?: 0.0,
+                    title
+                )
+            }
+
+            if (onSaveSpot != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(if (isStarred) "★ Starred" else "☆ Star")
+                    SpotStarButton(
+                        isStarred = isStarred,
+                        onClick = onStarToggle,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SpotSaveButton(
+                        isSaved = isSaved,
+                        onClick = onSaveSpot,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
-                Button(
-                    onClick = {
-                        onViewOnMap(
-                            latitude ?: 0.0,
-                            longitude ?: 0.0,
-                            title
-                        )
-                    },
-                    modifier = Modifier.weight(1.5f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkPrimaryContainer,
-                        contentColor = Color.Black
-                    )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SpotViewOnMapButton(
+                    onClick = viewOnMapClick,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("View on Map", fontWeight = FontWeight.Bold)
+                    SpotStarButton(
+                        isStarred = isStarred,
+                        onClick = onStarToggle,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SpotViewOnMapButton(
+                        onClick = viewOnMapClick,
+                        modifier = Modifier.weight(1.5f)
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SpotStarButton(
+    isStarred: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = if (isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.onSurface
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (isStarred) DarkSecondaryContainer else MaterialTheme.colorScheme.outline
+        )
+    ) {
+        Text(
+            text = if (isStarred) "★ Starred" else "☆ Star",
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SpotSaveButton(
+    isSaved: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val saveAccent = MaterialTheme.colorScheme.tertiaryContainer
+    OutlinedButton(
+        onClick = onClick,
+        enabled = !isSaved,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            disabledContainerColor = saveAccent.copy(alpha = 0.2f),
+            disabledContentColor = saveAccent
+        ),
+        border = BorderStroke(1.dp, saveAccent)
+    ) {
+        Icon(
+            imageVector = if (isSaved) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = if (isSaved) "✓ Saved" else "Save Spot",
+            fontWeight = if (isSaved) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SpotViewOnMapButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = DarkPrimaryContainer,
+            contentColor = Color.Black
+        )
+    ) {
+        Text(
+            text = "View on Map",
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

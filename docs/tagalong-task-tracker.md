@@ -148,7 +148,7 @@ flowchart LR
 | Status | Step ID | Task Name | Module | Prerequisite | Parallel? | Verification Command |
 | :---: | :--- | :--- | :--- | :--- | :---: | :--- |
 | ✅ | **Step 4.1** | Retire `:tagalongApp:*`, Integrate Tab & Single `SpotDatabase` | `:feature:main`, Apps | Phase 3 | Sequential | `./gradlew :feature:main:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
-| 🟡 | **Step 4.2** | Shared UI Primitives Consolidation & 1-Tap Save UI | `:core:ui`, `:feature:detail` | Step 4.1 | 🔀 *Parallel with 4.3* | `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Missing `isSaved`/`onSaveSpot` on `NeonSpotCard`) |
+| ✅ | **Step 4.2** | Shared UI Primitives Consolidation & 1-Tap Save UI | `:core:ui`, `:feature:detail` | Step 4.1 | 🔀 *Parallel with 4.3* | `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Passed ✅) |
 | 🟡 | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines & Fixture Parity | `:core:a2ui`, `:feature:tagalong` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Unwired `A2uiFunction` callbacks, `MapPinOverlayWidget` name mismatch & quiz/vote action format) |
 | 🟡 | **Step 4.4** | ADK `staticInstruction`, Schema Injection, Event Filter & API Keys | `:core:agent`, `:feature:tagalong`, Apps | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Schema not passed; `staticInstruction` required; `../local.properties` & dynamic Settings API key) |
 | 🟡 | **Step 4.5** | Theme-Aware Colors, Markdown Formatting & Desktop DB Fix | `:core:settings`, `:core:database`, `:core:ui`, `:feature:tagalong` | Step 4.4 | 🔀 *Parallel with 4.6* | `./gradlew :core:database:allTests :core:settings:allTests :feature:tagalong:allTests` (`TagAlongScreen` & Neon cards hardcode dark colors; raw `**markdown**` text) |
@@ -169,14 +169,14 @@ flowchart LR
     - [x] Delegate `TagSpotterApplication.database`, `repository`, and `settingsRepository` to Koin (`GlobalContext.get().get()`) so Room's invalidation tracker is shared across the entire process.
     - [x] Delete leftover `tagalongApp/` build directories on disk.
 
-- [ ] **Step 4.2: Shared UI Primitives & Stateless Card Consolidation (`:core:ui`)**
+- [x] **Step 4.2: Shared UI Primitives & Stateless Card Consolidation (`:core:ui`)**
   - **Goal:** Move all reusable Compose UI components into `:core:ui` as stateless, library-agnostic composables shared between Tag Spotter mode, TagAlong mode, `androidx.a2ui`, and `a2ui-4k`.
   - **Work Items:**
     - [x] Move `ZoomableImageOverlay.kt` from `:feature:detail` to `:core:ui/src/commonMain/.../image/`.
     - [x] Create `NeonTagChip` and `NeonCategoryBadge` in `:core:ui/src/commonMain/.../chips/` using `CategoryExtensions.kt`.
     - [x] Move 4 custom domain composables (`NeonSpotCard`, `NeonTourCard`, `NeonArtistBioCard`, `NeonMapPinOverlayWidget`) from `:core:a2ui` into `:core:ui/src/commonMain/.../components/`, refactored to take pure primitive parameters and event lambdas.
     - [x] Refactor `DetailMetadataCard.kt` and `GalleryScreen.kt` to use `NeonTagChip` and `NeonCategoryBadge`.
-    - [ ] **Missing:** Add `isSaved: Boolean = false` and `onSaveSpot: (() -> Unit)? = null` to `NeonSpotCard` so users have a 1-tap **"Save Spot"** / **"✓ Saved"** button on discovered spots (updating `/spot/isSaved` in the reactive data model).
+    - [x] Add `isSaved: Boolean = false` and `onSaveSpot: (() -> Unit)? = null` to `NeonSpotCard` so users have a 1-tap **"Save Spot"** / **"✓ Saved"** button on discovered spots (updating `/spot/isSaved` in the reactive data model).
 
 - [ ] **Step 4.3: Replace Hand-Rolled A2UI with Hybrid `androidx.a2ui` & `a2ui-4k` Engines (`:core:a2ui`)**
   - **Goal:** Delete all hand-rolled A2UI parsing/routing code and implement both real A2UI libraries side-by-side with full schema/action parity.
