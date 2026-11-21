@@ -19,10 +19,10 @@ flowchart LR
     P3 --> P4[Phase 4: Consolidation & A2UI Hybrid<br><b>In Progress - Gaps Identified</b>]
 ```
 
-- **Current Active Phase:** **Phase 4 Remediation Complete (Awaiting Manual Config Gates M1–M5 for Live Smoke Testing)**
+- **Current Active Phase:** **Phase 4 Complete (All Steps & Manual Config Gates M1–M5 Verified)**
 - **Total Tasks:** Phase 1 (5) + Gate + Phase 3 (6) + Phase 4 (8)
 - **TagAlong Target Platforms:** Android + Desktop (JVM)
-- **Status:** 🟢 Phase 1–4 Code & Regression Gate Complete | 🟡 Manual Config Gates M1–M5 Pending User Confirmation
+- **Status:** 🟢 Phase 1–4 Complete & All Manual Config Gates M1–M5 Verified
 
 ---
 
@@ -248,4 +248,4 @@ flowchart LR
 - [x] **`[PROMPT USER — Gate M2]` Firebase Console AI Logic & `gemini-4-hydrogen` Model Check:** Verified via `gcloud` (`firebasevertexai.googleapis.com`, `generativelanguage.googleapis.com`, `aiplatform.googleapis.com` enabled on `tagspotter-d58b1`) and Gemini API (`gemini-4-hydrogen` accessible).
 - [x] **`[PROMPT USER — Gate M3]` Android Firebase App Check Debug Token (`firebase.appcheck.debug_token`):** Present in root `local.properties` (verified).
 - [x] **`[PROMPT USER — Gate M4]` Deploy Firestore & Storage Rules (`/public_spots`):** Deployed `firestore.rules` and `storage.rules` to `tagspotter-d58b1` via `firebase-tools`.
-- [ ] **`[PROMPT USER — Gate M5]` Android Runtime Permissions & Emulator Mock GPS:** Prompt user to grant **Location** and **Photos & media location** permissions on the device/emulator (and set mock GPS coordinates if testing on an emulator).
+- [x] **`[PROMPT USER — Gate M5]` Android Runtime Permissions & Emulator Mock GPS:** Launched `Pixel_9_Play` (`emulator-5554`), installed `:androidApp:installDebug`, granted Location + Media Location permissions via `adb`, set mock GPS (`52.5251, 13.4021`), and launched `tagspotter://tagalong`.
