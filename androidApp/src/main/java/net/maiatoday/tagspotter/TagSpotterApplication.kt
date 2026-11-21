@@ -1,11 +1,9 @@
 package net.maiatoday.tagspotter
 
 import android.app.Application
-import net.maiatoday.tagspotter.core.database.LocalSpotRepository
-import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.database.SpotDatabase
-import net.maiatoday.tagspotter.core.database.getDatabaseBuilder
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import net.maiatoday.tagspotter.core.database.SpotRepository
+import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.di.secretsModule
 import net.maiatoday.tagspotter.di.androidAiModule
 import com.google.firebase.Firebase
@@ -23,8 +21,6 @@ import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
 import org.osmdroid.config.Configuration
 
-import net.maiatoday.tagspotter.core.photo.AndroidPhotoProcessor
-
 val androidAgentModule = module {
     single<Runner> {
         createAndroidTagAlongRunner(
@@ -36,17 +32,14 @@ val androidAgentModule = module {
 
 open class TagSpotterApplication : Application() {
 
-    // Database and repository singletons for dependency injection
-    open val database: SpotDatabase by lazy { 
-        getDatabaseBuilder(this)
-            .setDriver(BundledSQLiteDriver())
-            .fallbackToDestructiveMigration(true)
-            .build() 
-    }
-    open val repository: LocalSpotRepository by lazy { LocalSpotRepository(database.spotDao(), AndroidPhotoProcessor(this)) }
-    open val settingsRepository: SettingsRepository by lazy { 
-        GlobalContext.get().get()
-    }
+    // Database and repository singletons delegated to Koin so ImportPackWorker,
+    // Gallery, and TagAlong share the exact same SpotDatabase instance.
+    open val database: SpotDatabase
+        get() = GlobalContext.get().get()
+    open val repository: SpotRepository
+        get() = GlobalContext.get().get()
+    open val settingsRepository: SettingsRepository
+        get() = GlobalContext.get().get()
 
     override fun onCreate() {
         super.onCreate()

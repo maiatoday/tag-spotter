@@ -147,7 +147,7 @@ flowchart LR
 
 | Status | Step ID | Task Name | Module | Prerequisite | Parallel? | Verification Command |
 | :---: | :--- | :--- | :--- | :--- | :---: | :--- |
-| 🟡 | **Step 4.1** | Retire `:tagalongApp:*`, Integrate Tab & Single `SpotDatabase` | `:feature:main`, Apps | Phase 3 | Sequential | `./gradlew :feature:main:allTests :androidApp:assembleDebug :desktopApp:assemble` (Duplicate `SpotDatabase` in `TagSpotterApplication` & leftover `tagalongApp/` dir) |
+| ✅ | **Step 4.1** | Retire `:tagalongApp:*`, Integrate Tab & Single `SpotDatabase` | `:feature:main`, Apps | Phase 3 | Sequential | `./gradlew :feature:main:allTests :androidApp:assembleDebug :desktopApp:assemble` (Passed ✅) |
 | 🟡 | **Step 4.2** | Shared UI Primitives Consolidation & 1-Tap Save UI | `:core:ui`, `:feature:detail` | Step 4.1 | 🔀 *Parallel with 4.3* | `./gradlew :core:ui:allTests :feature:detail:allTests :feature:gallery:allTests` (Missing `isSaved`/`onSaveSpot` on `NeonSpotCard`) |
 | 🟡 | **Step 4.3** | Hybrid `androidx.a2ui` & `a2ui-4k` Engines & Fixture Parity | `:core:a2ui`, `:feature:tagalong` | Step 4.1 | 🔀 *Parallel with 4.2* | `./gradlew :core:a2ui:allTests :feature:tagalong:allTests` (Unwired `A2uiFunction` callbacks, `MapPinOverlayWidget` name mismatch & quiz/vote action format) |
 | 🟡 | **Step 4.4** | ADK `staticInstruction`, Schema Injection, Event Filter & API Keys | `:core:agent`, `:feature:tagalong`, Apps | Steps 4.2, 4.3 | Sequential | `./gradlew :core:agent:allTests :feature:tagalong:allTests` (Schema not passed; `staticInstruction` required; `../local.properties` & dynamic Settings API key) |
@@ -158,7 +158,7 @@ flowchart LR
 
 ### Detailed Phase 4 Checklist & Remaining Work Items:
 
-- [ ] **Step 4.1: Retire `:tagalongApp:*`, Integrate TagAlong Tab & Unify `SpotDatabase`**
+- [x] **Step 4.1: Retire `:tagalongApp:*`, Integrate TagAlong Tab & Unify `SpotDatabase`**
   - **Goal:** Consolidate TagAlong into the main Tag Spotter app on Android and Desktop so both modes share **one single `SpotDatabase` instance**, one photo storage directory, and one Firebase App Check configuration.
   - **Work Items:**
     - [x] Add `Tab.TagAlong` and an optional `tagAlongContent` composable slot to `MainContainer` and `MainNavigation` in `:feature:main` (`commonMain`), keeping `iOS` and `wasmJs` untouched.
@@ -166,8 +166,8 @@ flowchart LR
     - [x] Remove redundant inner `"Live Map"` `TabRow` on mobile viewports (`< 760.dp`) in `TagAlongScreen.kt`, routing mobile *"View on Map"* actions to `MainContainer`'s `Tab.Map`.
     - [x] Add static Android App Shortcut (`res/xml/shortcuts.xml` for `tagspotter://tagalong`) in `:androidApp`.
     - [x] Remove `:tagalongApp:android` and `:tagalongApp:desktop` from `settings.gradle.kts`.
-    - [ ] **Missing (Duplicate `SpotDatabase` on Android):** `TagSpotterApplication.kt` builds a second `Room.databaseBuilder` instance (`database` / `repository` used by `ImportPackWorker`) alongside Koin's `platformDatabaseModule` (`AndroidSpotDatabase.kt`). Delegate `TagSpotterApplication.database` and `repository` to `GlobalContext.get().get()` so Room's invalidation tracker is shared across the entire process.
-    - [ ] **Missing (Disk Cleanup):** Delete leftover `tagalongApp/` build directories on disk.
+    - [x] Delegate `TagSpotterApplication.database`, `repository`, and `settingsRepository` to Koin (`GlobalContext.get().get()`) so Room's invalidation tracker is shared across the entire process.
+    - [x] Delete leftover `tagalongApp/` build directories on disk.
 
 - [ ] **Step 4.2: Shared UI Primitives & Stateless Card Consolidation (`:core:ui`)**
   - **Goal:** Move all reusable Compose UI components into `:core:ui` as stateless, library-agnostic composables shared between Tag Spotter mode, TagAlong mode, `androidx.a2ui`, and `a2ui-4k`.
