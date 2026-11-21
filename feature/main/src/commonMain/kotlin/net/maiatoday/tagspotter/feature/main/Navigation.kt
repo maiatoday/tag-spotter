@@ -21,6 +21,7 @@ import net.maiatoday.tagspotter.feature.settings.SettingsScreen
 fun MainNavigation(
     initialSpotId: Long? = null,
     initialTab: Tab? = null,
+    initialTabRequestId: Long = 0L,
     onNavigateToSpotHandled: () -> Unit = {},
     onInitialTabHandled: () -> Unit = {},
     onTriggerFiles: (onPhotoPicked: (String) -> Unit) -> Unit,
@@ -58,7 +59,7 @@ fun MainNavigation(
         Main
     )
 
-    LaunchedEffect(initialTab) {
+    LaunchedEffect(initialTab, initialTabRequestId) {
         if (initialTab != null) {
             selectedTab = if (initialTab == Tab.TagAlong && tagAlongContent == null) {
                 Tab.Gallery

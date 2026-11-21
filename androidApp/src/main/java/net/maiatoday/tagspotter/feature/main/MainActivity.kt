@@ -54,6 +54,7 @@ import java.util.UUID
 class MainActivity : ComponentActivity() {
   private var initialSpotId by mutableStateOf<Long?>(null)
   private var initialTab by mutableStateOf<Tab?>(null)
+  private var initialTabRequestId by mutableStateOf(0L)
   private var isInitialTabHandled = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
     }
     isInitialTabHandled = savedInstanceState?.getBoolean(KEY_INITIAL_TAB_HANDLED, false) ?: false
     if (!isInitialTabHandled && isTagAlongIntent(intent)) {
+      initialTabRequestId += 1L
       initialTab = Tab.TagAlong
     }
 
@@ -74,13 +76,17 @@ class MainActivity : ComponentActivity() {
       val themeMode by settingsRepository.themeMode.collectAsStateWithLifecycle()
       MyApplicationTheme(themeMode = themeMode) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+          val currentTabRequestId = initialTabRequestId
           MainActivityContent(
             initialSpotId = initialSpotId,
             initialTab = initialTab,
+            initialTabRequestId = currentTabRequestId,
             onNavigateToSpotHandled = { initialSpotId = null },
             onInitialTabHandled = {
-              initialTab = null
-              isInitialTabHandled = true
+              if (initialTabRequestId == currentTabRequestId) {
+                initialTab = null
+                isInitialTabHandled = true
+              }
             }
           )
         }
@@ -102,6 +108,7 @@ class MainActivity : ComponentActivity() {
     }
     if (isTagAlongIntent(intent)) {
       isInitialTabHandled = false
+      initialTabRequestId += 1L
       initialTab = Tab.TagAlong
     }
   }
@@ -190,6 +197,7 @@ class MainActivity : ComponentActivity() {
 fun MainActivityContent(
     initialSpotId: Long?,
     initialTab: Tab? = null,
+    initialTabRequestId: Long = 0L,
     onNavigateToSpotHandled: () -> Unit,
     onInitialTabHandled: () -> Unit = {},
     viewModel: MainViewModel = koinViewModel()
@@ -309,6 +317,7 @@ fun MainActivityContent(
     MainNavigation(
         initialSpotId = initialSpotId,
         initialTab = initialTab,
+        initialTabRequestId = initialTabRequestId,
         onNavigateToSpotHandled = onNavigateToSpotHandled,
         onInitialTabHandled = onInitialTabHandled,
         onTriggerFiles = triggerFiles,
