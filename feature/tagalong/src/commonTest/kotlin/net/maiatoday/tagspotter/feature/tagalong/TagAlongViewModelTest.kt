@@ -1596,4 +1596,73 @@ class TagAlongViewModelTest {
         )
         assertNull(chatRepo.getSessionById("session-to-delete"))
     }
+
+    @Test
+    fun testInitMapFromSourcesSkipsFallbackLocationAndAppliesFreshFix() = runTest(testDispatcher) {
+        val fallbackProvider = object : LocationProvider {
+            override suspend fun getCurrentLocation(): LocationData =
+                LocationData(latitude = 40.7128, longitude = -74.0060, isFallback = true)
+        }
+        val fallbackVm = TagAlongViewModel(
+            runner = null,
+            chatRepository = FakeChatRepository(),
+            locationProvider = fallbackProvider,
+            initialSessionId = "fallback-loc-session"
+        )
+        advanceUntilIdle()
+
+        assertFalse(fallbackVm.uiState.value.hasExplicitMapFocus)
+
+        val freshProvider = object : LocationProvider {
+            override suspend fun getCurrentLocation(): LocationData =
+                LocationData(latitude = 48.8566, longitude = 2.3522, isFallback = false)
+        }
+        val freshVm = TagAlongViewModel(
+            runner = null,
+            chatRepository = FakeChatRepository(),
+            locationProvider = freshProvider,
+            initialSessionId = "fresh-loc-session"
+        )
+        advanceUntilIdle()
+
+        assertTrue(freshVm.uiState.value.hasExplicitMapFocus)
+        assertEquals(48.8566, freshVm.uiState.value.mapCenterLat, 0.0001)
+        assertEquals(2.3522, freshVm.uiState.value.mapCenterLng, 0.0001)
+    }
+
+    @Test
+    fun testInitialSessionLoadRestoresA2UIMapFocusAndMarkers() = runTest(testDispatcher) {
+        val chatRepo = FakeChatRepository()
+        chatRepo.createOrUpdateSession(
+            ChatSession(sessionId = "saved-map-session", title = "Saved Map", createdAt = 1000L)
+        )
+        chatRepo.insertMessage(
+            ChatMessage(
+                sessionId = "saved-map-session",
+                sender = "agent",
+                text = "Here is Cosmic Chameleon",
+                a2uiPayloadJson = TagAlongMockFixtures.SPOT_DOSSIER_JSON,
+                timestamp = 1001L
+            )
+        )
+
+        val freshProvider = object : LocationProvider {
+            override suspend fun getCurrentLocation(): LocationData =
+                LocationData(latitude = 48.8566, longitude = 2.3522, isFallback = false)
+        }
+        val viewModel = TagAlongViewModel(
+            runner = null,
+            chatRepository = chatRepo,
+            locationProvider = freshProvider,
+            initialSessionId = "saved-map-session"
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.hasExplicitMapFocus)
+        assertEquals(52.4972, state.mapCenterLat, 0.0001)
+        assertEquals(13.2415, state.mapCenterLng, 0.0001)
+        assertEquals("Cosmic Chameleon", state.focusedTitle)
+        assertTrue(state.mapMarkers.any { it.title == "Cosmic Chameleon" })
+    }
 }

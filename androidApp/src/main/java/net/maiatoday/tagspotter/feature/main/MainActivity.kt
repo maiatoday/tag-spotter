@@ -54,6 +54,7 @@ import java.util.UUID
 class MainActivity : ComponentActivity() {
   private var initialSpotId by mutableStateOf<Long?>(null)
   private var initialTab by mutableStateOf<Tab?>(null)
+  private var isInitialTabHandled = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -63,8 +64,8 @@ class MainActivity : ComponentActivity() {
     if (intent.hasExtra("EXTRA_SPOT_ID")) {
       initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
     }
-    if (intent?.data?.toString() == "tagspotter://tagalong" ||
-        intent?.action == "net.maiatoday.tagspotter.action.TAGALONG") {
+    isInitialTabHandled = savedInstanceState?.getBoolean(KEY_INITIAL_TAB_HANDLED, false) ?: false
+    if (!isInitialTabHandled && isTagAlongIntent(intent)) {
       initialTab = Tab.TagAlong
     }
 
@@ -77,11 +78,19 @@ class MainActivity : ComponentActivity() {
             initialSpotId = initialSpotId,
             initialTab = initialTab,
             onNavigateToSpotHandled = { initialSpotId = null },
-            onInitialTabHandled = { initialTab = null }
+            onInitialTabHandled = {
+              initialTab = null
+              isInitialTabHandled = true
+            }
           )
         }
       }
     }
+  }
+
+  override fun onSaveInstanceState(outState: Bundle) {
+    super.onSaveInstanceState(outState)
+    outState.putBoolean(KEY_INITIAL_TAB_HANDLED, isInitialTabHandled)
   }
 
   override fun onNewIntent(intent: Intent) {
@@ -91,10 +100,19 @@ class MainActivity : ComponentActivity() {
     if (intent.hasExtra("EXTRA_SPOT_ID")) {
       initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
     }
-    if (intent.data?.toString() == "tagspotter://tagalong" ||
-        intent.action == "net.maiatoday.tagspotter.action.TAGALONG") {
+    if (isTagAlongIntent(intent)) {
+      isInitialTabHandled = false
       initialTab = Tab.TagAlong
     }
+  }
+
+  private fun isTagAlongIntent(intent: Intent?): Boolean {
+    return intent?.data?.toString() == "tagspotter://tagalong" ||
+      intent?.action == "net.maiatoday.tagspotter.action.TAGALONG"
+  }
+
+  companion object {
+    private const val KEY_INITIAL_TAB_HANDLED = "initial_tab_handled"
   }
 
   private fun getFileName(uri: Uri): String? {

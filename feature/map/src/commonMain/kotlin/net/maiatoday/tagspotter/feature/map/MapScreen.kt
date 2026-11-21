@@ -120,10 +120,12 @@ fun MapScreen(
     }
     val markers = dbMarkers + additionalMarkers
 
+    val latchedFallbackCenter = remember(initialCenter != null) { initialCenter }
+
     val initialCenterState = if (initialLatitude != null && initialLongitude != null) {
         MapPoint(initialLatitude, initialLongitude)
     } else {
-        initialCenter
+        latchedFallbackCenter
     }
 
     Box(
