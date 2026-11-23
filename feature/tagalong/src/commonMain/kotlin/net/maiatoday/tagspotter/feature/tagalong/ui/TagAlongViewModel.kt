@@ -74,7 +74,8 @@ data class TagAlongUiState(
     val focusedTitle: String = "Nearby Street Art",
     val mapMarkers: List<MapMarker> = emptyList(),
     val inputText: String = "",
-    val attachedPhotoUri: String? = null
+    val attachedPhotoUri: String? = null,
+    val isA2uiDebugMode: Boolean = false
 )
 
 sealed interface TagAlongNavEvent {
@@ -141,6 +142,23 @@ class TagAlongViewModel(
         }
 
         reapplyA2UIPayloads(rendererEngine)
+
+        if (_uiState.value.isA2uiDebugMode) {
+            logActiveA2uiSchema(rendererEngine)
+        }
+    }
+
+    fun toggleA2uiDebugMode() {
+        val nextEnabled = !_uiState.value.isA2uiDebugMode
+        _uiState.update { it.copy(isA2uiDebugMode = nextEnabled) }
+        if (nextEnabled) {
+            logActiveA2uiSchema()
+        }
+    }
+
+    fun logActiveA2uiSchema(rendererEngine: A2UIRendererEngine? = engine): String? {
+        val targetEngine = rendererEngine ?: return null
+        return logA2uiSchema(targetEngine)
     }
 
     fun switchEngine(newEngine: A2UIRendererEngine) {

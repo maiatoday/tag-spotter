@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.Button
@@ -93,6 +94,7 @@ import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 fun TagAlongScreen(
     viewModel: TagAlongViewModel = koinViewModel(),
     engine: A2UIRendererEngine? = null,
+    showDebugControls: Boolean = true,
     onPickPhoto: ((onPicked: (String) -> Unit) -> Unit)? = null,
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
@@ -137,6 +139,7 @@ fun TagAlongScreen(
     TagAlongScreenContent(
         uiState = uiState,
         engine = activeEngine,
+        showDebugControls = showDebugControls,
         onToggleEngine = if (availableEngines.size > 1 && engine == null) {
             {
                 currentEngineIndex = (currentEngineIndex + 1) % availableEngines.size
@@ -144,6 +147,8 @@ fun TagAlongScreen(
                 viewModel.switchEngine(nextEngine)
             }
         } else null,
+        onToggleDebugMode = { viewModel.toggleA2uiDebugMode() },
+        onLogSchema = { viewModel.logActiveA2uiSchema(activeEngine) },
         onSendMessage = { viewModel.sendMessage(it) },
         onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
         onAction = { viewModel.handleAction(it) },
@@ -186,7 +191,10 @@ fun TagAlongScreen(
 fun TagAlongScreenContent(
     uiState: TagAlongUiState,
     engine: A2UIRendererEngine,
+    showDebugControls: Boolean = true,
     onToggleEngine: (() -> Unit)? = null,
+    onToggleDebugMode: () -> Unit = {},
+    onLogSchema: () -> Unit = {},
     onSendMessage: (String) -> Unit,
     onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
@@ -202,6 +210,7 @@ fun TagAlongScreenContent(
 ) {
     val listState = rememberLazyListState()
     var zoomedPhotoUri by remember { mutableStateOf<String?>(null) }
+    var showSchemaDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -232,7 +241,15 @@ fun TagAlongScreenContent(
                         messages = uiState.messages,
                         listState = listState,
                         engine = engine,
+                        showDebugControls = showDebugControls,
+                        isA2uiDebugMode = uiState.isA2uiDebugMode,
                         onToggleEngine = onToggleEngine,
+                        onToggleDebugMode = onToggleDebugMode,
+                        onViewSchema = {
+                            onLogSchema()
+                            showSchemaDialog = true
+                        },
+                        onLogSchema = onLogSchema,
                         inputText = uiState.inputText,
                         onInputTextChanged = onInputTextChanged,
                         attachedPhotoUri = uiState.attachedPhotoUri,
@@ -279,7 +296,15 @@ fun TagAlongScreenContent(
                 messages = uiState.messages,
                 listState = listState,
                 engine = engine,
+                showDebugControls = showDebugControls,
+                isA2uiDebugMode = uiState.isA2uiDebugMode,
                 onToggleEngine = onToggleEngine,
+                onToggleDebugMode = onToggleDebugMode,
+                onViewSchema = {
+                    onLogSchema()
+                    showSchemaDialog = true
+                },
+                onLogSchema = onLogSchema,
                 inputText = uiState.inputText,
                 onInputTextChanged = onInputTextChanged,
                 attachedPhotoUri = uiState.attachedPhotoUri,
@@ -310,6 +335,15 @@ fun TagAlongScreenContent(
             )
         }
     }
+    if (showSchemaDialog) {
+        val schemaJson = remember(engine) { engine.getCatalogSchemaJson() }
+        A2uiSchemaDialog(
+            engineTypeName = engine.engineType.name,
+            schemaJson = schemaJson,
+            onLogSchema = onLogSchema,
+            onDismiss = { showSchemaDialog = false }
+        )
+    }
 }
 
 @Composable
@@ -317,7 +351,12 @@ private fun ChatPane(
     messages: List<TagAlongMessage>,
     listState: LazyListState,
     engine: A2UIRendererEngine,
+    showDebugControls: Boolean = true,
+    isA2uiDebugMode: Boolean = false,
     onToggleEngine: (() -> Unit)? = null,
+    onToggleDebugMode: () -> Unit = {},
+    onViewSchema: () -> Unit = {},
+    onLogSchema: () -> Unit = {},
     inputText: String,
     onInputTextChanged: (String) -> Unit,
     attachedPhotoUri: String?,
@@ -406,6 +445,32 @@ private fun ChatPane(
                                 }
                             }
                         }
+                        if (showDebugControls) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            IconButton(
+                                onClick = onToggleDebugMode,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isA2uiDebugMode) {
+                                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.28f)
+                                        } else {
+                                            MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                                        }
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.BugReport,
+                                    contentDescription = if (isA2uiDebugMode) "Disable A2UI Debug" else "Enable A2UI Debug",
+                                    tint = if (isA2uiDebugMode) {
+                                        MaterialTheme.colorScheme.tertiaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.width(6.dp))
                         IconButton(
                             onClick = onOpenHistory,
@@ -467,6 +532,15 @@ private fun ChatPane(
             }
         }
 
+        // Inline A2UI Debug Banner (when debug toggle is ON)
+        if (showDebugControls && isA2uiDebugMode) {
+            A2uiDebugBanner(
+                engineTypeName = engine.engineType.name,
+                onViewSchema = onViewSchema,
+                onLogSchema = onLogSchema
+            )
+        }
+
         // Inline Offline Fallback Banner
         if (isOffline) {
             Surface(
@@ -514,6 +588,7 @@ private fun ChatPane(
                 ChatMessageItem(
                     message = message,
                     engine = engine,
+                    isA2uiDebugMode = showDebugControls && isA2uiDebugMode,
                     onAction = onAction,
                     onPhotoClick = onPhotoClick
                 )
@@ -667,6 +742,7 @@ private fun ChatPane(
 private fun ChatMessageItem(
     message: TagAlongMessage,
     engine: A2UIRendererEngine,
+    isA2uiDebugMode: Boolean = false,
     onAction: (A2UIAction) -> Unit,
     onPhotoClick: (String) -> Unit = {}
 ) {
@@ -753,6 +829,16 @@ private fun ChatMessageItem(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+                if (isA2uiDebugMode && !message.a2uiPayload.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val surfaceJson = remember(message.a2uiPayload, surfaceId) {
+                        extractSurfaceJsonForDebug(message.a2uiPayload, surfaceId)
+                    }
+                    A2uiDebugJsonCard(
+                        label = surfaceId,
+                        rawJson = surfaceJson
+                    )
+                }
             }
         } else if (message.a2uiPayload != null) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -761,6 +847,13 @@ private fun ChatMessageItem(
                     payloadJson = message.a2uiPayload,
                     onAction = onAction,
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (isA2uiDebugMode) {
+                Spacer(modifier = Modifier.height(6.dp))
+                A2uiDebugJsonCard(
+                    label = "payload",
+                    rawJson = message.a2uiPayload
                 )
             }
         }

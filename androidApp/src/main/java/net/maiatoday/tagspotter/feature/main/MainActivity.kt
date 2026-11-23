@@ -40,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.maiatoday.tagspotter.BuildConfig
 import net.maiatoday.tagspotter.R
 import net.maiatoday.tagspotter.core.database.ImportPackWorker
 import net.maiatoday.tagspotter.core.sync.AuthService
@@ -326,6 +327,7 @@ fun MainActivityContent(
         onGoogleSignInClick = googleSignInTrigger,
         tagAlongContent = { onOpenSpotDetail, onViewOnMainMap ->
             TagAlongScreen(
+                showDebugControls = BuildConfig.DEBUG,
                 onOpenSpotDetail = onOpenSpotDetail,
                 onViewOnMainMap = onViewOnMainMap,
                 onPickPhoto = { onPicked ->
