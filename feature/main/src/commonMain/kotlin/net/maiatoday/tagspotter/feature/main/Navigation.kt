@@ -30,8 +30,10 @@ fun MainNavigation(
     onGoogleSignInClick: (() -> Unit)? = null,
     tagAlongContent: (@Composable (
         onOpenSpotDetail: (Long) -> Unit,
-        onViewOnMainMap: (Double, Double) -> Unit
-    ) -> Unit)? = null
+        onViewOnMainMap: (Double, Double) -> Unit,
+        onMenuClick: () -> Unit
+    ) -> Unit)? = null,
+    tagAlongDrawerContent: (@Composable (closeDrawer: () -> Unit) -> Unit)? = null
 ) {
     val defaultTab = if (tagAlongContent != null) Tab.TagAlong else Tab.Gallery
     val resolvedInitialTab = when {
@@ -102,7 +104,8 @@ fun MainNavigation(
                     onTriggerFiles = onTriggerFiles,
                     versionName = versionName,
                     showToast = showToast,
-                    tagAlongContent = tagAlongContent
+                    tagAlongContent = tagAlongContent,
+                    tagAlongDrawerContent = tagAlongDrawerContent
                 )
             }
             entry<DetailKey> { key ->

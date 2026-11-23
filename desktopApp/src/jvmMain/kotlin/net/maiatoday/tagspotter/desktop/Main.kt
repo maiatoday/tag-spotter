@@ -21,8 +21,10 @@ import net.maiatoday.tagspotter.core.ui.theme.MyApplicationTheme
 import net.maiatoday.tagspotter.feature.main.MainNavigation
 import net.maiatoday.tagspotter.feature.main.initKoin
 import net.maiatoday.tagspotter.feature.tagalong.di.tagalongModule
+import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongDrawerSection
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongRunnerProvider
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongScreen
+import net.maiatoday.tagspotter.feature.tagalong.ui.rememberTagAlongMenuState
 import org.koin.dsl.module
 import java.awt.Taskbar
 import java.io.File
@@ -130,6 +132,7 @@ fun main() =
             }
             val themeMode by settingsRepository.themeMode.collectAsState()
             MyApplicationTheme(themeMode = themeMode) {
+                val tagAlongMenuState = rememberTagAlongMenuState()
                 MainNavigation(
                     initialSpotId = null,
                     onNavigateToSpotHandled = {},
@@ -150,8 +153,10 @@ fun main() =
                     },
                     versionName = "1.0.0-desktop",
                     showToast = { println("Toast: $it") },
-                    tagAlongContent = { onOpenSpotDetail, onViewOnMainMap ->
+                    tagAlongContent = { onOpenSpotDetail, onViewOnMainMap, onMenuClick ->
                         TagAlongScreen(
+                            menuState = tagAlongMenuState,
+                            onMenuClick = onMenuClick,
                             onOpenSpotDetail = onOpenSpotDetail,
                             onViewOnMainMap = onViewOnMainMap,
                             onPickPhoto = { onPhotoPicked ->
@@ -168,6 +173,12 @@ fun main() =
                                     onPhotoPicked(selectedFile.toURI().toString())
                                 }
                             }
+                        )
+                    },
+                    tagAlongDrawerContent = { closeDrawer ->
+                        TagAlongDrawerSection(
+                            menuState = tagAlongMenuState,
+                            onCloseDrawer = closeDrawer
                         )
                     }
                 )

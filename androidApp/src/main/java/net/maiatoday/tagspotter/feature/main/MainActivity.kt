@@ -46,7 +46,9 @@ import net.maiatoday.tagspotter.core.database.ImportPackWorker
 import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.core.ui.theme.MyApplicationTheme
+import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongDrawerSection
 import net.maiatoday.tagspotter.feature.tagalong.ui.TagAlongScreen
+import net.maiatoday.tagspotter.feature.tagalong.ui.rememberTagAlongMenuState
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import java.io.File
@@ -315,6 +317,8 @@ fun MainActivityContent(
         Unit
     }
 
+    val tagAlongMenuState = rememberTagAlongMenuState(showDebugControls = BuildConfig.DEBUG)
+
     MainNavigation(
         initialSpotId = initialSpotId,
         initialTab = initialTab,
@@ -325,9 +329,11 @@ fun MainActivityContent(
         versionName = versionName,
         showToast = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() },
         onGoogleSignInClick = googleSignInTrigger,
-        tagAlongContent = { onOpenSpotDetail, onViewOnMainMap ->
+        tagAlongContent = { onOpenSpotDetail, onViewOnMainMap, onMenuClick ->
             TagAlongScreen(
+                menuState = tagAlongMenuState,
                 showDebugControls = BuildConfig.DEBUG,
+                onMenuClick = onMenuClick,
                 onOpenSpotDetail = onOpenSpotDetail,
                 onViewOnMainMap = onViewOnMainMap,
                 onPickPhoto = { onPicked ->
@@ -344,6 +350,12 @@ fun MainActivityContent(
                         pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }
                 }
+            )
+        },
+        tagAlongDrawerContent = { closeDrawer ->
+            TagAlongDrawerSection(
+                menuState = tagAlongMenuState,
+                onCloseDrawer = closeDrawer
             )
         }
     )

@@ -304,7 +304,7 @@ class TagAlongViewModel(
             persistedMessages.forEachIndexed { index, msg ->
                 val isUser = msg.sender == "user"
                 val trimmedText = msg.text.trim()
-                if (!isUser && trimmedText == DEFAULT_WELCOME_TEXT && msg.a2uiPayloadJson.isNullOrBlank()) {
+                if (!isUser && trimmedText in WELCOME_TEXTS && msg.a2uiPayloadJson.isNullOrBlank()) {
                     return@forEachIndexed
                 }
                 val contentText = trimmedText.ifBlank { msg.a2uiPayloadJson?.trim().orEmpty() }
@@ -1528,7 +1528,10 @@ class TagAlongViewModel(
 
     companion object {
         const val ADK_USER_ID = "tagalong-user"
-        private const val DEFAULT_WELCOME_TEXT =
+        private const val LEGACY_WELCOME_TEXT =
             "Hey! I'm **TagAlong**, your Street Art Companion. Ask me for nearby murals, generate a curated walking tour, test your graffiti style knowledge, or select a mock card below!"
+        private const val DEFAULT_WELCOME_TEXT =
+            "Hey! I'm **TagAlong**, your Street Art Companion. Ask me about nearby murals, walking tours, or street art styles."
+        private val WELCOME_TEXTS = setOf(DEFAULT_WELCOME_TEXT, LEGACY_WELCOME_TEXT)
     }
 }

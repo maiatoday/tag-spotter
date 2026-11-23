@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -75,6 +77,7 @@ fun MapScreen(
     zoomLevel: Double = 14.0,
     extraMarkers: List<MapMarker> = emptyList(),
     applyStatusBarInsets: Boolean = true,
+    showFilterControls: Boolean = true,
     viewModel: MapViewModel = koinViewModel()
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
@@ -131,6 +134,7 @@ fun MapScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .clipToBounds()
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (initialCenterState != null) {
@@ -154,6 +158,7 @@ fun MapScreen(
         }
 
         // Floating Top Filter Overlay Controls
+        if (showFilterControls) {
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -439,6 +444,7 @@ fun MapScreen(
             }
         }
     }
+        }
 
         // Overlay Slide-up card for Selected Pin details
         AnimatedVisibility(
@@ -447,6 +453,7 @@ fun MapScreen(
             exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(16.dp)
         ) {
             val spot = selectedSpot

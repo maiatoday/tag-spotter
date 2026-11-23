@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -93,8 +96,10 @@ fun MainContainer(
     modifier: Modifier = Modifier,
     tagAlongContent: (@Composable (
         onOpenSpotDetail: (Long) -> Unit,
-        onViewOnMainMap: (Double, Double) -> Unit
+        onViewOnMainMap: (Double, Double) -> Unit,
+        onMenuClick: () -> Unit
     ) -> Unit)? = null,
+    tagAlongDrawerContent: (@Composable (closeDrawer: () -> Unit) -> Unit)? = null,
     viewModel: MainViewModel = koinViewModel()
 ) {
     var targetMapCenter by remember { mutableStateOf<Pair<Double, Double>?>(null) }
@@ -188,7 +193,11 @@ fun MainContainer(
                         .padding(24.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                    ) {
                         Text(
                             text = "TAGSPOTTER",
                             style = MaterialTheme.typography.titleLarge.copy(
@@ -200,8 +209,21 @@ fun MainContainer(
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                             thickness = 1.dp,
-                            modifier = Modifier.padding(bottom = 24.dp)
+                            modifier = Modifier.padding(bottom = 16.dp)
                         )
+
+                        if (selectedTab == Tab.TagAlong && tagAlongDrawerContent != null) {
+                            tagAlongDrawerContent {
+                                scope.launch {
+                                    drawerState.close()
+                                }
+                            }
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                thickness = 1.dp,
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
+                        }
 
                         Text(
                             text = "DATA & SYNC",
@@ -769,6 +791,7 @@ fun MainContainer(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
+                            .consumeWindowInsets(innerPadding)
                     ) {
                         TabContent(
                             selectedTab = selectedTab,
@@ -837,7 +860,8 @@ private fun TabContent(
     targetMapCenter: Pair<Double, Double>?,
     tagAlongContent: (@Composable (
         onOpenSpotDetail: (Long) -> Unit,
-        onViewOnMainMap: (Double, Double) -> Unit
+        onViewOnMainMap: (Double, Double) -> Unit,
+        onMenuClick: () -> Unit
     ) -> Unit)?,
     onViewOnMainMap: (Double, Double) -> Unit
 ) {
@@ -857,7 +881,7 @@ private fun TabContent(
         )
         Tab.TagAlong -> {
             if (tagAlongContent != null) {
-                tagAlongContent(onSpotClick, onViewOnMainMap)
+                tagAlongContent(onSpotClick, onViewOnMainMap, onMenuClick)
             } else {
                 GalleryScreen(
                     onSpotClick = onSpotClick,

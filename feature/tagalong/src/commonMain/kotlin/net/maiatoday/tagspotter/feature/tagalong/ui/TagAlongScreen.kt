@@ -3,14 +3,17 @@ package net.maiatoday.tagspotter.feature.tagalong.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,16 +21,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -35,21 +40,32 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,6 +79,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -72,6 +90,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -89,27 +108,340 @@ import net.maiatoday.tagspotter.core.ui.image.formatImageModel
 import net.maiatoday.tagspotter.feature.map.MapScreen
 import net.maiatoday.tagspotter.feature.tagalong.fixtures.TagAlongMockFixtures
 
+class TagAlongMenuState internal constructor(
+    val viewModel: TagAlongViewModel,
+    val availableEngines: List<A2UIRendererEngine>,
+    private val forcedEngine: A2UIRendererEngine?,
+    val showDebugControls: Boolean = true
+) {
+    var currentEngineIndex by mutableIntStateOf(0)
+        private set
+
+    var showHistorySheet by mutableStateOf(false)
+    var showSchemaDialog by mutableStateOf(false)
+
+    private val fallbackEngine: A2UIRendererEngine by lazy { KmpA2UIEngine() }
+
+    val activeEngine: A2UIRendererEngine
+        get() = forcedEngine ?: if (availableEngines.isNotEmpty()) {
+            availableEngines[currentEngineIndex % availableEngines.size]
+        } else {
+            fallbackEngine
+        }
+
+    val canToggleEngine: Boolean
+        get() = availableEngines.size > 1 && forcedEngine == null
+
+    fun toggleEngine() {
+        if (!canToggleEngine) return
+        currentEngineIndex = (currentEngineIndex + 1) % availableEngines.size
+        viewModel.switchEngine(activeEngine)
+    }
+
+    fun startNewChat() {
+        viewModel.startNewConversation(activeEngine)
+    }
+
+    fun openHistory() {
+        showHistorySheet = true
+    }
+
+    fun dismissHistory() {
+        showHistorySheet = false
+    }
+
+    fun toggleDebugMode() {
+        viewModel.toggleA2uiDebugMode()
+    }
+
+    fun logActiveSchema() {
+        viewModel.logActiveA2uiSchema(activeEngine)
+    }
+
+    fun openSchemaDialog() {
+        logActiveSchema()
+        showSchemaDialog = true
+    }
+
+    fun dismissSchemaDialog() {
+        showSchemaDialog = false
+    }
+
+    fun selectMockFixture(name: String, json: String) {
+        viewModel.selectMockFixture(name, json)
+    }
+}
+
+@Composable
+fun rememberTagAlongMenuState(
+    viewModel: TagAlongViewModel = koinViewModel(),
+    engine: A2UIRendererEngine? = null,
+    showDebugControls: Boolean = true
+): TagAlongMenuState {
+    val availableEngines = rememberAvailableEngines()
+    return remember(viewModel, availableEngines, engine, showDebugControls) {
+        TagAlongMenuState(
+            viewModel = viewModel,
+            availableEngines = availableEngines,
+            forcedEngine = engine,
+            showDebugControls = showDebugControls
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TagAlongDrawerSection(
+    menuState: TagAlongMenuState,
+    onCloseDrawer: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val uiState by menuState.viewModel.uiState.collectAsState()
+    var showMockCatalog by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = "TAGALONG",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            ),
+            color = Color.Gray,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+
+        NavigationDrawerItem(
+            label = { Text("New Chat", fontWeight = FontWeight.Bold) },
+            selected = false,
+            onClick = {
+                menuState.startNewChat()
+                onCloseDrawer()
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "New Chat",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        NavigationDrawerItem(
+            label = { Text("Chat History", fontWeight = FontWeight.Bold) },
+            selected = false,
+            onClick = {
+                menuState.openHistory()
+                onCloseDrawer()
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "Chat History",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        NavigationDrawerItem(
+            label = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("A2UI Engine", fontWeight = FontWeight.Bold)
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = menuState.activeEngine.engineType.name,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer
+                            )
+                            if (menuState.canToggleEngine) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "⇄",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            selected = false,
+            onClick = {
+                if (menuState.canToggleEngine) {
+                    menuState.toggleEngine()
+                }
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.SwapHoriz,
+                    contentDescription = "Switch A2UI Engine",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        NavigationDrawerItem(
+            label = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("A2UI Mock Catalog", fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = if (showMockCatalog) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (showMockCatalog) "Collapse Mock Catalog" else "Expand Mock Catalog",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            selected = false,
+            onClick = { showMockCatalog = !showMockCatalog },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Science,
+                    contentDescription = "A2UI Mock Catalog",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        if (showMockCatalog) {
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TagAlongMockFixtures.ALL_FIXTURES.forEach { (name, json) ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.background,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                menuState.selectMockFixture(name, json)
+                                onCloseDrawer()
+                            }
+                    ) {
+                        Text(
+                            text = "+ $name",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (menuState.showDebugControls) {
+            NavigationDrawerItem(
+                label = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("A2UI Debug Mode", fontWeight = FontWeight.Bold)
+                        Switch(
+                            checked = uiState.isA2uiDebugMode,
+                            onCheckedChange = { menuState.toggleDebugMode() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                checkedTrackColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+                            )
+                        )
+                    }
+                },
+                selected = false,
+                onClick = { menuState.toggleDebugMode() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.BugReport,
+                        contentDescription = "A2UI Debug Mode",
+                        tint = if (uiState.isA2uiDebugMode) {
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                },
+                colors = NavigationDrawerItemDefaults.colors(
+                    unselectedContainerColor = Color.Transparent
+                )
+            )
+
+            NavigationDrawerItem(
+                label = { Text("View A2UI Schema", fontWeight = FontWeight.Bold) },
+                selected = false,
+                onClick = {
+                    menuState.openSchemaDialog()
+                    onCloseDrawer()
+                },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Code,
+                        contentDescription = "View A2UI Schema",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                colors = NavigationDrawerItemDefaults.colors(
+                    unselectedContainerColor = Color.Transparent
+                )
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagAlongScreen(
     viewModel: TagAlongViewModel = koinViewModel(),
     engine: A2UIRendererEngine? = null,
     showDebugControls: Boolean = true,
+    menuState: TagAlongMenuState = rememberTagAlongMenuState(
+        viewModel = viewModel,
+        engine = engine,
+        showDebugControls = showDebugControls
+    ),
+    onMenuClick: (() -> Unit)? = null,
     onPickPhoto: ((onPicked: (String) -> Unit) -> Unit)? = null,
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val availableEngines = rememberAvailableEngines()
-    var currentEngineIndex by remember { mutableIntStateOf(0) }
-    val activeEngine = engine ?: if (availableEngines.isNotEmpty()) {
-        availableEngines[currentEngineIndex % availableEngines.size]
-    } else {
-        remember { KmpA2UIEngine() }
-    }
+    val activeViewModel = menuState.viewModel
+    val activeEngine = menuState.activeEngine
+    val effectiveShowDebugControls = showDebugControls && menuState.showDebugControls
 
     LaunchedEffect(activeEngine) {
-        viewModel.attachEngine(activeEngine)
+        activeViewModel.attachEngine(activeEngine)
     }
 
     var isWideLayout by remember { mutableStateOf(false) }
@@ -117,8 +449,8 @@ fun TagAlongScreen(
     val currentOnOpenSpotDetail by rememberUpdatedState(onOpenSpotDetail)
     val currentOnViewOnMainMap by rememberUpdatedState(onViewOnMainMap)
 
-    LaunchedEffect(viewModel) {
-        viewModel.navigationEvents.collect { event ->
+    LaunchedEffect(activeViewModel) {
+        activeViewModel.navigationEvents.collect { event ->
             when (event) {
                 is TagAlongNavEvent.OpenSpotDetail -> {
                     currentOnOpenSpotDetail?.invoke(event.spotId)
@@ -132,57 +464,59 @@ fun TagAlongScreen(
         }
     }
 
-    val uiState by viewModel.uiState.collectAsState()
-    val allSessions by viewModel.allSessions.collectAsState()
-    var showHistorySheet by remember { mutableStateOf(false) }
+    val uiState by activeViewModel.uiState.collectAsState()
+    val allSessions by activeViewModel.allSessions.collectAsState()
 
     TagAlongScreenContent(
         uiState = uiState,
         engine = activeEngine,
-        showDebugControls = showDebugControls,
-        onToggleEngine = if (availableEngines.size > 1 && engine == null) {
-            {
-                currentEngineIndex = (currentEngineIndex + 1) % availableEngines.size
-                val nextEngine = availableEngines[currentEngineIndex]
-                viewModel.switchEngine(nextEngine)
-            }
-        } else null,
-        onToggleDebugMode = { viewModel.toggleA2uiDebugMode() },
-        onLogSchema = { viewModel.logActiveA2uiSchema(activeEngine) },
-        onSendMessage = { viewModel.sendMessage(it) },
-        onSelectMockFixture = { name, json -> viewModel.selectMockFixture(name, json) },
-        onAction = { viewModel.handleAction(it) },
-        onInputTextChanged = { viewModel.onInputTextChanged(it) },
-        onClearPhoto = { viewModel.onClearPhoto() },
+        showDebugControls = effectiveShowDebugControls,
+        onMenuClick = onMenuClick,
+        onNewChat = { menuState.startNewChat() },
+        onToggleDebugMode = { menuState.toggleDebugMode() },
+        onViewSchema = { menuState.openSchemaDialog() },
+        onLogSchema = { menuState.logActiveSchema() },
+        onSendMessage = { activeViewModel.sendMessage(it) },
+        onAction = { activeViewModel.handleAction(it) },
+        onInputTextChanged = { activeViewModel.onInputTextChanged(it) },
+        onClearPhoto = { activeViewModel.onClearPhoto() },
         onPickPhoto = {
             onPickPhoto?.invoke { pickedUri ->
-                viewModel.onPhotoAttached(pickedUri)
+                activeViewModel.onPhotoAttached(pickedUri)
             }
         },
-        onNewChat = { viewModel.startNewConversation(activeEngine) },
-        onOpenHistory = { showHistorySheet = true },
         onOpenSpotDetail = onOpenSpotDetail,
         onViewOnMainMap = onViewOnMainMap,
         onWideLayoutChanged = { isWideLayout = it },
         modifier = modifier
     )
 
-    if (showHistorySheet) {
+    if (menuState.showHistorySheet) {
         HistoryBottomSheet(
             sessions = allSessions,
             activeSessionId = uiState.sessionId,
-            onDismissRequest = { showHistorySheet = false },
+            onDismissRequest = { menuState.dismissHistory() },
             onSwitchSession = { sessionId ->
-                viewModel.switchSession(sessionId, activeEngine)
-                showHistorySheet = false
+                activeViewModel.switchSession(sessionId, activeEngine)
+                menuState.dismissHistory()
             },
             onDeleteSession = { sessionId ->
-                viewModel.deleteSession(sessionId, activeEngine)
+                activeViewModel.deleteSession(sessionId, activeEngine)
             },
             onNewChat = {
-                viewModel.startNewConversation(activeEngine)
-                showHistorySheet = false
+                menuState.startNewChat()
+                menuState.dismissHistory()
             }
+        )
+    }
+
+    if (menuState.showSchemaDialog) {
+        val schemaJson = remember(activeEngine) { activeEngine.getCatalogSchemaJson() }
+        A2uiSchemaDialog(
+            engineTypeName = activeEngine.engineType.name,
+            schemaJson = schemaJson,
+            onLogSchema = { menuState.logActiveSchema() },
+            onDismiss = { menuState.dismissSchemaDialog() }
         )
     }
 }
@@ -192,17 +526,16 @@ fun TagAlongScreenContent(
     uiState: TagAlongUiState,
     engine: A2UIRendererEngine,
     showDebugControls: Boolean = true,
-    onToggleEngine: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null,
+    onNewChat: () -> Unit = {},
     onToggleDebugMode: () -> Unit = {},
+    onViewSchema: (() -> Unit)? = null,
     onLogSchema: () -> Unit = {},
     onSendMessage: (String) -> Unit,
-    onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
     onInputTextChanged: (String) -> Unit,
     onClearPhoto: () -> Unit,
     onPickPhoto: () -> Unit,
-    onNewChat: () -> Unit = {},
-    onOpenHistory: () -> Unit = {},
     onOpenSpotDetail: ((Long) -> Unit)? = null,
     onViewOnMainMap: ((Double, Double) -> Unit)? = null,
     onWideLayoutChanged: (Boolean) -> Unit = {},
@@ -210,7 +543,16 @@ fun TagAlongScreenContent(
 ) {
     val listState = rememberLazyListState()
     var zoomedPhotoUri by remember { mutableStateOf<String?>(null) }
-    var showSchemaDialog by remember { mutableStateOf(false) }
+    var showLocalSchemaDialog by remember { mutableStateOf(false) }
+
+    val handleViewSchema: () -> Unit = {
+        if (onViewSchema != null) {
+            onViewSchema()
+        } else {
+            onLogSchema()
+            showLocalSchemaDialog = true
+        }
+    }
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -243,12 +585,10 @@ fun TagAlongScreenContent(
                         engine = engine,
                         showDebugControls = showDebugControls,
                         isA2uiDebugMode = uiState.isA2uiDebugMode,
-                        onToggleEngine = onToggleEngine,
+                        onMenuClick = onMenuClick,
+                        onNewChat = onNewChat,
                         onToggleDebugMode = onToggleDebugMode,
-                        onViewSchema = {
-                            onLogSchema()
-                            showSchemaDialog = true
-                        },
+                        onViewSchema = handleViewSchema,
                         onLogSchema = onLogSchema,
                         inputText = uiState.inputText,
                         onInputTextChanged = onInputTextChanged,
@@ -256,11 +596,8 @@ fun TagAlongScreenContent(
                         onClearPhoto = onClearPhoto,
                         onPickPhoto = onPickPhoto,
                         onSendMessage = onSendMessage,
-                        onSelectMockFixture = onSelectMockFixture,
                         onAction = onAction,
                         onPhotoClick = { zoomedPhotoUri = it },
-                        onNewChat = onNewChat,
-                        onOpenHistory = onOpenHistory,
                         isOffline = uiState.isOffline,
                         offlineMessage = uiState.offlineMessage,
                         isGenerating = uiState.isGenerating
@@ -298,12 +635,10 @@ fun TagAlongScreenContent(
                 engine = engine,
                 showDebugControls = showDebugControls,
                 isA2uiDebugMode = uiState.isA2uiDebugMode,
-                onToggleEngine = onToggleEngine,
+                onMenuClick = onMenuClick,
+                onNewChat = onNewChat,
                 onToggleDebugMode = onToggleDebugMode,
-                onViewSchema = {
-                    onLogSchema()
-                    showSchemaDialog = true
-                },
+                onViewSchema = handleViewSchema,
                 onLogSchema = onLogSchema,
                 inputText = uiState.inputText,
                 onInputTextChanged = onInputTextChanged,
@@ -311,11 +646,8 @@ fun TagAlongScreenContent(
                 onClearPhoto = onClearPhoto,
                 onPickPhoto = onPickPhoto,
                 onSendMessage = onSendMessage,
-                onSelectMockFixture = onSelectMockFixture,
                 onAction = onAction,
                 onPhotoClick = { zoomedPhotoUri = it },
-                onNewChat = onNewChat,
-                onOpenHistory = onOpenHistory,
                 isOffline = uiState.isOffline,
                 offlineMessage = uiState.offlineMessage,
                 isGenerating = uiState.isGenerating
@@ -335,13 +667,13 @@ fun TagAlongScreenContent(
             )
         }
     }
-    if (showSchemaDialog) {
+    if (showLocalSchemaDialog) {
         val schemaJson = remember(engine) { engine.getCatalogSchemaJson() }
         A2uiSchemaDialog(
             engineTypeName = engine.engineType.name,
             schemaJson = schemaJson,
             onLogSchema = onLogSchema,
-            onDismiss = { showSchemaDialog = false }
+            onDismiss = { showLocalSchemaDialog = false }
         )
     }
 }
@@ -353,7 +685,8 @@ private fun ChatPane(
     engine: A2UIRendererEngine,
     showDebugControls: Boolean = true,
     isA2uiDebugMode: Boolean = false,
-    onToggleEngine: (() -> Unit)? = null,
+    onMenuClick: (() -> Unit)? = null,
+    onNewChat: () -> Unit = {},
     onToggleDebugMode: () -> Unit = {},
     onViewSchema: () -> Unit = {},
     onLogSchema: () -> Unit = {},
@@ -363,11 +696,8 @@ private fun ChatPane(
     onClearPhoto: () -> Unit,
     onPickPhoto: () -> Unit,
     onSendMessage: (String) -> Unit,
-    onSelectMockFixture: (name: String, json: String) -> Unit,
     onAction: (A2UIAction) -> Unit,
     onPhotoClick: (String) -> Unit = {},
-    onNewChat: () -> Unit = {},
-    onOpenHistory: () -> Unit = {},
     isOffline: Boolean = false,
     offlineMessage: String? = null,
     isGenerating: Boolean = false,
@@ -380,85 +710,63 @@ private fun ChatPane(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // App Header Banner
+        // Clean Top Bar with Hamburger Menu & Essential Actions (standard 24.dp icons in 48.dp targets)
         Surface(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-            ) {
+            Column {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .height(56.dp)
+                        .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(10.dp)
-                        ) {}
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "TAGALONG",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "COMPANION",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.16f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer),
-                            modifier = if (onToggleEngine != null) {
-                                Modifier.clip(RoundedCornerShape(6.dp)).clickable { onToggleEngine() }
-                            } else Modifier
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = engine.engineType.name,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                    color = MaterialTheme.colorScheme.tertiaryContainer
-                                )
-                                if (onToggleEngine != null) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "⇄",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                        color = MaterialTheme.colorScheme.tertiaryContainer
-                                    )
-                                }
-                            }
+                    if (onMenuClick != null) {
+                        IconButton(onClick = onMenuClick) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Menu",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
-                        if (showDebugControls) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            IconButton(
-                                onClick = onToggleDebugMode,
+                    } else {
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(10.dp)
+                    ) {}
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "TAGALONG",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (showDebugControls) {
+                        IconButton(onClick = onToggleDebugMode) {
+                            Box(
                                 modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(
                                         if (isA2uiDebugMode) {
-                                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.28f)
+                                            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
                                         } else {
-                                            MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                                            Color.Transparent
                                         }
-                                    )
+                                    ),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.BugReport,
@@ -467,68 +775,25 @@ private fun ChatPane(
                                         MaterialTheme.colorScheme.tertiaryContainer
                                     } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
+                                    },
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        IconButton(
-                            onClick = onOpenHistory,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = "Chat History",
-                                tint = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(
-                            onClick = onNewChat,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "New Chat",
-                                tint = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        }
+                    }
+                    IconButton(onClick = onNewChat) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "New Chat",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Fast Fixture Selector Chips
-                Text(
-                    text = "A2UI Mock Catalog Tester:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                    thickness = 1.dp
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    TagAlongMockFixtures.ALL_FIXTURES.forEach { (name, json) ->
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.background,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { onSelectMockFixture(name, json) }
-                        ) {
-                            Text(
-                                text = "+ $name",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
             }
         }
 
@@ -626,6 +891,7 @@ private fun ChatPane(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .imePadding()
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -688,6 +954,7 @@ private fun ChatPane(
                             contentColor = MaterialTheme.colorScheme.tertiaryContainer
                         ),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
                         modifier = Modifier.height(52.dp)
                     ) {
                         Text("📷")
@@ -696,7 +963,13 @@ private fun ChatPane(
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = onInputTextChanged,
-                        placeholder = { Text("Ask TagAlong (e.g., 'Find neon murals in Mitte')...") },
+                        placeholder = {
+                            Text(
+                                text = "Ask TagAlong...",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .onPreviewKeyEvent { keyEvent ->
@@ -727,6 +1000,7 @@ private fun ChatPane(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         ),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
                         modifier = Modifier.height(52.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -875,55 +1149,68 @@ private fun MapPane(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Map Top Bar
+        // Map Top Bar (aligned with ChatPane's 56.dp top bar and safe against landscape cutouts/nav bar)
         Surface(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "LIVE URBAN MAP",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                    Text(
-                        text = focusedTitle,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                if (latitude != null && longitude != null) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
-                    ) {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End))
+                        .height(56.dp)
+                        .padding(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "${(latitude * 1000).toInt() / 1000.0}, ${(longitude * 1000).toInt() / 1000.0}",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = "LIVE URBAN MAP",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.tertiaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = focusedTitle,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+
+                    if (latitude != null && longitude != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiaryContainer)
+                        ) {
+                            Text(
+                                text = "${(latitude * 1000).toInt() / 1000.0}, ${(longitude * 1000).toInt() / 1000.0}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
                 }
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+                    thickness = 1.dp
+                )
             }
         }
 
-        // Live Map Container reusing MapScreen (with filter chips and selected spot detail card)
+        // Live Map Container reusing MapScreen (without bulky floating filter overlays in the compact pane)
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .clipToBounds()
         ) {
             MapScreen(
                 onSpotClick = onSpotClick,
@@ -932,6 +1219,7 @@ private fun MapPane(
                 zoomLevel = zoomLevel,
                 extraMarkers = extraMarkers,
                 applyStatusBarInsets = false,
+                showFilterControls = false,
                 modifier = Modifier.fillMaxSize()
             )
         }
