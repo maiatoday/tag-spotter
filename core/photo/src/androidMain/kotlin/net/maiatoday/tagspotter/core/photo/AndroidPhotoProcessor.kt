@@ -5,12 +5,18 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.net.toUri
+import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.UUID
 import androidx.core.graphics.createBitmap
 
@@ -36,18 +42,91 @@ class AndroidPhotoProcessor(private val context: Context) : PhotoProcessor {
 
     override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? = withContext(Dispatchers.IO) {
         try {
-            val uri = uriString.toUri()
-            val photoUri =
-                try {
-                    android.provider.MediaStore.setRequireOriginal(uri)
-                } catch (_: Exception) {
-                    uri
-                }
-            val bytes = context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() } ?: return@withContext null
-            ExifMetadataParser.extractMetadata(bytes)
+            val bytes = readBytesForMetadata(uriString) ?: return@withContext null
+            extractMetadataFromBytes(bytes)
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    private fun readBytesForMetadata(uriString: String): ByteArray? {
+        if (!uriString.startsWith("content://")) {
+            val cleanPath = if (uriString.startsWith("file://")) uriString.removePrefix("file://") else uriString
+            val file = File(cleanPath)
+            if (file.exists() && file.isFile) {
+                return file.readBytes()
+            }
+            if (!uriString.startsWith("file://")) {
+                return null
+            }
+        }
+
+        val uri = uriString.toUri()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && uri.authority == MediaStore.AUTHORITY) {
+            val originalBytes = try {
+                val photoUri = MediaStore.setRequireOriginal(uri)
+                context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() }
+            } catch (_: Exception) {
+                null
+            }
+            if (originalBytes != null) return originalBytes
+        }
+        return context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+    }
+
+    internal companion object {
+        private fun isValidCoordinate(lat: Double?, lng: Double?): Boolean =
+            lat != null && lng != null && !(lat == 0.0 && lng == 0.0)
+
+        internal fun extractMetadataFromBytes(bytes: ByteArray): PhotoMetadata? {
+            if (bytes.isEmpty()) return null
+            val kimMeta = ExifMetadataParser.extractMetadata(bytes)
+            val kimHasCoords = isValidCoordinate(kimMeta?.latitude, kimMeta?.longitude)
+            val kimHasTimestamp = kimMeta?.timestamp != null
+
+            if (kimHasCoords && kimHasTimestamp) {
+                return kimMeta
+            }
+
+            val exifMeta = runCatching {
+                val exif = ExifInterface(ByteArrayInputStream(bytes))
+                val latLong = exif.latLong
+                val lat = latLong?.getOrNull(0)
+                val lng = latLong?.getOrNull(1)
+                val validLat = if (isValidCoordinate(lat, lng)) lat else null
+                val validLng = if (isValidCoordinate(lat, lng)) lng else null
+                val timestamp = parseExifDate(
+                    exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+                        ?: exif.getAttribute(ExifInterface.TAG_DATETIME)
+                )
+                PhotoMetadata(
+                    latitude = validLat,
+                    longitude = validLng,
+                    timestamp = timestamp
+                )
+            }.getOrNull()
+
+            val finalLat = if (kimHasCoords) kimMeta?.latitude else exifMeta?.latitude
+            val finalLng = if (kimHasCoords) kimMeta?.longitude else exifMeta?.longitude
+            val finalTimestamp = kimMeta?.timestamp ?: exifMeta?.timestamp
+
+            return if (finalLat != null || finalLng != null || finalTimestamp != null) {
+                PhotoMetadata(
+                    latitude = finalLat,
+                    longitude = finalLng,
+                    timestamp = finalTimestamp
+                )
+            } else {
+                null
+            }
+        }
+
+        private fun parseExifDate(dateString: String?): Long? {
+            if (dateString.isNullOrBlank()) return null
+            return runCatching {
+                SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).parse(dateString)?.time
+            }.getOrNull()
         }
     }
 

@@ -757,7 +757,8 @@ fun DetailScreen(
                         onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
                         onTogglePublic = { viewModel.updatePublic(it) },
                         onMapPickerClick = { isMapPickerDialogVisible = true },
-                        onSetEditing = { viewModel.setEditing(it) }
+                        onSetEditing = { viewModel.setEditing(it) },
+                        onPendingArtistInputChange = { viewModel.updatePendingArtistInput(it) }
                     )
 
                     DetailTagsCard(
@@ -845,7 +846,8 @@ fun DetailScreen(
                             onUpdateArtworkDate = { viewModel.updateArtworkDate(it) },
                             onTogglePublic = { viewModel.updatePublic(it) },
                             onMapPickerClick = { isMapPickerDialogVisible = true },
-                            onSetEditing = { viewModel.setEditing(it) }
+                            onSetEditing = { viewModel.setEditing(it) },
+                            onPendingArtistInputChange = { viewModel.updatePendingArtistInput(it) }
                         )
 
                         DetailTagsCard(

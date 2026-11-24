@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.widget.Toast
@@ -12,7 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,12 +58,18 @@ class MainActivity : ComponentActivity() {
   private var initialTab by mutableStateOf<Tab?>(null)
   private var initialTabRequestId by mutableStateOf(0L)
   private var isInitialTabHandled = false
+  private var sharedImageUri by mutableStateOf<String?>(null)
+  private var isInitialShareHandled = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     enableEdgeToEdge()
     handleImportIntent(intent)
+    isInitialShareHandled = savedInstanceState?.getBoolean(KEY_INITIAL_SHARE_HANDLED, false) ?: false
+    if (!isInitialShareHandled) {
+      handleShareImageIntent(intent)
+    }
     if (intent.hasExtra("EXTRA_SPOT_ID")) {
       initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
     }
@@ -84,12 +89,17 @@ class MainActivity : ComponentActivity() {
             initialSpotId = initialSpotId,
             initialTab = initialTab,
             initialTabRequestId = currentTabRequestId,
+            sharedImageUri = sharedImageUri,
             onNavigateToSpotHandled = { initialSpotId = null },
             onInitialTabHandled = {
               if (initialTabRequestId == currentTabRequestId) {
                 initialTab = null
                 isInitialTabHandled = true
               }
+            },
+            onSharedImageHandled = {
+              sharedImageUri = null
+              isInitialShareHandled = true
             }
           )
         }
@@ -100,12 +110,14 @@ class MainActivity : ComponentActivity() {
   override fun onSaveInstanceState(outState: Bundle) {
     super.onSaveInstanceState(outState)
     outState.putBoolean(KEY_INITIAL_TAB_HANDLED, isInitialTabHandled)
+    outState.putBoolean(KEY_INITIAL_SHARE_HANDLED, isInitialShareHandled)
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
     handleImportIntent(intent)
+    handleShareImageIntent(intent)
     if (intent.hasExtra("EXTRA_SPOT_ID")) {
       initialSpotId = intent.getLongExtra("EXTRA_SPOT_ID", -1L).takeIf { it != -1L }
     }
@@ -121,8 +133,50 @@ class MainActivity : ComponentActivity() {
       intent?.action == "net.maiatoday.tagspotter.action.TAGALONG"
   }
 
+  private fun handleShareImageIntent(intent: Intent?) {
+    if (intent == null || intent.action != Intent.ACTION_SEND) return
+    val mimeType = intent.type ?: return
+    if (!mimeType.startsWith("image/")) return
+
+    val streamUri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+      ?: intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
+      ?: return
+
+    isInitialShareHandled = false
+    lifecycleScope.launch(Dispatchers.IO) {
+      try {
+        val sharedDir = File(filesDir, "shared_photos").apply { mkdirs() }
+        val ext = when {
+          mimeType.contains("png", ignoreCase = true) -> "png"
+          mimeType.contains("webp", ignoreCase = true) -> "webp"
+          mimeType.contains("heic", ignoreCase = true) -> "heic"
+          else -> "jpg"
+        }
+        val destFile = File(sharedDir, "shared_${UUID.randomUUID()}.$ext")
+        contentResolver.openInputStream(streamUri)?.use { input ->
+          destFile.outputStream().use { output ->
+            input.copyTo(output)
+          }
+        } ?: return@launch
+        withContext(Dispatchers.Main) {
+          sharedImageUri = Uri.fromFile(destFile).toString()
+        }
+      } catch (e: Exception) {
+        e.printStackTrace()
+        withContext(Dispatchers.Main) {
+          Toast.makeText(
+            this@MainActivity,
+            "Failed to read shared photo: ${e.localizedMessage ?: ""}",
+            Toast.LENGTH_LONG
+          ).show()
+        }
+      }
+    }
+  }
+
   companion object {
     private const val KEY_INITIAL_TAB_HANDLED = "initial_tab_handled"
+    private const val KEY_INITIAL_SHARE_HANDLED = "initial_share_handled"
   }
 
   private fun getFileName(uri: Uri): String? {
@@ -201,26 +255,37 @@ fun MainActivityContent(
     initialSpotId: Long?,
     initialTab: Tab? = null,
     initialTabRequestId: Long = 0L,
+    sharedImageUri: String? = null,
     onNavigateToSpotHandled: () -> Unit,
     onInitialTabHandled: () -> Unit = {},
+    onSharedImageHandled: () -> Unit = {},
     viewModel: MainViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(sharedImageUri) {
+        if (sharedImageUri != null) {
+            viewModel.handlePhotoPicked(sharedImageUri)
+            onSharedImageHandled()
+        }
+    }
+
     var tagAlongPhotoCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val pickTagAlongMedia = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+            }
             tagAlongPhotoCallback?.invoke(uri.toString())
             tagAlongPhotoCallback = null
         }
-    }
-    val tagAlongMediaLocationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
     val versionName = remember {
@@ -232,39 +297,35 @@ fun MainActivityContent(
         }
     }
 
-    // Permission Launcher for GPS Location
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = (permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false) ||
-                (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false)
-        viewModel.updateLocationPermission(granted)
-    }
+    var pendingFilesCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
 
-    // Photo Gallery Picker Launcher (Native Visual Media Contract)
+    // OpenDocument preserves original unredacted EXIF GPS metadata (unlike PickVisualMedia Photo Picker)
     val pickMedia = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            viewModel.handlePhotoPicked(uri.toString())
-        }
-    }
-
-    // Permission Launcher for ACCESS_MEDIA_LOCATION (Android 10+)
-    val mediaLocationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-    }
-
-    val triggerFiles = { _: (String) -> Unit ->
-        val permission = Manifest.permission.ACCESS_MEDIA_LOCATION
-        val isGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-        if (isGranted) {
-            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+            }
+            val callback = pendingFilesCallback
+            pendingFilesCallback = null
+            if (callback != null) {
+                callback(uri.toString())
+            } else {
+                viewModel.handlePhotoPicked(uri.toString())
+            }
         } else {
-            mediaLocationPermissionLauncher.launch(permission)
+            pendingFilesCallback = null
         }
+    }
+
+    val triggerFiles = { onPhotoPicked: (String) -> Unit ->
+        pendingFilesCallback = onPhotoPicked
+        pickMedia.launch(arrayOf("image/*"))
     }
 
     LaunchedEffect(Unit) {
@@ -338,17 +399,7 @@ fun MainActivityContent(
                 onViewOnMainMap = onViewOnMainMap,
                 onPickPhoto = { onPicked ->
                     tagAlongPhotoCallback = onPicked
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        val permission = Manifest.permission.ACCESS_MEDIA_LOCATION
-                        val isGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-                        if (isGranted) {
-                            pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        } else {
-                            tagAlongMediaLocationPermissionLauncher.launch(permission)
-                        }
-                    } else {
-                        pickTagAlongMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }
+                    pickTagAlongMedia.launch(arrayOf("image/*"))
                 }
             )
         },

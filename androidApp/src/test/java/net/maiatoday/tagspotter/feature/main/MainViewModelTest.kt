@@ -226,6 +226,66 @@ class MainViewModelTest {
     }
 
     @Test
+    fun handlePhotoPicked_withZeroZeroExifCoords_usesLocationFallback() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            syncManager,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+
+        photoProcessor.metadataResult = PhotoMetadata(0.0, 0.0, 123456L)
+        locationProvider.locationToReturn = LocationData(45.4642, 9.1900, false)
+
+        viewModel.events.test {
+            viewModel.handlePhotoPicked("some_uri")
+
+            val event = awaitItem() as MainEvent.PhotoProcessed
+            assertEquals(45.4642, event.latitude, 0.0001)
+            assertEquals(9.1900, event.longitude, 0.0001)
+            assertFalse(event.isFallback)
+            assertEquals(123456L, event.captureTime)
+
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun handleCameraCaptureSuccess_whenDeviceLocationNull_fallsBackToExifLocation() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            syncManager,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+
+        photoProcessor.tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
+        viewModel.prepareCameraCapture()
+
+        locationProvider.locationToReturn = null
+        photoProcessor.metadataResult = PhotoMetadata(48.8566, 2.3522, 999999L)
+
+        viewModel.events.test {
+            viewModel.handleCameraCaptureSuccess()
+
+            assertEquals("temp_path", photoProcessor.extractMetadataFromUriCalledWith)
+            val event = awaitItem() as MainEvent.PhotoProcessed
+            assertEquals(48.8566, event.latitude, 0.0001)
+            assertEquals(2.3522, event.longitude, 0.0001)
+            assertFalse(event.isFallback)
+            assertEquals(999999L, event.captureTime)
+
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
     fun updateShowTestData_updatesRepository() = runTest {
         val viewModel = MainViewModel(
             locationProvider,

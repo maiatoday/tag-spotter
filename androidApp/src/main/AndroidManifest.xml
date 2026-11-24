@@ -78,6 +78,11 @@
                 <data android:scheme="file" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
+            <intent-filter android:label="Add Spot to TagSpotter">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
         </activity>
 
         <service

@@ -121,6 +121,7 @@ class MainViewModel(
                 var lat = 0.0
                 var lng = 0.0
                 var isFallback = true
+                var captureTime: Long? = null
 
                 val loc = locationProvider.getCurrentLocation()
                 if (loc != null) {
@@ -131,6 +132,17 @@ class MainViewModel(
 
                 // Process in IO Dispatcher
                 val result = withContext(ioDispatcher) {
+                    if (loc == null) {
+                        val metadata = runCatching { photoProcessor.extractMetadataFromUri(tempPath) }.getOrNull()
+                        val metaLat = metadata?.latitude
+                        val metaLng = metadata?.longitude
+                        if (metaLat != null && metaLng != null && !(metaLat == 0.0 && metaLng == 0.0)) {
+                            lat = metaLat
+                            lng = metaLng
+                            isFallback = false
+                        }
+                        captureTime = metadata?.timestamp
+                    }
                     val publicUri = photoProcessor.saveImageToPublicGallery(tempPath)
                     val thumbnail = photoProcessor.createThumbnailFromFile(tempPath)
                     // Clean up temporary cache file
@@ -154,7 +166,7 @@ class MainViewModel(
                             longitude = lng,
                             isFallback = isFallback,
                             category = "All",
-                            captureTime = null
+                            captureTime = captureTime
                         )
                     )
                 } else {
@@ -191,7 +203,7 @@ class MainViewModel(
                 if (metadata != null) {
                     val metaLat = metadata.latitude
                     val metaLng = metadata.longitude
-                    if (metaLat != null && metaLng != null) {
+                    if (metaLat != null && metaLng != null && !(metaLat == 0.0 && metaLng == 0.0)) {
                         lat = metaLat
                         lng = metaLng
                         isFallback = false

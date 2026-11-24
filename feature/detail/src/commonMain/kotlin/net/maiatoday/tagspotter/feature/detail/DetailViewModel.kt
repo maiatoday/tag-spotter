@@ -87,6 +87,11 @@ class DetailViewModel(
     }
 
     private var cachedDetails: SpotDetails? = null
+    private var pendingArtistInput: String = ""
+
+    fun updatePendingArtistInput(input: String) {
+        pendingArtistInput = input
+    }
 
     val spotDetails: StateFlow<SpotDetails?> = if (spotId != -1L) {
         kotlinx.coroutines.flow.flow {
@@ -538,8 +543,16 @@ class DetailViewModel(
     fun saveSpot(onSaved: (Long) -> Unit) {
         val details = _draftDetails.value ?: return
         val firstImage = details.images.firstOrNull() ?: return
+        val pendingArtist = pendingArtistInput.trim()
+        val finalArtists = if (pendingArtist.isNotEmpty() && !details.spot.artists.contains(pendingArtist)) {
+            details.spot.artists + pendingArtist
+        } else {
+            details.spot.artists
+        }
+        val spotToSave = details.spot.copy(artists = finalArtists)
+        pendingArtistInput = ""
         viewModelScope.launch {
-            val newSpotId = repository.saveSpot(details.spot, firstImage.imagePath, firstImage.thumbnailPath)
+            val newSpotId = repository.saveSpot(spotToSave, firstImage.imagePath, firstImage.thumbnailPath)
             
             if (details.images.size > 1) {
                 details.images.drop(1).forEach { extraImage ->
@@ -547,7 +560,7 @@ class DetailViewModel(
                 }
             }
             
-            if (details.spot.isStarred) {
+            if (spotToSave.isStarred) {
                 repository.updateSpotStarred(newSpotId, true)
             }
             onSaved(newSpotId)
