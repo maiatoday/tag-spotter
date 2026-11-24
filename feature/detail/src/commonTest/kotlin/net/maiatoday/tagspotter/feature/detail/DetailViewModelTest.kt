@@ -22,7 +22,10 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.settings.FakeSecretsProvider
 import net.maiatoday.tagspotter.core.settings.FakeSettingsRepository
+import net.maiatoday.tagspotter.core.sync.AuthService
+import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -49,6 +52,18 @@ class DetailViewModelTest {
     private val secretsProvider = FakeSecretsProvider()
     private val wearSyncManager = FakeWearSyncManager()
     private val syncManager = FakeSyncManager()
+    private val authService = FakeAuthService()
+
+    private fun createViewModel(spotId: Long) = DetailViewModel(
+        spotId = spotId,
+        repository = repository,
+        settingsRepository = settingsRepository,
+        aiRecognitionService = aiRecognitionService,
+        secretsProvider = secretsProvider,
+        wearSyncManager = wearSyncManager,
+        syncManager = syncManager,
+        authService = authService
+    )
 
     @Test
     fun loadSpotDetailsAndUpdatesWorkCorrectly() = runTest {
@@ -75,7 +90,8 @@ class DetailViewModelTest {
             aiRecognitionService,
             secretsProvider,
             wearSyncManager,
-            syncManager
+            syncManager,
+            authService
         )
 
         // Collect StateFlows in backgroundScope to trigger WhileSubscribed updates
@@ -203,7 +219,8 @@ class DetailViewModelTest {
             aiRecognitionService,
             secretsProvider,
             wearSyncManager,
-            syncManager
+            syncManager,
+            authService
         )
 
         // Collect StateFlow in backgroundScope
@@ -249,7 +266,8 @@ class DetailViewModelTest {
             aiRecognitionService,
             secretsProvider,
             wearSyncManager,
-            syncManager
+            syncManager,
+            authService
         )
 
         // Collect spotDetails StateFlow in backgroundScope
@@ -312,7 +330,8 @@ class DetailViewModelTest {
             aiRecognitionService,
             secretsProvider,
             wearSyncManager,
-            syncManager
+            syncManager,
+            authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -340,7 +359,8 @@ class DetailViewModelTest {
             aiRecognitionService,
             secretsProvider,
             wearSyncManager,
-            syncManager
+            syncManager,
+            authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -377,7 +397,8 @@ class DetailViewModelTest {
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -400,7 +421,8 @@ class DetailViewModelTest {
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -441,7 +463,8 @@ class DetailViewModelTest {
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -498,7 +521,8 @@ class DetailViewModelTest {
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -527,7 +551,8 @@ class DetailViewModelTest {
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         viewModel.wikiSearchState.test {
@@ -573,7 +598,8 @@ class DetailViewModelTest {
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         viewModel.wikiSearchState.test {
@@ -618,7 +644,8 @@ class DetailViewModelTest {
             aiRecognitionService = aiRecognitionService,
             secretsProvider = secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -644,7 +671,8 @@ class DetailViewModelTest {
             aiRecognitionService,
             secretsProvider,
             wearSyncManager = wearSyncManager,
-            syncManager = syncManager
+            syncManager = syncManager,
+            authService = authService
         )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -664,7 +692,7 @@ class DetailViewModelTest {
     fun identifyArtist_ResponseStoppedException_setsSafetyBlocked() = runTest {
         class ResponseStoppedException : Exception("stopped")
         aiRecognitionService.identifyArtistException = ResponseStoppedException()
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager, authService)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -676,7 +704,7 @@ class DetailViewModelTest {
     fun identifyArtist_ServerException_setsQuotaExceeded() = runTest {
         class ServerException : Exception("quota")
         aiRecognitionService.identifyArtistException = ServerException()
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager, authService)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -688,7 +716,7 @@ class DetailViewModelTest {
     fun identifyArtist_InvalidAPIKeyException_setsInvalidKey() = runTest {
         class InvalidAPIKeyException : Exception("API key")
         aiRecognitionService.identifyArtistException = InvalidAPIKeyException()
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager, authService)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -699,7 +727,7 @@ class DetailViewModelTest {
     @Test
     fun identifyArtist_noConnectionException_setsGenericError() = runTest {
         aiRecognitionService.identifyArtistException = Exception("Unable to resolve host")
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager, authService)
         
         viewModel.identifyArtist("path")
         testScheduler.advanceUntilIdle()
@@ -710,7 +738,7 @@ class DetailViewModelTest {
 
     @Test
     fun draftModeUpdates_correctlyPropagatesToDraftDetails() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager, authService)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
@@ -744,7 +772,7 @@ class DetailViewModelTest {
 
     @Test
     fun addAndDeleteImage_draftMode_worksCorrectly() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager, authService)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
@@ -764,7 +792,7 @@ class DetailViewModelTest {
 
     @Test
     fun saveSpot_draftMode_savesMultipleImages() = runTest {
-        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager)
+        val viewModel = DetailViewModel(-1L, repository, settingsRepository, aiRecognitionService, secretsProvider, wearSyncManager, syncManager, authService)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.spotDetails.collect {}
         }
@@ -780,6 +808,210 @@ class DetailViewModelTest {
         val savedSpot = repository.getSpotById(savedId).first()
         assertNotNull(savedSpot)
         assertEquals(2, savedSpot.images.size)
+    }
+
+    @Test
+    fun canEdit_creationMode_isAlwaysTrue() = runTest {
+        authService.setUser(null)
+        val viewModel = createViewModel(-1L)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.canEdit.collect {}
+        }
+        assertTrue(viewModel.canEdit.value)
+    }
+
+    @Test
+    fun canEdit_ownSignedInPublicAndPrivateSpot_isTrue() = runTest {
+        authService.setUser(FirebaseUserWrapper(uid = "author-1", email = "a@b.com", displayName = "Author"))
+        val spotId = 200L
+        val spot = Spot(
+            id = spotId,
+            latitude = 10.0,
+            longitude = 20.0,
+            createdAt = 1000L,
+            description = "My Public Spot",
+            tags = listOf("mural"),
+            category = "graffiti",
+            status = "active",
+            ownerUid = "author-1",
+            isPublic = true
+        )
+        repository.setSpots(listOf(SpotDetails(spot, emptyList(), emptyList())))
+
+        val viewModel = createViewModel(spotId)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.canEdit.collect {}
+        }
+
+        assertTrue(viewModel.canEdit.value)
+
+        // Signing out flips canEdit to false for a spot with an explicit ownerUid
+        authService.setUser(null)
+        assertFalse(viewModel.canEdit.value)
+    }
+
+    @Test
+    fun canEdit_publicSpotByOtherAuthor_isFalseAndMutationsBlocked_butStarAllowed() = runTest {
+        authService.setUser(FirebaseUserWrapper(uid = "viewer-2", email = "v@b.com", displayName = "Viewer"))
+        val spotId = 201L
+        val spot = Spot(
+            id = spotId,
+            latitude = 10.0,
+            longitude = 20.0,
+            createdAt = 1000L,
+            description = "Other Author Public Spot",
+            tags = listOf("stencil"),
+            category = "graffiti",
+            status = "active",
+            artists = listOf("Banksy"),
+            photographer = "Alice",
+            artworkDate = "2024",
+            ownerUid = "author-1",
+            isPublic = true,
+            isStarred = false
+        )
+        val image = SpotImage(
+            id = 10L,
+            spotId = spotId,
+            imagePath = "/img.png",
+            thumbnailPath = "/thumb.png",
+            timestamp = 1000L,
+            isMain = true,
+            rating = 3L
+        )
+        val note = net.maiatoday.tagspotter.core.model.SpotNote(
+            id = 20L,
+            spotId = spotId,
+            noteText = "Original note",
+            timestamp = 1000L
+        )
+        val details = SpotDetails(spot, listOf(image), listOf(note))
+        repository.setSpots(listOf(details))
+
+        val viewModel = createViewModel(spotId)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.canEdit.collect {}
+        }
+
+        assertFalse(viewModel.canEdit.value)
+
+        // Attempt all mutating operations — none should succeed
+        viewModel.setEditing(true)
+        assertFalse(viewModel.isEditing.value)
+
+        viewModel.updateDescription("Hacked")
+        viewModel.updateArtists(listOf("Someone Else"))
+        viewModel.updatePhotographer("Bob")
+        viewModel.updateCategory("sculpture")
+        viewModel.updateStatus("erased")
+        viewModel.updateTags(listOf("hacked"))
+        viewModel.updateLocation(99.0, 99.0)
+        viewModel.updateArtworkDate("1999")
+        viewModel.updatePublic(false)
+        viewModel.addNote("New note", 2000L)
+        viewModel.updateNote(20L, "Edited note")
+        viewModel.deleteNote(20L)
+        viewModel.addImage("/new.png", "/new_thumb.png", 2000L)
+        viewModel.updateImageRating(image, 5L)
+        viewModel.deleteImage(image)
+        var deleteCalled = false
+        viewModel.deleteSpot(details) { deleteCalled = true }
+
+        val after = viewModel.spotDetails.value
+        assertNotNull(after)
+        assertEquals("Other Author Public Spot", after.spot.description)
+        assertEquals(listOf("Banksy"), after.spot.artists)
+        assertEquals("Alice", after.spot.photographer)
+        assertEquals("graffiti", after.spot.category)
+        assertEquals("active", after.spot.status)
+        assertEquals(listOf("stencil"), after.spot.tags)
+        assertEquals(10.0, after.spot.latitude)
+        assertEquals(20.0, after.spot.longitude)
+        assertEquals("2024", after.spot.artworkDate)
+        assertEquals(true, after.spot.isPublic)
+        assertEquals(1, after.notes.size)
+        assertEquals("Original note", after.notes.first().noteText)
+        assertEquals(1, after.images.size)
+        assertEquals(3L, after.images.first().rating)
+        assertFalse(deleteCalled)
+
+        // Personal starring is still allowed on read-only spots
+        viewModel.toggleStarred()
+        assertEquals(true, viewModel.spotDetails.value?.spot?.isStarred)
+    }
+
+    @Test
+    fun canEdit_importedPackSpotByOtherAuthor_isFalse() = runTest {
+        authService.setUser(FirebaseUserWrapper(uid = "viewer-2", email = "v@b.com", displayName = "Viewer"))
+        val spotId = 202L
+        val spot = Spot(
+            id = spotId,
+            latitude = 10.0,
+            longitude = 20.0,
+            createdAt = 1000L,
+            description = "Pack Spot",
+            tags = emptyList(),
+            category = "graffiti",
+            status = "active",
+            ownerUid = "author-1",
+            parentPackId = "PACK99",
+            isImported = true
+        )
+        repository.setSpots(listOf(SpotDetails(spot, emptyList(), emptyList())))
+
+        val viewModel = createViewModel(spotId)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.canEdit.collect {}
+        }
+
+        assertFalse(viewModel.canEdit.value)
+        viewModel.updateDescription("Attempted Edit")
+        assertEquals("Pack Spot", viewModel.spotDetails.value?.spot?.description)
+    }
+
+    @Test
+    fun canEdit_localSignedOutSpot_isTrue() = runTest {
+        authService.setUser(null)
+        val spotId = 203L
+        val spot = Spot(
+            id = spotId,
+            latitude = 10.0,
+            longitude = 20.0,
+            createdAt = 1000L,
+            description = "Local Spot",
+            tags = emptyList(),
+            category = "graffiti",
+            status = "active",
+            ownerUid = null,
+            isImported = false
+        )
+        repository.setSpots(listOf(SpotDetails(spot, emptyList(), emptyList())))
+
+        val viewModel = createViewModel(spotId)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.canEdit.collect {}
+        }
+
+        assertTrue(viewModel.canEdit.value)
+    }
+}
+
+private class FakeAuthService(initialUser: FirebaseUserWrapper? = null) : AuthService {
+    private val _currentUserFlow = kotlinx.coroutines.flow.MutableStateFlow(initialUser)
+    override val currentUserFlow = _currentUserFlow
+    override val isGoogleSignInSupported: Boolean = false
+    fun setUser(user: FirebaseUserWrapper?) {
+        _currentUserFlow.value = user
+    }
+    override suspend fun signInWithGoogle(idToken: String?): Result<Unit> = Result.success(Unit)
+    override suspend fun signInWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
+    override suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = Result.success(Unit)
+    override suspend fun signOut() {
+        _currentUserFlow.value = null
     }
 }
 

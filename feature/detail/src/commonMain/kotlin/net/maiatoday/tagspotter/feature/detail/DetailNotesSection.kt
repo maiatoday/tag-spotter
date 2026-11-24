@@ -42,6 +42,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +69,7 @@ import net.maiatoday.tagspotter.core.model.SpotNote
 @Composable
 fun DetailNotesSection(
     sortedNotes: List<SpotNote>,
+    canEdit: Boolean = true,
     noteInput: String,
     onNoteInputChange: (String) -> Unit,
     onSendNote: () -> Unit,
@@ -82,6 +84,12 @@ fun DetailNotesSection(
     var editingText by remember { mutableStateOf("") }
     val speechLauncher = platformHelper.rememberSpeechRecognizerLauncher { spokenText ->
         onNoteInputChange(if (noteInput.isEmpty()) spokenText else "$noteInput $spokenText")
+    }
+
+    LaunchedEffect(canEdit) {
+        if (!canEdit) {
+            editingNoteId = null
+        }
     }
 
     Column(modifier = modifier) {
@@ -102,7 +110,7 @@ fun DetailNotesSection(
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
-            if (isArtistRecognitionEnabled) {
+            if (isArtistRecognitionEnabled && canEdit) {
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
                     onClick = onWikiSearchClick,
@@ -152,39 +160,41 @@ fun DetailNotesSection(
                                 color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.Bold
                             )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        editingNoteId = note.id
-                                        editingText = note.noteText
-                                    },
-                                    modifier = Modifier.size(24.dp)
+                            if (canEdit) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = stringResource(DetailRes.string.content_desc_edit_note),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                IconButton(
-                                    onClick = { onDeleteNote(note) },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = stringResource(DetailRes.string.content_desc_delete_note),
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                    IconButton(
+                                        onClick = {
+                                            editingNoteId = note.id
+                                            editingText = note.noteText
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = stringResource(DetailRes.string.content_desc_edit_note),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { onDeleteNote(note) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = stringResource(DetailRes.string.content_desc_delete_note),
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        if (editingNoteId == note.id) {
+                        if (canEdit && editingNoteId == note.id) {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
                                     value = editingText,
@@ -230,58 +240,60 @@ fun DetailNotesSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        if (canEdit) {
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = noteInput,
-                onValueChange = onNoteInputChange,
-                label = { Text(stringResource(DetailRes.string.write_note_label)) },
-                placeholder = { Text(stringResource(DetailRes.string.write_note_placeholder)) },
-                modifier = Modifier.weight(1f),
-                trailingIcon = {
-                    IconButton(
-                        onClick = speechLauncher
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = stringResource(DetailRes.string.content_desc_voice_input),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Send,
-                    capitalization = KeyboardCapitalization.Sentences
-                ),
-                keyboardActions = KeyboardActions(
-                    onSend = { onSendNote() }
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Gray,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                )
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            IconButton(
-                onClick = onSendNote,
+            Row(
                 modifier = Modifier
-                    .size(56.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = stringResource(DetailRes.string.content_desc_send_note),
-                    tint = MaterialTheme.colorScheme.background
+                OutlinedTextField(
+                    value = noteInput,
+                    onValueChange = onNoteInputChange,
+                    label = { Text(stringResource(DetailRes.string.write_note_label)) },
+                    placeholder = { Text(stringResource(DetailRes.string.write_note_placeholder)) },
+                    modifier = Modifier.weight(1f),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = speechLauncher
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = stringResource(DetailRes.string.content_desc_voice_input),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Send,
+                        capitalization = KeyboardCapitalization.Sentences
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSend = { onSendNote() }
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.Gray,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = onSendNote,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = stringResource(DetailRes.string.content_desc_send_note),
+                        tint = MaterialTheme.colorScheme.background
+                    )
+                }
             }
         }
     }

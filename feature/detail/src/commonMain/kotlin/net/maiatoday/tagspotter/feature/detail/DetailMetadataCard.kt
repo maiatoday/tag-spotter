@@ -83,6 +83,7 @@ import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 fun DetailMetadataCard(
     details: SpotDetails,
     isCreationMode: Boolean,
+    canEdit: Boolean = true,
     defaultPhotographer: String,
     isArtistRecognitionEnabled: Boolean,
     aiState: AiState,
@@ -100,20 +101,29 @@ fun DetailMetadataCard(
     onSetEditing: (Boolean) -> Unit = {}
 ) {
     val platformHelper = rememberDetailPlatformHelper()
-    var isEditingArtists by remember { mutableStateOf(isCreationMode) }
+    var isEditingArtists by remember { mutableStateOf(isCreationMode && canEdit) }
     var artistEditInput by remember { mutableStateOf("") }
     val localArtistsList = remember { mutableStateListOf<String>() }
 
-    var isEditingPhotographer by remember { mutableStateOf(isCreationMode) }
+    var isEditingPhotographer by remember { mutableStateOf(isCreationMode && canEdit) }
     var photographerEditInput by remember { mutableStateOf(details.spot.photographer) }
 
-    var isEditingDescription by remember { mutableStateOf(isCreationMode) }
+    var isEditingDescription by remember { mutableStateOf(isCreationMode && canEdit) }
     var descriptionEditInput by remember { mutableStateOf(details.spot.description) }
 
-    var isEditingArtworkDate by remember { mutableStateOf(isCreationMode) }
+    var isEditingArtworkDate by remember { mutableStateOf(isCreationMode && canEdit) }
     var artworkDateEditInput by remember { mutableStateOf(details.spot.artworkDate) }
 
-    val anyEditing = isEditingArtists || isEditingPhotographer || isEditingDescription || isEditingArtworkDate
+    LaunchedEffect(canEdit) {
+        if (!canEdit) {
+            isEditingArtists = false
+            isEditingPhotographer = false
+            isEditingDescription = false
+            isEditingArtworkDate = false
+        }
+    }
+
+    val anyEditing = canEdit && (isEditingArtists || isEditingPhotographer || isEditingDescription || isEditingArtworkDate)
     LaunchedEffect(anyEditing) {
         onSetEditing(anyEditing)
     }
@@ -163,21 +173,23 @@ fun DetailMetadataCard(
                     NeonCategoryBadge(
                         category = details.spot.category,
                         shortForm = false,
-                        onClick = { isCategoryDropdownExpanded = true }
+                        onClick = if (canEdit) ({ isCategoryDropdownExpanded = true }) else null
                     )
-                    DropdownMenu(
-                        expanded = isCategoryDropdownExpanded,
-                        onDismissRequest = { isCategoryDropdownExpanded = false }
-                    ) {
-                        val categories = Spot.CATEGORIES
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.replace("_", " ").uppercase()) },
-                                onClick = {
-                                    onUpdateCategory(category)
-                                    isCategoryDropdownExpanded = false
-                                }
-                            )
+                    if (canEdit) {
+                        DropdownMenu(
+                            expanded = isCategoryDropdownExpanded,
+                            onDismissRequest = { isCategoryDropdownExpanded = false }
+                        ) {
+                            val categories = Spot.CATEGORIES
+                            categories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(category.replace("_", " ").uppercase()) },
+                                    onClick = {
+                                        onUpdateCategory(category)
+                                        isCategoryDropdownExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -189,7 +201,7 @@ fun DetailMetadataCard(
                         color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.Bold
                     )
-                } else {
+                } else if (canEdit) {
                     val isErased = details.spot.status == "erased"
                     TextButton(
                         onClick = {
@@ -209,7 +221,7 @@ fun DetailMetadataCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Title Section (spot.description)
-            if (isEditingDescription) {
+            if (canEdit && isEditingDescription) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -285,16 +297,18 @@ fun DetailMetadataCard(
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
                         )
-                        IconButton(
-                            onClick = { isEditingDescription = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(DetailRes.string.content_desc_edit_title),
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        if (canEdit) {
+                            IconButton(
+                                onClick = { isEditingDescription = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = stringResource(DetailRes.string.content_desc_edit_title),
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
@@ -312,7 +326,7 @@ fun DetailMetadataCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Artist Section
-            if (isEditingArtists) {
+            if (canEdit && isEditingArtists) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -528,16 +542,18 @@ fun DetailMetadataCard(
                                 color = Color.Gray,
                                 fontWeight = FontWeight.Bold
                             )
-                            IconButton(
-                                onClick = { isEditingArtists = true },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = stringResource(DetailRes.string.content_desc_edit_artists),
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                            if (canEdit) {
+                                IconButton(
+                                    onClick = { isEditingArtists = true },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = stringResource(DetailRes.string.content_desc_edit_artists),
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
@@ -554,7 +570,7 @@ fun DetailMetadataCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Photographer Section
-            if (isEditingPhotographer) {
+            if (canEdit && isEditingPhotographer) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -630,21 +646,29 @@ fun DetailMetadataCard(
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
                         )
-                        IconButton(
-                            onClick = { isEditingPhotographer = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(DetailRes.string.content_desc_edit_photographer),
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        if (canEdit) {
+                            IconButton(
+                                onClick = { isEditingPhotographer = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = stringResource(DetailRes.string.content_desc_edit_photographer),
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = details.spot.photographer.ifEmpty { defaultPhotographer.ifEmpty { stringResource(DetailRes.string.not_set) } },
+                        text = details.spot.photographer.ifEmpty {
+                            if (canEdit) {
+                                defaultPhotographer.ifEmpty { stringResource(DetailRes.string.not_set) }
+                            } else {
+                                stringResource(DetailRes.string.not_set)
+                            }
+                        },
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -654,7 +678,7 @@ fun DetailMetadataCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Artwork Date Section
-            if (isEditingArtworkDate) {
+            if (canEdit && isEditingArtworkDate) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -730,16 +754,18 @@ fun DetailMetadataCard(
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold
                         )
-                        IconButton(
-                            onClick = { isEditingArtworkDate = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(DetailRes.string.content_desc_edit_artwork_date),
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        if (canEdit) {
+                            IconButton(
+                                onClick = { isEditingArtworkDate = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = stringResource(DetailRes.string.content_desc_edit_artwork_date),
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
@@ -751,37 +777,39 @@ fun DetailMetadataCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (canEdit) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Public Spot Toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(DetailRes.string.share_public_spot),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = stringResource(DetailRes.string.share_public_spot_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                // Public Spot Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(DetailRes.string.share_public_spot),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(DetailRes.string.share_public_spot_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Switch(
+                        checked = details.spot.isPublic,
+                        onCheckedChange = { onTogglePublic(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = Color.DarkGray
+                        )
                     )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Switch(
-                    checked = details.spot.isPublic,
-                    onCheckedChange = { onTogglePublic(it) },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color.DarkGray
-                    )
-                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -802,7 +830,7 @@ fun DetailMetadataCard(
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.weight(1.2f)
+                        modifier = if (canEdit) Modifier.weight(1.2f) else Modifier.fillMaxWidth()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Navigation,
@@ -817,26 +845,28 @@ fun DetailMetadataCard(
                     }
                 }
 
-                Button(
-                    onClick = onMapPickerClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.background
-                    ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(6.dp),
-                    modifier = if (isCreationMode) Modifier.fillMaxWidth() else Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = if (isCreationMode) Icons.Default.EditLocationAlt else Icons.Default.Map,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isCreationMode) stringResource(DetailRes.string.btn_refine) else stringResource(DetailRes.string.btn_map_it),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                    )
+                if (canEdit) {
+                    Button(
+                        onClick = onMapPickerClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.background
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = if (isCreationMode) Modifier.fillMaxWidth() else Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = if (isCreationMode) Icons.Default.EditLocationAlt else Icons.Default.Map,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isCreationMode) stringResource(DetailRes.string.btn_refine) else stringResource(DetailRes.string.btn_map_it),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
                 }
             }
         }

@@ -8,6 +8,7 @@ import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.ai.AiRecognitionService
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
 import net.maiatoday.tagspotter.core.location.WearSyncManager
+import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.SyncManager
 
 class DetailModuleTest {
@@ -22,7 +23,8 @@ class DetailModuleTest {
                 AiRecognitionService::class,
                 SecretsProvider::class,
                 WearSyncManager::class,
-                SyncManager::class
+                SyncManager::class,
+                AuthService::class
             )
         )
     }

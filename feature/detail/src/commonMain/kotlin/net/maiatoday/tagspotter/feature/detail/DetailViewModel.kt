@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.settings.SecretsProvider
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
+import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.SyncManager
 
 class DetailViewModel(
@@ -31,6 +33,7 @@ class DetailViewModel(
     private val secretsProvider: SecretsProvider,
     private val wearSyncManager: WearSyncManager,
     private val syncManager: SyncManager,
+    private val authService: AuthService,
     draftImagePath: String? = null,
     draftThumbnailPath: String? = null,
     draftLatitude: Double? = null,
@@ -79,6 +82,7 @@ class DetailViewModel(
     val isEditing = _isEditing.asStateFlow()
 
     fun setEditing(editing: Boolean) {
+        if (editing && !isCurrentlyEditable()) return
         _isEditing.value = editing
     }
 
@@ -100,6 +104,32 @@ class DetailViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = if (spotId == -1L) _draftDetails.value else null
     )
+
+    private val currentUserUid: StateFlow<String?> = authService.currentUserFlow
+        .map { it?.uid }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
+
+    val canEdit: StateFlow<Boolean> = if (spotId == -1L) {
+        MutableStateFlow(true)
+    } else {
+        combine(spotDetails, currentUserUid) { details, uid ->
+            details?.spot?.isEditableBy(uid) ?: false
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+    }
+
+    private fun isCurrentlyEditable(): Boolean {
+        if (spotId == -1L) return true
+        val details = spotDetails.value ?: return false
+        return details.spot.isEditableBy(currentUserUid.value)
+    }
 
     val isArtistRecognitionEnabled: StateFlow<Boolean> = settingsRepository.artistRecognitionEnabled
         .stateIn(
@@ -138,6 +168,7 @@ class DetailViewModel(
     }
 
     fun identifyArtist(imagePath: String) {
+        if (!isCurrentlyEditable()) return
         viewModelScope.launch {
             _aiState.value = AiState.Identifying
             try {
@@ -183,6 +214,7 @@ class DetailViewModel(
     }
 
     fun searchWikipediaForSpot() {
+        if (!isCurrentlyEditable()) return
         val title = spotDetails.value?.spot?.description ?: ""
         if (title.isBlank()) {
             _wikiSearchState.value = WikiSearchState.Error("No title logged. Please set a title/description first.")
@@ -274,11 +306,13 @@ class DetailViewModel(
     }
 
     fun togglePublic() {
+        if (!isCurrentlyEditable()) return
         val details = spotDetails.value ?: return
         updatePublic(!details.spot.isPublic)
     }
 
     fun updatePublic(isPublic: Boolean) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotPublic(spotId, isPublic)
@@ -291,6 +325,7 @@ class DetailViewModel(
     }
 
     fun updateStatus(status: String) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotStatus(spotId, status)
@@ -303,6 +338,7 @@ class DetailViewModel(
     }
 
     fun updateCategory(category: String) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotCategory(spotId, category)
@@ -315,6 +351,7 @@ class DetailViewModel(
     }
 
     fun updateArtists(artists: List<String>) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotArtists(spotId, artists)
@@ -327,6 +364,7 @@ class DetailViewModel(
     }
 
     fun updatePhotographer(photographer: String) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotPhotographer(spotId, photographer)
@@ -339,6 +377,7 @@ class DetailViewModel(
     }
 
     fun updateTags(tags: List<String>) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotTags(spotId, tags)
@@ -351,6 +390,7 @@ class DetailViewModel(
     }
 
     fun updateLocation(latitude: Double, longitude: Double) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotLocation(spotId, latitude, longitude)
@@ -363,6 +403,7 @@ class DetailViewModel(
     }
 
     fun updateDescription(description: String) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotDescription(spotId, description)
@@ -375,6 +416,7 @@ class DetailViewModel(
     }
 
     fun updateArtworkDate(artworkDate: String) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateSpotArtworkDate(spotId, artworkDate)
@@ -387,6 +429,7 @@ class DetailViewModel(
     }
 
     fun addNote(noteText: String, timestamp: Long) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.addNoteToSpot(spotId, noteText, timestamp)
@@ -395,6 +438,7 @@ class DetailViewModel(
     }
 
     fun deleteNote(noteId: Long) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.deleteNote(noteId)
@@ -403,6 +447,7 @@ class DetailViewModel(
     }
 
     fun updateNote(noteId: Long, noteText: String) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateNote(noteId, noteText)
@@ -411,6 +456,7 @@ class DetailViewModel(
     }
 
     fun addImage(imagePath: String, thumbnailPath: String, timestamp: Long) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.addImageToSpot(spotId, imagePath, thumbnailPath, timestamp)
@@ -429,6 +475,7 @@ class DetailViewModel(
     }
 
     fun setMainImage(imageId: Long) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.setMainImage(spotId, imageId)
@@ -437,6 +484,7 @@ class DetailViewModel(
     }
 
     fun deleteImage(image: SpotImage) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.deleteImage(image)
@@ -449,6 +497,7 @@ class DetailViewModel(
     }
 
     fun updateImageRating(image: SpotImage, rating: Long) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.updateImageRating(image.id, rating)
@@ -467,6 +516,7 @@ class DetailViewModel(
     }
 
     fun deleteSpot(spotDetails: SpotDetails, onDeleted: () -> Unit) {
+        if (!isCurrentlyEditable()) return
         if (spotId != -1L) {
             viewModelScope.launch {
                 repository.deleteSpot(spotDetails)
@@ -477,6 +527,7 @@ class DetailViewModel(
     }
 
     fun forceBackupSpotImages(onResult: (Int) -> Unit) {
+        if (!isCurrentlyEditable()) return
         val details = spotDetails.value ?: return
         viewModelScope.launch {
             val count = syncManager.forceBackupSpot(details.spot.uuid)
