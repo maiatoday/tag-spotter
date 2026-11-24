@@ -130,6 +130,8 @@ fun DetailScreen(
     val isArtistRecognitionEnabled by viewModel.isAiAugmentationAvailable.collectAsStateWithLifecycle()
     val wikiSearchState by viewModel.wikiSearchState.collectAsStateWithLifecycle()
     val darkMapEnabled by viewModel.darkMapEnabled.collectAsStateWithLifecycle()
+    val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
+    val pendingArtistInput by viewModel.pendingArtistInput.collectAsStateWithLifecycle()
     val isSystemDark = isSystemInDarkTheme()
     val useDarkMap = isSystemDark && darkMapEnabled
 
@@ -720,6 +722,7 @@ fun DetailScreen(
 
                             Button(
                                 onClick = onSaveClick,
+                                enabled = !isSaving,
                                 modifier = Modifier.weight(1.5f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -758,6 +761,7 @@ fun DetailScreen(
                         onTogglePublic = { viewModel.updatePublic(it) },
                         onMapPickerClick = { isMapPickerDialogVisible = true },
                         onSetEditing = { viewModel.setEditing(it) },
+                        pendingArtistInput = pendingArtistInput,
                         onPendingArtistInputChange = { viewModel.updatePendingArtistInput(it) }
                     )
 
@@ -847,6 +851,7 @@ fun DetailScreen(
                             onTogglePublic = { viewModel.updatePublic(it) },
                             onMapPickerClick = { isMapPickerDialogVisible = true },
                             onSetEditing = { viewModel.setEditing(it) },
+                            pendingArtistInput = pendingArtistInput,
                             onPendingArtistInputChange = { viewModel.updatePendingArtistInput(it) }
                         )
 
@@ -926,6 +931,7 @@ fun DetailScreen(
 
                         Button(
                             onClick = onSaveClick,
+                            enabled = !isSaving,
                             modifier = Modifier.weight(1.5f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,

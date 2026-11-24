@@ -132,7 +132,7 @@ class MainViewModel(
 
                 // Process in IO Dispatcher
                 val result = withContext(ioDispatcher) {
-                    if (loc == null) {
+                    if (loc == null || loc.isFallback) {
                         val metadata = runCatching { photoProcessor.extractMetadataFromUri(tempPath) }.getOrNull()
                         val metaLat = metadata?.latitude
                         val metaLng = metadata?.longitude
