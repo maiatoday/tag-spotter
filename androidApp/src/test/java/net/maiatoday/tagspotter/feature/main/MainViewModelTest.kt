@@ -286,6 +286,38 @@ class MainViewModelTest {
     }
 
     @Test
+    fun handleCameraCaptureSuccess_whenDeviceLocationIsFallback_prefersExifLocation() = runTest {
+        val viewModel = MainViewModel(
+            locationProvider,
+            photoProcessor,
+            settingsRepository,
+            spotRepository,
+            authService,
+            syncManager,
+            UnconfinedTestDispatcher(testScheduler)
+        )
+
+        photoProcessor.tempCameraFileResult = TempFileDetails("temp_uri", "temp_path")
+        viewModel.prepareCameraCapture()
+
+        locationProvider.locationToReturn = LocationData(10.0, 20.0, isFallback = true)
+        photoProcessor.metadataResult = PhotoMetadata(48.8566, 2.3522, 999999L)
+
+        viewModel.events.test {
+            viewModel.handleCameraCaptureSuccess()
+
+            assertEquals("temp_path", photoProcessor.extractMetadataFromUriCalledWith)
+            val event = awaitItem() as MainEvent.PhotoProcessed
+            assertEquals(48.8566, event.latitude, 0.0001)
+            assertEquals(2.3522, event.longitude, 0.0001)
+            assertFalse(event.isFallback)
+            assertEquals(999999L, event.captureTime)
+
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
     fun updateShowTestData_updatesRepository() = runTest {
         val viewModel = MainViewModel(
             locationProvider,

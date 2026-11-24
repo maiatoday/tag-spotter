@@ -1,6 +1,7 @@
 package net.maiatoday.tagspotter.feature.main
 
 import android.Manifest
+import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -142,8 +143,11 @@ class MainActivity : ComponentActivity() {
       ?: intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
       ?: return
 
+    if (streamUri.scheme != ContentResolver.SCHEME_CONTENT) return
+
     isInitialShareHandled = false
     lifecycleScope.launch(Dispatchers.IO) {
+      var destFile: File? = null
       try {
         val sharedDir = File(filesDir, "shared_photos").apply { mkdirs() }
         val ext = when {
@@ -152,16 +156,31 @@ class MainActivity : ComponentActivity() {
           mimeType.contains("heic", ignoreCase = true) -> "heic"
           else -> "jpg"
         }
-        val destFile = File(sharedDir, "shared_${UUID.randomUUID()}.$ext")
+        val targetFile = File(sharedDir, "shared_${UUID.randomUUID()}.$ext")
+        destFile = targetFile
         contentResolver.openInputStream(streamUri)?.use { input ->
-          destFile.outputStream().use { output ->
-            input.copyTo(output)
+          targetFile.outputStream().use { output ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var totalBytes = 0L
+            while (true) {
+              val bytesRead = input.read(buffer)
+              if (bytesRead == -1) break
+              totalBytes += bytesRead
+              if (totalBytes > MAX_SHARED_IMAGE_BYTES) {
+                throw IllegalArgumentException("Shared image exceeds size limit")
+              }
+              output.write(buffer, 0, bytesRead)
+            }
           }
-        } ?: return@launch
+        } ?: run {
+          targetFile.delete()
+          return@launch
+        }
         withContext(Dispatchers.Main) {
-          sharedImageUri = Uri.fromFile(destFile).toString()
+          sharedImageUri = Uri.fromFile(targetFile).toString()
         }
       } catch (e: Exception) {
+        destFile?.delete()
         e.printStackTrace()
         withContext(Dispatchers.Main) {
           Toast.makeText(
@@ -177,6 +196,7 @@ class MainActivity : ComponentActivity() {
   companion object {
     private const val KEY_INITIAL_TAB_HANDLED = "initial_tab_handled"
     private const val KEY_INITIAL_SHARE_HANDLED = "initial_share_handled"
+    private const val MAX_SHARED_IMAGE_BYTES = 50L * 1024L * 1024L
   }
 
   private fun getFileName(uri: Uri): String? {

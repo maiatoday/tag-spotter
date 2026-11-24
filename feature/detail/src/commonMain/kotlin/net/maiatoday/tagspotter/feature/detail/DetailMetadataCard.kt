@@ -99,6 +99,7 @@ fun DetailMetadataCard(
     onTogglePublic: (Boolean) -> Unit = {},
     onMapPickerClick: () -> Unit,
     onSetEditing: (Boolean) -> Unit = {},
+    pendingArtistInput: String = "",
     onPendingArtistInputChange: (String) -> Unit = {}
 ) {
     val platformHelper = rememberDetailPlatformHelper()
@@ -422,15 +423,19 @@ fun DetailMetadataCard(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    val activeArtistInput = if (isCreationMode) pendingArtistInput else artistEditInput
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
-                            value = artistEditInput,
+                            value = activeArtistInput,
                             onValueChange = {
-                                artistEditInput = it
-                                if (isCreationMode) onPendingArtistInputChange(it)
+                                if (isCreationMode) {
+                                    onPendingArtistInputChange(it)
+                                } else {
+                                    artistEditInput = it
+                                }
                             },
                             label = { Text(stringResource(details.spot.category.getCategoryCreatorTextFieldLabel())) },
                             placeholder = { Text(stringResource(details.spot.category.getCategoryCreatorPlaceholder())) },
@@ -441,15 +446,16 @@ fun DetailMetadataCard(
                             ),
                             keyboardActions = KeyboardActions(
                                 onDone = {
-                                    val cleaned = artistEditInput.trim()
+                                    val cleaned = activeArtistInput.trim()
                                     if (cleaned.isNotEmpty()) {
                                         if (!localArtistsList.contains(cleaned)) {
                                             localArtistsList.add(cleaned)
                                         }
-                                        artistEditInput = ""
                                         if (isCreationMode) {
                                             onUpdateArtists(localArtistsList.toList())
                                             onPendingArtistInputChange("")
+                                        } else {
+                                            artistEditInput = ""
                                         }
                                     }
                                 }
@@ -463,15 +469,16 @@ fun DetailMetadataCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         IconButton(
                             onClick = {
-                                val cleaned = artistEditInput.trim()
+                                val cleaned = activeArtistInput.trim()
                                 if (cleaned.isNotEmpty()) {
                                     if (!localArtistsList.contains(cleaned)) {
                                         localArtistsList.add(cleaned)
                                     }
-                                    artistEditInput = ""
                                     if (isCreationMode) {
                                         onUpdateArtists(localArtistsList.toList())
                                         onPendingArtistInputChange("")
+                                    } else {
+                                        artistEditInput = ""
                                     }
                                 }
                             },

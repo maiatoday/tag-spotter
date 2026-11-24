@@ -1102,6 +1102,41 @@ class DetailViewModelTest {
         assertNotNull(savedSpot)
         assertEquals(listOf("Banksy", "Shepard Fairey"), savedSpot.spot.artists)
     }
+
+    @Test
+    fun saveSpot_draftMode_preservesPendingArtistStateFlowAndBlocksDoubleSubmit() = runTest {
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager,
+            authService = authService,
+            draftImagePath = "file:///shared/photo3.jpg",
+            draftThumbnailPath = "/tmp/thumb3.jpg",
+            draftLatitude = 40.7128,
+            draftLongitude = -74.0060
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+
+        viewModel.updatePendingArtistInput("Keith Haring")
+        assertEquals("Keith Haring", viewModel.pendingArtistInput.value)
+
+        val savedIds = mutableListOf<Long>()
+        viewModel.saveSpot { savedIds.add(it) }
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, savedIds.size)
+        assertEquals("", viewModel.pendingArtistInput.value)
+        assertFalse(viewModel.isSaving.value)
+        val savedSpot = repository.getSpotById(savedIds.first()).first()
+        assertNotNull(savedSpot)
+        assertEquals(listOf("Keith Haring"), savedSpot.spot.artists)
+    }
 }
 
 private class FakeAuthService(initialUser: FirebaseUserWrapper? = null) : AuthService {

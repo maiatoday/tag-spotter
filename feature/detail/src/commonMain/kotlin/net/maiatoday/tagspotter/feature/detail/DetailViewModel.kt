@@ -87,10 +87,14 @@ class DetailViewModel(
     }
 
     private var cachedDetails: SpotDetails? = null
-    private var pendingArtistInput: String = ""
+    private val _pendingArtistInput = MutableStateFlow("")
+    val pendingArtistInput = _pendingArtistInput.asStateFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving = _isSaving.asStateFlow()
 
     fun updatePendingArtistInput(input: String) {
-        pendingArtistInput = input
+        _pendingArtistInput.value = input
     }
 
     val spotDetails: StateFlow<SpotDetails?> = if (spotId != -1L) {
@@ -541,29 +545,35 @@ class DetailViewModel(
     }
 
     fun saveSpot(onSaved: (Long) -> Unit) {
+        if (_isSaving.value) return
         val details = _draftDetails.value ?: return
         val firstImage = details.images.firstOrNull() ?: return
-        val pendingArtist = pendingArtistInput.trim()
+        val pendingArtist = _pendingArtistInput.value.trim()
         val finalArtists = if (pendingArtist.isNotEmpty() && !details.spot.artists.contains(pendingArtist)) {
             details.spot.artists + pendingArtist
         } else {
             details.spot.artists
         }
         val spotToSave = details.spot.copy(artists = finalArtists)
-        pendingArtistInput = ""
+        _isSaving.value = true
         viewModelScope.launch {
-            val newSpotId = repository.saveSpot(spotToSave, firstImage.imagePath, firstImage.thumbnailPath)
-            
-            if (details.images.size > 1) {
-                details.images.drop(1).forEach { extraImage ->
-                    repository.addImageToSpot(newSpotId, extraImage.imagePath, extraImage.thumbnailPath, extraImage.timestamp)
+            try {
+                val newSpotId = repository.saveSpot(spotToSave, firstImage.imagePath, firstImage.thumbnailPath)
+
+                if (details.images.size > 1) {
+                    details.images.drop(1).forEach { extraImage ->
+                        repository.addImageToSpot(newSpotId, extraImage.imagePath, extraImage.thumbnailPath, extraImage.timestamp)
+                    }
                 }
+
+                if (spotToSave.isStarred) {
+                    repository.updateSpotStarred(newSpotId, true)
+                }
+                _pendingArtistInput.value = ""
+                onSaved(newSpotId)
+            } finally {
+                _isSaving.value = false
             }
-            
-            if (spotToSave.isStarred) {
-                repository.updateSpotStarred(newSpotId, true)
-            }
-            onSaved(newSpotId)
         }
     }
 
