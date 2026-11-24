@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
@@ -53,9 +54,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationDrawerItem
@@ -472,7 +475,7 @@ fun TagAlongScreen(
         engine = activeEngine,
         showDebugControls = effectiveShowDebugControls,
         onMenuClick = onMenuClick,
-        onNewChat = { menuState.startNewChat() },
+        onOpenHistory = { menuState.openHistory() },
         onToggleDebugMode = { menuState.toggleDebugMode() },
         onViewSchema = { menuState.openSchemaDialog() },
         onLogSchema = { menuState.logActiveSchema() },
@@ -527,7 +530,7 @@ fun TagAlongScreenContent(
     engine: A2UIRendererEngine,
     showDebugControls: Boolean = true,
     onMenuClick: (() -> Unit)? = null,
-    onNewChat: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     onToggleDebugMode: () -> Unit = {},
     onViewSchema: (() -> Unit)? = null,
     onLogSchema: () -> Unit = {},
@@ -586,7 +589,7 @@ fun TagAlongScreenContent(
                         showDebugControls = showDebugControls,
                         isA2uiDebugMode = uiState.isA2uiDebugMode,
                         onMenuClick = onMenuClick,
-                        onNewChat = onNewChat,
+                        onOpenHistory = onOpenHistory,
                         onToggleDebugMode = onToggleDebugMode,
                         onViewSchema = handleViewSchema,
                         onLogSchema = onLogSchema,
@@ -636,7 +639,7 @@ fun TagAlongScreenContent(
                 showDebugControls = showDebugControls,
                 isA2uiDebugMode = uiState.isA2uiDebugMode,
                 onMenuClick = onMenuClick,
-                onNewChat = onNewChat,
+                onOpenHistory = onOpenHistory,
                 onToggleDebugMode = onToggleDebugMode,
                 onViewSchema = handleViewSchema,
                 onLogSchema = onLogSchema,
@@ -686,7 +689,7 @@ private fun ChatPane(
     showDebugControls: Boolean = true,
     isA2uiDebugMode: Boolean = false,
     onMenuClick: (() -> Unit)? = null,
-    onNewChat: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     onToggleDebugMode: () -> Unit = {},
     onViewSchema: () -> Unit = {},
     onLogSchema: () -> Unit = {},
@@ -781,10 +784,10 @@ private fun ChatPane(
                             }
                         }
                     }
-                    IconButton(onClick = onNewChat) {
+                    IconButton(onClick = onOpenHistory) {
                         Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "New Chat",
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Chat History",
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
                         )
@@ -994,17 +997,20 @@ private fun ChatPane(
                         singleLine = true
                     )
 
-                    Button(
+                    FilledIconButton(
                         onClick = submitMessage,
-                        colors = ButtonDefaults.buttonColors(
+                        colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         ),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        modifier = Modifier.height(52.dp),
+                        modifier = Modifier.size(52.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Send", fontWeight = FontWeight.Bold)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
