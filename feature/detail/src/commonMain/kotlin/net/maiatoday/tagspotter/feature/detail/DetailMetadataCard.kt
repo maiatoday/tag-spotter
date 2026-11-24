@@ -98,7 +98,8 @@ fun DetailMetadataCard(
     onUpdateArtworkDate: (String) -> Unit,
     onTogglePublic: (Boolean) -> Unit = {},
     onMapPickerClick: () -> Unit,
-    onSetEditing: (Boolean) -> Unit = {}
+    onSetEditing: (Boolean) -> Unit = {},
+    onPendingArtistInputChange: (String) -> Unit = {}
 ) {
     val platformHelper = rememberDetailPlatformHelper()
     var isEditingArtists by remember { mutableStateOf(isCreationMode && canEdit) }
@@ -427,7 +428,10 @@ fun DetailMetadataCard(
                     ) {
                         OutlinedTextField(
                             value = artistEditInput,
-                            onValueChange = { artistEditInput = it },
+                            onValueChange = {
+                                artistEditInput = it
+                                if (isCreationMode) onPendingArtistInputChange(it)
+                            },
                             label = { Text(stringResource(details.spot.category.getCategoryCreatorTextFieldLabel())) },
                             placeholder = { Text(stringResource(details.spot.category.getCategoryCreatorPlaceholder())) },
                             singleLine = true,
@@ -443,6 +447,10 @@ fun DetailMetadataCard(
                                             localArtistsList.add(cleaned)
                                         }
                                         artistEditInput = ""
+                                        if (isCreationMode) {
+                                            onUpdateArtists(localArtistsList.toList())
+                                            onPendingArtistInputChange("")
+                                        }
                                     }
                                 }
                             ),
@@ -461,6 +469,10 @@ fun DetailMetadataCard(
                                         localArtistsList.add(cleaned)
                                     }
                                     artistEditInput = ""
+                                    if (isCreationMode) {
+                                        onUpdateArtists(localArtistsList.toList())
+                                        onPendingArtistInputChange("")
+                                    }
                                 }
                             },
                             modifier = Modifier

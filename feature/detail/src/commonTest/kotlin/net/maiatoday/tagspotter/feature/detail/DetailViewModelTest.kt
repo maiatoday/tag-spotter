@@ -997,6 +997,111 @@ class DetailViewModelTest {
 
         assertTrue(viewModel.canEdit.value)
     }
+
+    @Test
+    fun saveSpot_draftMode_persistsArtistsAndLocation() = runTest {
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager,
+            authService = authService,
+            draftImagePath = "content://media/external/images/media/1",
+            draftThumbnailPath = "/tmp/thumb.jpg",
+            draftLatitude = 45.4642,
+            draftLongitude = 9.1900,
+            draftCategory = "graffiti",
+            draftCaptureTime = 1700000000000L
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+
+        viewModel.updateArtists(listOf("Banksy"))
+
+        var savedId: Long? = null
+        viewModel.saveSpot { savedId = it }
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(savedId)
+        val savedSpot = repository.getSpotById(savedId).first()
+        assertNotNull(savedSpot)
+        assertEquals(listOf("Banksy"), savedSpot.spot.artists)
+        assertEquals(45.4642, savedSpot.spot.latitude)
+        assertEquals(9.1900, savedSpot.spot.longitude)
+        assertEquals(1700000000000L, savedSpot.spot.createdAt)
+    }
+
+    @Test
+    fun saveSpot_draftMode_persistsPendingArtistInput() = runTest {
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager,
+            authService = authService,
+            draftImagePath = "file:///shared/photo.jpg",
+            draftThumbnailPath = "/tmp/thumb.jpg",
+            draftLatitude = 51.5074,
+            draftLongitude = -0.1278
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+
+        // User types artist name and taps Save without pressing Done / Add button
+        viewModel.updatePendingArtistInput("  Invader  ")
+
+        var savedId: Long? = null
+        viewModel.saveSpot { savedId = it }
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(savedId)
+        val savedSpot = repository.getSpotById(savedId).first()
+        assertNotNull(savedSpot)
+        assertEquals(listOf("Invader"), savedSpot.spot.artists)
+        assertEquals(51.5074, savedSpot.spot.latitude)
+        assertEquals(-0.1278, savedSpot.spot.longitude)
+    }
+
+    @Test
+    fun saveSpot_draftMode_mergesSubmittedAndPendingArtistsWithoutDuplicates() = runTest {
+        val viewModel = DetailViewModel(
+            spotId = -1L,
+            repository = repository,
+            settingsRepository = settingsRepository,
+            aiRecognitionService = aiRecognitionService,
+            secretsProvider = secretsProvider,
+            wearSyncManager = wearSyncManager,
+            syncManager = syncManager,
+            authService = authService,
+            draftImagePath = "file:///shared/photo2.jpg",
+            draftThumbnailPath = "/tmp/thumb2.jpg",
+            draftLatitude = 40.7128,
+            draftLongitude = -74.0060
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.spotDetails.collect {}
+        }
+
+        viewModel.updateArtists(listOf("Banksy"))
+        viewModel.updatePendingArtistInput("Shepard Fairey")
+
+        var savedId: Long? = null
+        viewModel.saveSpot { savedId = it }
+        testScheduler.advanceUntilIdle()
+
+        assertNotNull(savedId)
+        val savedSpot = repository.getSpotById(savedId).first()
+        assertNotNull(savedSpot)
+        assertEquals(listOf("Banksy", "Shepard Fairey"), savedSpot.spot.artists)
+    }
 }
 
 private class FakeAuthService(initialUser: FirebaseUserWrapper? = null) : AuthService {
