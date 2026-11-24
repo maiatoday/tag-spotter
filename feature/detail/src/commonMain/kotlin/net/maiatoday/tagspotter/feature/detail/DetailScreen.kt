@@ -121,6 +121,7 @@ fun DetailScreen(
     )
 
     val spotDetails by viewModel.spotDetails.collectAsStateWithLifecycle()
+    val canEdit by viewModel.canEdit.collectAsStateWithLifecycle()
     val sortedImages = remember(spotDetails) { spotDetails?.images?.sortedBy { it.timestamp } ?: emptyList() }
     val defaultPhotographer by viewModel.defaultPhotographer.collectAsStateWithLifecycle()
     val recentCustomTags by viewModel.recentCustomTags.collectAsStateWithLifecycle()
@@ -148,7 +149,7 @@ fun DetailScreen(
     }
 
     // AI Suggestions Dialog
-    if (aiState is AiState.Success) {
+    if (canEdit && aiState is AiState.Success) {
         val suggestion = (aiState as AiState.Success).suggestion
         val suggestionArtist = suggestion.artist
         val suggestionTitle = suggestion.title
@@ -400,6 +401,7 @@ fun DetailScreen(
     }
 
     // Wikipedia AI Search Dialog / States
+    if (canEdit) {
     when (val state = wikiSearchState) {
         is WikiSearchState.Searching -> {
             AlertDialog(
@@ -466,6 +468,7 @@ fun DetailScreen(
         }
         WikiSearchState.Idle -> {}
     }
+    }
 
     var noteInput by remember { mutableStateOf("") }
     var zoomImage by remember { mutableStateOf<SpotImage?>(null) }
@@ -474,7 +477,7 @@ fun DetailScreen(
     var showLimitExceededDialog by remember { mutableStateOf(false) }
     var imageToDelete by remember { mutableStateOf<SpotImage?>(null) }
 
-    if (imageToDelete != null) {
+    if (canEdit && imageToDelete != null) {
         val targetImg = imageToDelete!!
         AlertDialog(
             onDismissRequest = { imageToDelete = null },
@@ -504,7 +507,7 @@ fun DetailScreen(
 
     var noteToDelete by remember { mutableStateOf<SpotNote?>(null) }
 
-    if (noteToDelete != null) {
+    if (canEdit && noteToDelete != null) {
         val targetNote = noteToDelete!!
         AlertDialog(
             onDismissRequest = { noteToDelete = null },
@@ -582,20 +585,22 @@ fun DetailScreen(
                     if (!isCreationMode) {
                         val details = spotDetails
                         if (details != null) {
-                            IconButton(
-                                onClick = {
-                                    viewModel.forceBackupSpotImages { count ->
-                                        toastLauncher.showToast(
-                                            if (count > 0) "Uploaded $count photo(s) to cloud" else "Spot photos already backed up"
-                                        )
+                            if (canEdit) {
+                                IconButton(
+                                    onClick = {
+                                        viewModel.forceBackupSpotImages { count ->
+                                            toastLauncher.showToast(
+                                                if (count > 0) "Uploaded $count photo(s) to cloud" else "Spot photos already backed up"
+                                            )
+                                        }
                                     }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CloudUpload,
+                                        contentDescription = "Backup Spot Photos",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CloudUpload,
-                                    contentDescription = "Backup Spot Photos",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
                             }
 
                             val isStarred = details.spot.isStarred
@@ -610,20 +615,19 @@ fun DetailScreen(
                                     tint = if (isStarred) Color(0xFFFFD700) else Color.Gray
                                 )
                             }
-                        }
 
-                        IconButton(
-                            onClick = {
-                                val details = spotDetails
-                                if (details != null) {
-                                    viewModel.deleteSpot(details, onDeleted = {
-                                        toastLauncher.showToast("Spot deleted successfully")
-                                        onBack()
-                                    })
+                            if (canEdit) {
+                                IconButton(
+                                    onClick = {
+                                        viewModel.deleteSpot(details, onDeleted = {
+                                            toastLauncher.showToast("Spot deleted successfully")
+                                            onBack()
+                                        })
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Spot", tint = MaterialTheme.colorScheme.error)
                                 }
                             }
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Spot", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 },
@@ -688,6 +692,7 @@ fun DetailScreen(
                     if (!isCreationMode) {
                         DetailPhotoTimeline(
                             sortedImages = sortedImages,
+                            canEdit = canEdit,
                             onAddPhotoClick = {
                                 photoPickerLauncher()
                             },
@@ -737,6 +742,7 @@ fun DetailScreen(
                     DetailMetadataCard(
                         details = details,
                         isCreationMode = isCreationMode,
+                        canEdit = canEdit,
                         defaultPhotographer = defaultPhotographer,
                         isArtistRecognitionEnabled = isArtistRecognitionEnabled,
                         aiState = aiState,
@@ -757,6 +763,7 @@ fun DetailScreen(
                     DetailTagsCard(
                         details = details,
                         isCreationMode = isCreationMode,
+                        canEdit = canEdit,
                         recentCustomTags = recentCustomTags,
                         onUpdateTags = { viewModel.updateTags(it) },
                         onSetEditing = { viewModel.setEditing(it) }
@@ -772,6 +779,7 @@ fun DetailScreen(
                     if (!isCreationMode) {
                         DetailNotesSection(
                             sortedNotes = sortedNotes,
+                            canEdit = canEdit,
                             noteInput = noteInput,
                             onNoteInputChange = { noteInput = it },
                             onSendNote = {
@@ -822,6 +830,7 @@ fun DetailScreen(
                         DetailMetadataCard(
                             details = details,
                             isCreationMode = isCreationMode,
+                            canEdit = canEdit,
                             defaultPhotographer = defaultPhotographer,
                             isArtistRecognitionEnabled = isArtistRecognitionEnabled,
                             aiState = aiState,
@@ -842,6 +851,7 @@ fun DetailScreen(
                         DetailTagsCard(
                             details = details,
                             isCreationMode = isCreationMode,
+                            canEdit = canEdit,
                             recentCustomTags = recentCustomTags,
                             onUpdateTags = { viewModel.updateTags(it) },
                             onSetEditing = { viewModel.setEditing(it) }
@@ -857,6 +867,7 @@ fun DetailScreen(
                         if (!isCreationMode) {
                             DetailPhotoTimeline(
                                 sortedImages = sortedImages,
+                                canEdit = canEdit,
                                 onAddPhotoClick = {
                                     photoPickerLauncher()
                                 },
@@ -868,6 +879,7 @@ fun DetailScreen(
 
                             DetailNotesSection(
                                 sortedNotes = sortedNotes,
+                                canEdit = canEdit,
                                 noteInput = noteInput,
                                 onNoteInputChange = { noteInput = it },
                                 onSendNote = {
@@ -963,7 +975,7 @@ fun DetailScreen(
         }
     }
 
-    if (isMapPickerDialogVisible) {
+    if (canEdit && isMapPickerDialogVisible) {
         Dialog(
             onDismissRequest = { isMapPickerDialogVisible = false },
             properties = DialogProperties(usePlatformDefaultWidth = false)

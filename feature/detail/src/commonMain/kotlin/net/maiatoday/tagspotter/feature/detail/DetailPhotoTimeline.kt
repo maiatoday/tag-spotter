@@ -53,6 +53,7 @@ import net.maiatoday.tagspotter.core.model.SpotImage
 @Composable
 fun DetailPhotoTimeline(
     sortedImages: List<SpotImage>,
+    canEdit: Boolean = true,
     onAddPhotoClick: () -> Unit,
     onImageClick: (SpotImage) -> Unit,
     onHeartClick: (SpotImage) -> Unit,
@@ -73,18 +74,20 @@ fun DetailPhotoTimeline(
                 fontWeight = FontWeight.Bold
             )
 
-            IconButton(
-                onClick = onAddPhotoClick,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AddPhotoAlternate,
-                    contentDescription = stringResource(DetailRes.string.content_desc_add_image),
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(20.dp)
-                )
+            if (canEdit) {
+                IconButton(
+                    onClick = onAddPhotoClick,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddPhotoAlternate,
+                        contentDescription = stringResource(DetailRes.string.content_desc_add_image),
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 
@@ -99,6 +102,7 @@ fun DetailPhotoTimeline(
                 SpotTimelineCard(
                     image = image,
                     isMain = image.isMain,
+                    canEdit = canEdit,
                     onHeartClick = { onHeartClick(image) },
                     onClick = { onImageClick(image) },
                     onDeleteClick = { onDeleteClick(image) },
@@ -113,6 +117,7 @@ fun DetailPhotoTimeline(
 fun SpotTimelineCard(
     image: SpotImage,
     isMain: Boolean,
+    canEdit: Boolean = true,
     onHeartClick: () -> Unit,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -146,36 +151,38 @@ fun SpotTimelineCard(
                     contentScale = ContentScale.Crop
                 )
 
-                IconButton(
-                    onClick = onDeleteClick,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(6.dp)
-                        .size(32.dp)
-                        .background(Color.Black.copy(alpha = 0.4f), shape = CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = stringResource(DetailRes.string.content_desc_delete_image),
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                if (canEdit) {
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .size(32.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), shape = CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(DetailRes.string.content_desc_delete_image),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
 
-                IconButton(
-                    onClick = onHeartClick,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(32.dp)
-                        .background(Color.Black.copy(alpha = 0.4f), shape = CircleShape)
-                ) {
-                    Icon(
-                        imageVector = if (isMain) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = stringResource(DetailRes.string.content_desc_main_thumbnail),
-                        tint = if (isMain) Color(0xFFF43F5E) else Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    IconButton(
+                        onClick = onHeartClick,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .size(32.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), shape = CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = if (isMain) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = stringResource(DetailRes.string.content_desc_main_thumbnail),
+                            tint = if (isMain) Color(0xFFF43F5E) else Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -193,24 +200,31 @@ fun SpotTimelineCard(
                     color = Color.LightGray,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                     for (i in 1..5) {
-                        val isStarred = i.toLong() <= image.rating
-                        Icon(
-                            imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                            contentDescription = stringResource(DetailRes.string.content_desc_star_timeline, i),
-                            tint = if (isStarred) Color(0xFFFFD700) else Color.Gray,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .clickable {
-                                    val newRating = if (image.rating == i.toLong()) 0L else i.toLong()
-                                    onRatingChange(newRating)
-                                }
-                        )
+                if (canEdit || image.rating > 0L) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        for (i in 1..5) {
+                            val isStarred = i.toLong() <= image.rating
+                            val starModifier = if (canEdit) {
+                                Modifier
+                                    .size(16.dp)
+                                    .clickable {
+                                        val newRating = if (image.rating == i.toLong()) 0L else i.toLong()
+                                        onRatingChange(newRating)
+                                    }
+                            } else {
+                                Modifier.size(16.dp)
+                            }
+                            Icon(
+                                imageVector = if (isStarred) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                contentDescription = stringResource(DetailRes.string.content_desc_star_timeline, i),
+                                tint = if (isStarred) Color(0xFFFFD700) else Color.Gray,
+                                modifier = starModifier
+                            )
+                        }
                     }
                 }
             }

@@ -57,16 +57,23 @@ import net.maiatoday.tagspotter.core.ui.chips.NeonTagChip
 fun DetailTagsCard(
     details: SpotDetails,
     isCreationMode: Boolean,
+    canEdit: Boolean = true,
     recentCustomTags: List<String>,
     onUpdateTags: (List<String>) -> Unit,
     onSetEditing: (Boolean) -> Unit = {}
 ) {
-    var isEditingTags by remember { mutableStateOf(isCreationMode) }
+    var isEditingTags by remember { mutableStateOf(isCreationMode && canEdit) }
     var customTagEditInput by remember { mutableStateOf("") }
     val localTagsList = remember { mutableStateListOf<String>() }
 
-    LaunchedEffect(isEditingTags) {
-        onSetEditing(isEditingTags)
+    LaunchedEffect(canEdit) {
+        if (!canEdit) {
+            isEditingTags = false
+        }
+    }
+
+    LaunchedEffect(isEditingTags, canEdit) {
+        onSetEditing(canEdit && isEditingTags)
     }
 
     LaunchedEffect(isEditingTags, details.spot.tags) {
@@ -98,7 +105,7 @@ fun DetailTagsCard(
                     fontWeight = FontWeight.Bold
                 )
 
-                if (!isCreationMode) {
+                if (!isCreationMode && canEdit && !isEditingTags) {
                     IconButton(
                         onClick = { isEditingTags = true },
                         modifier = Modifier.size(24.dp)
@@ -115,7 +122,7 @@ fun DetailTagsCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (isEditingTags) {
+            if (canEdit && isEditingTags) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     if (!isCreationMode) {
                         Row(

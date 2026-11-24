@@ -25,7 +25,26 @@ data class Spot(
     val parentPackId: String? = null,
     val isPublic: Boolean = false
 ) {
+    /**
+     * Returns true if the user identified by [currentUserUid] is the author of this spot
+     * and therefore allowed to edit it.
+     *
+     * - Imported spots (`isImported == true`) and spots belonging to a loaded shared pack
+     *   (`parentPackId != null`) are never editable.
+     * - Local spots without an author UID (`ownerUid.isNullOrBlank()`) or marked as
+     *   [LOCAL_ONLY_UID] are editable on the device that created them.
+     * - Spots with an explicit `ownerUid` (including public spots) are editable only when
+     *   [currentUserUid] matches `ownerUid`.
+     */
+    fun isEditableBy(currentUserUid: String?): Boolean {
+        if (isImported || parentPackId != null) return false
+        val owner = ownerUid
+        if (owner.isNullOrBlank() || owner == LOCAL_ONLY_UID) return true
+        return currentUserUid != null && owner == currentUserUid
+    }
+
     companion object {
+        const val LOCAL_ONLY_UID = "local_only"
         val CATEGORIES = listOf("graffiti", "sculpture", "nature", "architecture", "public_place", "food")
     }
 }

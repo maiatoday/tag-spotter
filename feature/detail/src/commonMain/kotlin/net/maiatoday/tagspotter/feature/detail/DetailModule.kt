@@ -24,6 +24,7 @@ val detailModule = module {
             secretsProvider = get(),
             wearSyncManager = get(),
             syncManager = get(),
+            authService = get(),
             draftImagePath = draft?.imagePath,
             draftThumbnailPath = draft?.thumbnailPath,
             draftLatitude = draft?.latitude,
