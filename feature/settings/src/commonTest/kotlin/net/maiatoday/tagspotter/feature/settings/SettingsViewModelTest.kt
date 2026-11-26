@@ -90,9 +90,14 @@ class FakeSyncManager : SyncManager {
     var startRealtimeSyncCalledWith: String? = null
     var stopRealtimeSyncCalled = false
     var syncNowCalled = false
+    var syncPublicSpotsCalled = false
 
     override suspend fun syncNow() {
         syncNowCalled = true
+    }
+
+    override suspend fun syncPublicSpots() {
+        syncPublicSpotsCalled = true
     }
 
     override fun startRealtimeSync(userId: String) {
@@ -289,5 +294,33 @@ class SettingsViewModelTest {
         assertFalse(syncManager.syncNowCalled)
         viewModel.syncNow()
         assertTrue(syncManager.syncNowCalled)
+    }
+
+    @Test
+    fun showPublicSpotsTogglePersistsSyncsAndResetsSourceFilter() = runTest {
+        val filterManager = net.maiatoday.tagspotter.core.settings.FilterManager()
+        filterManager.selectSource("Public")
+        val viewModel = SettingsViewModel(
+            settingsRepository,
+            spotRepository,
+            authService,
+            syncManager,
+            net.maiatoday.tagspotter.core.ai.UnsupportedAiRecognitionService(),
+            filterManager
+        )
+        backgroundScope.launch(testDispatcher) { viewModel.showPublicSpots.collect {} }
+
+        assertTrue(viewModel.showPublicSpots.value)
+
+        // Turning off persists false and resets "Public" source filter to "All"
+        viewModel.updateShowPublicSpots(false)
+        assertFalse(viewModel.showPublicSpots.value)
+        assertEquals("All", filterManager.selectedSource.value)
+        assertFalse(syncManager.syncPublicSpotsCalled)
+
+        // Turning on persists true and triggers syncPublicSpots()
+        viewModel.updateShowPublicSpots(true)
+        assertTrue(viewModel.showPublicSpots.value)
+        assertTrue(syncManager.syncPublicSpotsCalled)
     }
 }

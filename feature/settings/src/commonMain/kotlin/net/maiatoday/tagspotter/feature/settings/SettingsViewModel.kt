@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import net.maiatoday.tagspotter.core.settings.FilterManager
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.settings.ThemeMode
 import net.maiatoday.tagspotter.core.database.SpotRepository
@@ -23,7 +24,8 @@ class SettingsViewModel(
     private val spotRepository: SpotRepository,
     private val authService: AuthService,
     private val syncManager: SyncManager,
-    aiRecognitionService: AiRecognitionService
+    aiRecognitionService: AiRecognitionService,
+    private val filterManager: FilterManager? = null
 ) : ViewModel() {
     val isAiSupported: Boolean = aiRecognitionService.isSupported
 
@@ -205,6 +207,28 @@ class SettingsViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = true
         )
+
+    val showPublicSpots: StateFlow<Boolean> = settingsRepository.showPublicSpots
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    fun updateShowPublicSpots(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateShowPublicSpots(show)
+            if (show) {
+                try {
+                    syncManager.syncPublicSpots()
+                } catch (_: Exception) {
+                    // Ignore sync errors on toggle
+                }
+            } else if (filterManager?.selectedSource?.value == "Public") {
+                filterManager.selectSource("All")
+            }
+        }
+    }
 
     fun updateDarkMapEnabled(enabled: Boolean) {
         viewModelScope.launch {

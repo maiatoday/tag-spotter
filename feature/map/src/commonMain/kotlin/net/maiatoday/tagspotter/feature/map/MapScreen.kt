@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -90,6 +91,8 @@ fun MapScreen(
     val homeCityName by viewModel.homeCity.collectAsStateWithLifecycle()
     val selectedSource by viewModel.selectedSource.collectAsStateWithLifecycle()
     val showStarredOnly by viewModel.showStarredOnly.collectAsStateWithLifecycle()
+    val showPublicSpots by viewModel.showPublicSpots.collectAsStateWithLifecycle()
+    val currentUserUid by viewModel.currentUserUid.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val darkMapEnabled by viewModel.darkMapEnabled.collectAsStateWithLifecycle()
     val isSystemDark = isSystemInDarkTheme()
@@ -111,6 +114,7 @@ fun MapScreen(
             status = spotDetails.spot.status,
             title = spotDetails.spot.category.replace("_", " ").replaceFirstChar { it.titlecase() },
             isStarred = spotDetails.spot.isStarred,
+            isPublicCommunity = spotDetails.spot.isOtherUsersPublic(currentUserUid),
             onClick = {
                 viewModel.selectSpot(spotDetails)
             }
@@ -514,6 +518,31 @@ fun MapScreen(
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
+                                    if (spot.spot.isOtherUsersPublic(currentUserUid)) {
+                                        Row(
+                                            modifier = Modifier
+                                                .background(
+                                                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.88f),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                )
+                                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Public,
+                                                contentDescription = "Public Spot",
+                                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                modifier = Modifier.size(11.dp)
+                                            )
+                                            Text(
+                                                text = "PUBLIC",
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
                                     if (isErased) {
                                         Text(
                                             text = "(${stringResource(spot.spot.category.getCategoryInactiveStatusLabel())})",
@@ -595,7 +624,9 @@ fun MapScreen(
             selectedSource = selectedSource,
             onApplySourceFilter = { viewModel.selectSource(it) },
             showStarredOnly = showStarredOnly,
-            onApplyStarredFilter = { viewModel.setShowStarredOnly(it) }
+            onApplyStarredFilter = { viewModel.setShowStarredOnly(it) },
+            showPublicSpots = showPublicSpots,
+            onApplyPublicSpotsFilter = { viewModel.setShowPublicSpots(it) }
         )
     }
 }

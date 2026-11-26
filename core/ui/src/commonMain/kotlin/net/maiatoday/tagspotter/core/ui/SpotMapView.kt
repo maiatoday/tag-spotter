@@ -11,6 +11,7 @@ data class MapMarker(
     val status: String,
     val title: String,
     val isStarred: Boolean = false,
+    val isPublicCommunity: Boolean = false,
     val onClick: () -> Unit
 )
 

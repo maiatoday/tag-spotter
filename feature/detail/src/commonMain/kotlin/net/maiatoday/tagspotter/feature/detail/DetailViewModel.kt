@@ -134,10 +134,28 @@ class DetailViewModel(
         )
     }
 
+    val canDelete: StateFlow<Boolean> = if (spotId == -1L) {
+        MutableStateFlow(false)
+    } else {
+        combine(spotDetails, currentUserUid) { details, uid ->
+            details?.spot?.isDeletableBy(uid) ?: false
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+    }
+
     private fun isCurrentlyEditable(): Boolean {
         if (spotId == -1L) return true
         val details = spotDetails.value ?: return false
         return details.spot.isEditableBy(currentUserUid.value)
+    }
+
+    private fun isCurrentlyDeletable(): Boolean {
+        if (spotId == -1L) return false
+        val details = spotDetails.value ?: return false
+        return details.spot.isDeletableBy(currentUserUid.value)
     }
 
     val isArtistRecognitionEnabled: StateFlow<Boolean> = settingsRepository.artistRecognitionEnabled
@@ -525,11 +543,14 @@ class DetailViewModel(
     }
 
     fun deleteSpot(spotDetails: SpotDetails, onDeleted: () -> Unit) {
-        if (!isCurrentlyEditable()) return
+        if (!isCurrentlyDeletable()) return
         if (spotId != -1L) {
+            val shouldDeleteRemote = spotDetails.spot.isEditableBy(currentUserUid.value)
             viewModelScope.launch {
                 repository.deleteSpot(spotDetails)
-                syncManager.deleteSpot(spotDetails.spot.uuid)
+                if (shouldDeleteRemote) {
+                    syncManager.deleteSpot(spotDetails.spot.uuid)
+                }
                 onDeleted()
             }
         }

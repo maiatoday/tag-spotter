@@ -234,7 +234,11 @@ actual fun SpotMapView(
                         )
 
                         // Pin Outer
-                        val pinColor = if (marker.isStarred) Color(0xFFFFD700) else Color(0xFFE53935)
+                        val pinColor = when {
+                            marker.isStarred -> Color(0xFFFFD700)
+                            marker.isPublicCommunity -> Color(0xFF00BCD4)
+                            else -> Color(0xFFE53935)
+                        }
                         drawCircle(
                             color = pinColor,
                             radius = 12f,

@@ -122,6 +122,7 @@ fun DetailScreen(
 
     val spotDetails by viewModel.spotDetails.collectAsStateWithLifecycle()
     val canEdit by viewModel.canEdit.collectAsStateWithLifecycle()
+    val canDelete by viewModel.canDelete.collectAsStateWithLifecycle()
     val sortedImages = remember(spotDetails) { spotDetails?.images?.sortedBy { it.timestamp } ?: emptyList() }
     val defaultPhotographer by viewModel.defaultPhotographer.collectAsStateWithLifecycle()
     val recentCustomTags by viewModel.recentCustomTags.collectAsStateWithLifecycle()
@@ -618,7 +619,7 @@ fun DetailScreen(
                                 )
                             }
 
-                            if (canEdit) {
+                            if (canDelete) {
                                 IconButton(
                                     onClick = {
                                         viewModel.deleteSpot(details, onDeleted = {

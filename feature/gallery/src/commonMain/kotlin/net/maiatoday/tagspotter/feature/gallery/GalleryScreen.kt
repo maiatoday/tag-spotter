@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -114,6 +115,8 @@ fun GalleryScreen(
     val spots by viewModel.spots.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val showStarredOnly by viewModel.showStarredOnly.collectAsStateWithLifecycle()
+    val showPublicSpots by viewModel.showPublicSpots.collectAsStateWithLifecycle()
+    val currentUserUid by viewModel.currentUserUid.collectAsStateWithLifecycle()
     val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
 
 
@@ -865,14 +868,17 @@ fun GalleryScreen(
                         }
                     }
 
+                    val deletableSelectedIds = selectedSpotIds.filter { id ->
+                        spots.find { it.spot.id == id }?.spot?.isDeletableBy(currentUserUid) == true
+                    }
                     IconButton(
-                        onClick = { spotsToDelete = selectedSpotIds.toList() },
-                        enabled = selectedSpotIds.isNotEmpty()
+                        onClick = { spotsToDelete = deletableSelectedIds },
+                        enabled = deletableSelectedIds.isNotEmpty()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete",
-                            tint = if (selectedSpotIds.isNotEmpty()) MaterialTheme.colorScheme.error else Color.Gray
+                            tint = if (deletableSelectedIds.isNotEmpty()) MaterialTheme.colorScheme.error else Color.Gray
                         )
                     }
                 }
@@ -1264,6 +1270,7 @@ fun GalleryScreen(
                         spotDetails = spotDetails,
                         isSelected = isSelected,
                         isMultiSelectMode = isMultiSelectMode,
+                        isCommunityPublic = spotDetails.spot.isOtherUsersPublic(currentUserUid),
                         activeFilterCenter = activeFilterCenter,
                         onClick = {
                             if (isMultiSelectMode) {
@@ -1300,7 +1307,9 @@ fun GalleryScreen(
             selectedSource = selectedSource,
             onApplySourceFilter = { viewModel.selectSource(it) },
             showStarredOnly = showStarredOnly,
-            onApplyStarredFilter = { viewModel.setShowStarredOnly(it) }
+            onApplyStarredFilter = { viewModel.setShowStarredOnly(it) },
+            showPublicSpots = showPublicSpots,
+            onApplyPublicSpotsFilter = { viewModel.setShowPublicSpots(it) }
         )
     }
 
@@ -1408,6 +1417,7 @@ fun SpotGridCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isCommunityPublic: Boolean = false,
     activeFilterCenter: FilterCenter? = null
 ) {
     // Get main thumbnail or latest image based on timestamp
@@ -1492,7 +1502,7 @@ fun SpotGridCard(
                     )
                 }
 
-                // Imported Badge
+                // Imported Badge or Community Public Badge
                 if (spotDetails.spot.isImported) {
                     Box(
                         modifier = Modifier
@@ -1507,6 +1517,32 @@ fun SpotGridCard(
                         Text(
                             text = "IMPORTED",
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else if (isCommunityPublic) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.88f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Public,
+                            contentDescription = "Public Spot",
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = "PUBLIC",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
