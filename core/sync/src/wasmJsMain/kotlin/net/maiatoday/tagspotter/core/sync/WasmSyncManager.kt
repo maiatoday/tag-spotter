@@ -81,11 +81,12 @@ class WasmSyncManager(
 
                 var allThumbnailsReady = true
                 val remoteImages = localDetail.images.map { image ->
-                    if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
-                        val base64Data = if (image.thumbnailPath.startsWith("data:")) {
-                            image.thumbnailPath.substringAfter(",")
+                    val sourcePath = image.thumbnailPath.ifBlank { image.imagePath }
+                    if (sourcePath.isNotEmpty() && !sourcePath.startsWith("http")) {
+                        val base64Data = if (sourcePath.startsWith("data:")) {
+                            sourcePath.substringAfter(",")
                         } else {
-                            image.thumbnailPath
+                            sourcePath
                         }
                         val uploadedUrl = suspendCancellableCoroutine { continuation ->
                             webStorageUploadThumbnail(
@@ -110,8 +111,13 @@ class WasmSyncManager(
                             image.copy(thumbnailPath = uploadedUrl, imagePath = uploadedUrl, remoteThumbnailUrl = uploadedUrl)
                         }
                     } else {
-                        val existingUrl = image.remoteThumbnailUrl.ifBlank { image.thumbnailPath }
-                        image.copy(thumbnailPath = existingUrl, imagePath = existingUrl, remoteThumbnailUrl = existingUrl)
+                        val existingUrl = image.remoteThumbnailUrl.ifBlank { sourcePath }
+                        if (existingUrl.isBlank()) {
+                            allThumbnailsReady = false
+                            image
+                        } else {
+                            image.copy(thumbnailPath = existingUrl, imagePath = existingUrl, remoteThumbnailUrl = existingUrl)
+                        }
                     }
                 }
 
@@ -171,14 +177,15 @@ class WasmSyncManager(
 
                             if (localMatch == null) {
                                 repository.saveSyncedSpot(resolvedDetail)
-                            } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
+                            } else if (localMatch.spot.isSynced && (
+                                resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
                                 resolvedDetail.images.size != localMatch.images.size ||
                                 resolvedDetail.notes.size != localMatch.notes.size ||
                                 localMatch.images.any { localImg ->
                                     val remoteImg = resolvedDetail.images.find { it.uuid == localImg.uuid }
                                     remoteImg != null && remoteImg.remoteThumbnailUrl.isNotBlank() && localImg.remoteThumbnailUrl != remoteImg.remoteThumbnailUrl
                                 }
-                            ) {
+                            )) {
                                 repository.saveSyncedSpot(resolvedDetail)
                             }
                         } catch (e: Exception) {
@@ -289,13 +296,10 @@ class WasmSyncManager(
             val remoteSpots = fetchPublicSpotsOrNull() ?: return
             val currentUid = activeUserId ?: repository.activeUid
             val activePublicUuids = remoteSpots.map { it.spot.uuid }.toSet()
-
-            remoteSpots.forEach { detail ->
-                if (currentUid != null && detail.spot.ownerUid == currentUid) {
-                    return@forEach
-                }
-                repository.savePublicSpot(detail)
+            val otherUsersSpots = remoteSpots.filter { detail ->
+                currentUid == null || detail.spot.ownerUid != currentUid
             }
+            repository.savePublicSpots(otherUsersSpots)
             repository.pruneRemovedPublicSpots(activePublicUuids)
         } catch (e: Exception) {
             println("Error during Wasm syncPublicSpots: ${e.message}")

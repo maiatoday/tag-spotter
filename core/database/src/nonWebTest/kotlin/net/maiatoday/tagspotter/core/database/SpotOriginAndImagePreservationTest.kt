@@ -121,43 +121,41 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
             thumbnailPath = ""
         )
 
-        // 2. Imported pack spot
-        repo.saveImportedSpot(
-            SpotDetails(
-                spot = Spot(
-                    latitude = 45.47,
-                    longitude = 9.20,
-                    createdAt = 1100L,
-                    description = "Imported spot",
-                    tags = emptyList(),
-                    category = "graffiti",
-                    status = "active",
-                    uuid = "imported-1",
-                    parentPackId = "PACK01",
-                    isImported = true
-                ),
-                images = emptyList(),
-                notes = emptyList()
+        // 2. Imported pack spot — seeded directly with isSynced = false and active ownerUid
+        // to prove DAO filters by origin rather than relying on saveImportedSpot's isSynced = true
+        db.spotDao().insertSpot(
+            SpotEntity(
+                latitude = 45.47,
+                longitude = 9.20,
+                createdAt = 1100L,
+                description = "Imported spot",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active",
+                uuid = "imported-1",
+                ownerUid = "user-a",
+                parentPackId = "PACK01",
+                isImported = true,
+                isSynced = false,
+                origin = SpotOrigin.IMPORTED.name
             )
         )
 
-        // 3. Cached public spot from another user
-        repo.savePublicSpot(
-            SpotDetails(
-                spot = Spot(
-                    latitude = 45.48,
-                    longitude = 9.21,
-                    createdAt = 1200L,
-                    description = "Other user public spot",
-                    tags = emptyList(),
-                    category = "graffiti",
-                    status = "active",
-                    uuid = "public-1",
-                    ownerUid = "user-b",
-                    isPublic = true
-                ),
-                images = emptyList(),
-                notes = emptyList()
+        // 3. Cached public spot — also seeded directly with isSynced = false and active ownerUid
+        db.spotDao().insertSpot(
+            SpotEntity(
+                latitude = 45.48,
+                longitude = 9.21,
+                createdAt = 1200L,
+                description = "Other user public spot",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active",
+                uuid = "public-1",
+                ownerUid = "user-a",
+                isPublic = true,
+                isSynced = false,
+                origin = SpotOrigin.PUBLIC_CACHE.name
             )
         )
 
@@ -186,10 +184,30 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
             thumbnailPath = ""
         )
 
+        // Also seed an imported pack spot before sign-out
+        repo.saveImportedSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 45.47,
+                    longitude = 9.20,
+                    createdAt = 1100L,
+                    description = "Imported pack spot",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "imported-pack-1",
+                    parentPackId = "PACK99",
+                    isImported = true
+                ),
+                images = emptyList(),
+                notes = emptyList()
+            )
+        )
+
         // Sign out! activeUid becomes null
         repo.activeUid = null
 
-        // Public refresh tries to save same UUID and prune everything not in active set
+        // Public refresh tries to save same UUIDs for both OWN and IMPORTED, then prunes
         repo.savePublicSpot(
             SpotDetails(
                 spot = Spot(
@@ -208,15 +226,61 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
                 notes = emptyList()
             )
         )
+        repo.savePublicSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 45.47,
+                    longitude = 9.20,
+                    createdAt = 1100L,
+                    description = "Public copy colliding with imported",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "imported-pack-1",
+                    ownerUid = "user-b",
+                    isPublic = true
+                ),
+                images = emptyList(),
+                notes = emptyList()
+            )
+        )
         repo.pruneRemovedPublicSpots(emptySet())
 
-        // Re-sign in and verify user-a's own spot is completely intact
+        // Re-sign in and verify both OWN and IMPORTED spots are intact
         repo.activeUid = "user-a"
         val spots = repo.getAllSpots().first()
         val own = spots.find { it.spot.uuid == "own-public-1" }
         assertNotNull(own)
         assertEquals("My local edit", own.spot.description)
         assertEquals(SpotOrigin.OWN, own.spot.origin)
+
+        val imported = spots.find { it.spot.uuid == "imported-pack-1" }
+        assertNotNull(imported)
+        assertEquals("Imported pack spot", imported.spot.description)
+        assertEquals(SpotOrigin.IMPORTED, imported.spot.origin)
+
+        // Importing a shared pack containing user-a's own spot UUID must not convert OWN -> IMPORTED
+        repo.saveImportedSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 45.46,
+                    longitude = 9.19,
+                    createdAt = 1000L,
+                    description = "Re-imported copy of own spot",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "own-public-1",
+                    parentPackId = "PACK99",
+                    isImported = true
+                ),
+                images = emptyList(),
+                notes = emptyList()
+            )
+        )
+        val ownAfterPackImport = repo.getAllSpots().first().find { it.spot.uuid == "own-public-1" }!!
+        assertEquals(SpotOrigin.OWN, ownAfterPackImport.spot.origin)
+        assertEquals("My local edit", ownAfterPackImport.spot.description)
     }
 
     @Test

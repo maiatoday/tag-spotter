@@ -50,6 +50,9 @@ interface SpotRepository {
     suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String)
 
     suspend fun savePublicSpot(spotDetails: SpotDetails)
+    suspend fun savePublicSpots(spots: List<SpotDetails>) {
+        spots.forEach { savePublicSpot(it) }
+    }
     suspend fun pruneRemovedPublicSpots(activePublicUuids: Set<String>)
     fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetails>>
 

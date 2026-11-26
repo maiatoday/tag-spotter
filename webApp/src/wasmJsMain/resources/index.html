@@ -123,7 +123,7 @@
 
         window.webFirestoreFetchPublicSpots = function(onSuccess, onFailure) {
             firebase.firestore().collection("spots").where("isPublic", "==", true)
-                .get()
+                .get({ source: "server" })
                 .then((snapshot) => {
                     const docs = [];
                     snapshot.forEach((doc) => docs.push(doc.data()));

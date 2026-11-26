@@ -14,6 +14,11 @@ class FakeSpotRepository : SpotRepository {
     override var activeUid: String? = null
     private val spotsMap = mutableMapOf<Long, SpotDetails>()
     private val spotsFlow = MutableStateFlow<List<SpotDetails>>(emptyList())
+    private var nextImageId = 1L
+    private var nextNoteId = 1L
+
+    private fun allocateImageId(): Long = nextImageId++
+    private fun allocateNoteId(): Long = nextNoteId++
 
     private fun updateFlow() {
         spotsFlow.value = spotsMap.values.toList()
@@ -49,7 +54,7 @@ class FakeSpotRepository : SpotRepository {
         val newSpot = spot.copy(id = id)
         val images = listOf(
             SpotImage(
-                id = 1L,
+                id = allocateImageId(),
                 spotId = id,
                 imagePath = imagePath,
                 thumbnailPath = thumbnailPath,
@@ -426,13 +431,13 @@ class FakeSpotRepository : SpotRepository {
             isStarred = existingEntry?.spot?.isStarred ?: false,
             origin = SpotOrigin.PUBLIC_CACHE
         )
-        val imagesToSave = spotDetails.images.mapIndexed { idx, img ->
+        val imagesToSave = spotDetails.images.map { img ->
             val existingImg = existingEntry?.images?.find { it.uuid == img.uuid }
-            img.copy(id = existingImg?.id ?: (idx + 1L), spotId = finalSpotId)
+            img.copy(id = existingImg?.id ?: allocateImageId(), spotId = finalSpotId)
         }
-        val notesToSave = spotDetails.notes.mapIndexed { idx, note ->
+        val notesToSave = spotDetails.notes.map { note ->
             val existingNote = existingEntry?.notes?.find { it.uuid == note.uuid }
-            note.copy(id = existingNote?.id ?: (idx + 1L), spotId = finalSpotId)
+            note.copy(id = existingNote?.id ?: allocateNoteId(), spotId = finalSpotId)
         }
         spotsMap[finalSpotId] = SpotDetails(spotToSave, imagesToSave, notesToSave)
         updateFlow()

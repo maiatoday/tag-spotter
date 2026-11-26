@@ -306,20 +306,25 @@ class LocalSpotRepository(
 
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         val existingSpots = spotDao.getAllSpotsDetails(activeUid).first()
+        val seenUuids = mutableSetOf<String>()
         var importedCount = 0
         spots.forEach { importedDetail ->
             val importedSpot = importedDetail.spot
-            val isDuplicate = existingSpots.any { existingDetail ->
+            val uuid = importedSpot.uuid
+            val uuidExistsInDb = uuid.isNotBlank() && (uuid in seenUuids || spotDao.getSpotByUuid(uuid) != null)
+            val isDuplicate = uuidExistsInDb || existingSpots.any { existingDetail ->
                 val e = existingDetail.spot
-                (e.uuid.isNotBlank() && e.uuid == importedSpot.uuid) ||
-                    (e.createdAt == importedSpot.createdAt &&
-                        e.latitude == importedSpot.latitude &&
-                        e.longitude == importedSpot.longitude)
+                e.createdAt == importedSpot.createdAt &&
+                    e.latitude == importedSpot.latitude &&
+                    e.longitude == importedSpot.longitude
             }
             if (!isDuplicate) {
+                val finalUuid = uuid.ifBlank { generateUuid() }
+                seenUuids.add(finalUuid)
                 val newSpotId = spotDao.insertSpot(
                     importedSpot.copy(
                         id = 0L,
+                        uuid = finalUuid,
                         isImported = true,
                         origin = SpotOrigin.IMPORTED,
                         isSynced = true,
@@ -450,6 +455,12 @@ class LocalSpotRepository(
             spotDao.insertSpot(spotToInsert.toEntity())
         }
 
+        val remoteImageUuids = spotDetails.images.map { it.uuid }.toSet()
+        spotDao.getImagesForSpot(finalSpotId).forEach { existingImg ->
+            if (existingImg.uuid !in remoteImageUuids) {
+                spotDao.deleteImageById(existingImg.id)
+            }
+        }
         spotDetails.images.forEach { image ->
             val existingImage = spotDao.getImageBySpotAndUuid(finalSpotId, image.uuid)
             val remoteUrl = image.remoteThumbnailUrl.ifBlank {
@@ -485,6 +496,12 @@ class LocalSpotRepository(
             }
         }
 
+        val remoteNoteUuids = spotDetails.notes.map { it.uuid }.toSet()
+        spotDao.getNotesForSpot(finalSpotId).forEach { existingNote ->
+            if (existingNote.uuid !in remoteNoteUuids) {
+                spotDao.deleteNoteById(existingNote.id)
+            }
+        }
         spotDetails.notes.forEach { note ->
             val existingNote = spotDao.getNoteBySpotAndUuid(finalSpotId, note.uuid)
             if (existingNote != null) {
@@ -604,7 +621,7 @@ class LocalSpotRepository(
         val cachedPublicSpots = spotDao.getCachedPublicSpots()
         cachedPublicSpots.forEach { spotEntity ->
             if (spotEntity.uuid !in activePublicUuids) {
-                spotDao.deleteSpotById(spotEntity.id)
+                spotDao.deletePublicCacheSpotById(spotEntity.id)
             }
         }
     }
@@ -657,6 +674,10 @@ class LocalSpotRepository(
 
     override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
+        // Never overwrite an OWN spot with an imported pack copy
+        if (existingSpot != null && existingSpot.origin == SpotOrigin.OWN.name) {
+            return
+        }
         val savedSpotId = if (existingSpot != null) {
             val updatedSpot = spotDetails.spot.copy(
                 id = existingSpot.id,
