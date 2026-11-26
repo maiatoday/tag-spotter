@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
@@ -20,6 +22,7 @@ class LocalSpotRepository(
 ) : SpotRepository {
 
     private val _activeUidFlow = MutableStateFlow<String?>(null)
+    private val syncWriteMutex = Mutex()
 
     override var activeUid: String?
         get() = _activeUidFlow.value
@@ -429,10 +432,14 @@ class LocalSpotRepository(
         spotDao.updateImageRemoteUrl(imageId, remoteUrl)
     }
 
-    override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
+    override suspend fun saveSyncedSpot(spotDetails: SpotDetails) = syncWriteMutex.withLock {
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
-        if (existingSpot != null && existingSpot.origin == SpotOrigin.IMPORTED.name) {
-            return
+        if (existingSpot != null && (
+                existingSpot.origin == SpotOrigin.IMPORTED.name ||
+                (existingSpot.origin == SpotOrigin.OWN.name && !existingSpot.isSynced && spotDetails.spot.lastEditedAt <= existingSpot.lastEditedAt)
+            )
+        ) {
+            return@withLock
         }
         val finalSpotId = if (existingSpot != null) {
             val spotWithLocalId = spotDetails.spot.copy(
@@ -512,14 +519,14 @@ class LocalSpotRepository(
         }
     }
 
-    override suspend fun savePublicSpot(spotDetails: SpotDetails) {
+    override suspend fun savePublicSpot(spotDetails: SpotDetails) = syncWriteMutex.withLock {
         val remoteOwnerUid = spotDetails.spot.ownerUid
-        if (activeUid != null && remoteOwnerUid == activeUid) return
+        if (activeUid != null && remoteOwnerUid == activeUid) return@withLock
 
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
         // Never overwrite OWN or IMPORTED spots with a public cache entry (even when signed out)
         if (existingSpot != null && existingSpot.origin != SpotOrigin.PUBLIC_CACHE.name) {
-            return
+            return@withLock
         }
 
         val finalSpotId = if (existingSpot != null) {
@@ -672,11 +679,11 @@ class LocalSpotRepository(
         spotDao.insertLoadedPack(pack.toEntity())
     }
 
-    override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
+    override suspend fun saveImportedSpot(spotDetails: SpotDetails) = syncWriteMutex.withLock {
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
         // Never overwrite an OWN spot with an imported pack copy
         if (existingSpot != null && existingSpot.origin == SpotOrigin.OWN.name) {
-            return
+            return@withLock
         }
         val savedSpotId = if (existingSpot != null) {
             val updatedSpot = spotDetails.spot.copy(

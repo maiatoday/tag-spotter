@@ -341,9 +341,9 @@ class JvmSyncManager(
         val userHome = System.getProperty("user.home")
         val cacheRoot = java.io.File("$userHome/Pictures/TagSpotter/thumbnails").canonicalFile
         val updatedImages = cloudDetail.images.map { image ->
-            val canCacheLocally = isSafePathSegment(userId) && isSafePathSegment(image.uuid)
+            val canCacheLocally = isSafePathSegment(userId) && isSafePathSegment(spotUuid) && isSafePathSegment(image.uuid)
             val localThumbnailFile = if (canCacheLocally) {
-                val candidate = java.io.File(cacheRoot, "$userId/${image.uuid}.jpg").canonicalFile
+                val candidate = java.io.File(cacheRoot, "$userId/$spotUuid/${image.uuid}.jpg").canonicalFile
                 if (candidate.path.startsWith(cacheRoot.path + java.io.File.separator)) candidate else null
             } else {
                 null
