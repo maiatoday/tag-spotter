@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
@@ -813,8 +815,17 @@ fun SettingsScreen(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
+                        val showPublicSpots by viewModel.showPublicSpots.collectAsStateWithLifecycle()
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .toggleable(
+                                    value = showPublicSpots,
+                                    role = Role.Switch,
+                                    onValueChange = { isChecked ->
+                                        viewModel.updateShowPublicSpots(isChecked)
+                                    }
+                                ),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -831,12 +842,9 @@ fun SettingsScreen(
                                     color = Color.Gray
                                 )
                             }
-                            val showPublicSpots by viewModel.showPublicSpots.collectAsStateWithLifecycle()
                             Switch(
                                 checked = showPublicSpots,
-                                onCheckedChange = { isChecked ->
-                                    viewModel.updateShowPublicSpots(isChecked)
-                                },
+                                onCheckedChange = null,
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = MaterialTheme.colorScheme.primary,
                                     checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),

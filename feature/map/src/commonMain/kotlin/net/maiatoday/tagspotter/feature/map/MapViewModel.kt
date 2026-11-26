@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.model.SpotOrigin
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
@@ -132,7 +133,7 @@ class MapViewModel(
             val sourceFiltered = when (state.source) {
                 "My Spots" -> visibilityFiltered.filter { it.spot.isEditableBy(state.currentUserUid) }
                 "Public" -> visibilityFiltered.filter { it.spot.isOtherUsersPublic(state.currentUserUid) }
-                "Imported" -> visibilityFiltered.filter { it.spot.isImported }
+                "Imported" -> visibilityFiltered.filter { it.spot.effectiveOrigin == SpotOrigin.IMPORTED }
                 else -> visibilityFiltered
             }
             val starredFiltered = if (state.showStarredOnly) {
