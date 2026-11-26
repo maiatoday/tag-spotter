@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.map
 import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
+import net.maiatoday.tagspotter.core.model.SpotOrigin
 import net.maiatoday.tagspotter.core.model.generateUuid
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 
@@ -51,7 +52,13 @@ class LocalSpotRepository(
     }
 
     override suspend fun saveSpot(spot: Spot, imagePath: String, thumbnailPath: String, rating: Long, isMain: Boolean): Long {
-        val spotId = spotDao.insertSpot(spot.copy(ownerUid = activeUid).toEntity())
+        val spotId = spotDao.insertSpot(
+            spot.copy(
+                ownerUid = activeUid,
+                origin = SpotOrigin.OWN,
+                isImported = false
+            ).toEntity()
+        )
         if (imagePath.isNotEmpty()) {
             spotDao.insertImage(
                 SpotImageEntity(
@@ -165,6 +172,7 @@ class LocalSpotRepository(
     }
 
     override suspend fun loadTestData() {
+        unloadTestData()
         val now = epochMillis()
         val spot1 = Spot(
             id = 9001L,
@@ -258,12 +266,40 @@ class LocalSpotRepository(
     }
 
     override suspend fun saveSpotDetails(spotDetails: SpotDetails): Long {
-        val spotId = spotDao.insertSpot(spotDetails.spot.toEntity())
+        val existing = if (spotDetails.spot.uuid.isNotBlank()) {
+            spotDao.getSpotByUuid(spotDetails.spot.uuid)
+        } else {
+            null
+        }
+        val spotId = if (existing != null) {
+            spotDao.updateSpot(spotDetails.spot.copy(id = existing.id).toEntity())
+            existing.id
+        } else {
+            spotDao.insertSpot(spotDetails.spot.toEntity())
+        }
         spotDetails.images.forEach { image ->
-            spotDao.insertImage(image.copy(id = 0L, spotId = spotId).toEntity())
+            val existingImg = if (image.uuid.isNotBlank()) {
+                spotDao.getImageBySpotAndUuid(spotId, image.uuid)
+            } else {
+                null
+            }
+            if (existingImg != null) {
+                spotDao.updateImage(image.copy(id = existingImg.id, spotId = spotId).toEntity())
+            } else {
+                spotDao.insertImage(image.copy(id = 0L, spotId = spotId).toEntity())
+            }
         }
         spotDetails.notes.forEach { note ->
-            spotDao.insertNote(note.copy(id = 0L, spotId = spotId).toEntity())
+            val existingNote = if (note.uuid.isNotBlank()) {
+                spotDao.getNoteBySpotAndUuid(spotId, note.uuid)
+            } else {
+                null
+            }
+            if (existingNote != null) {
+                spotDao.updateNote(note.copy(id = existingNote.id, spotId = spotId).toEntity())
+            } else {
+                spotDao.insertNote(note.copy(id = 0L, spotId = spotId).toEntity())
+            }
         }
         return spotId
     }
@@ -275,12 +311,21 @@ class LocalSpotRepository(
             val importedSpot = importedDetail.spot
             val isDuplicate = existingSpots.any { existingDetail ->
                 val e = existingDetail.spot
-                e.createdAt == importedSpot.createdAt &&
+                (e.uuid.isNotBlank() && e.uuid == importedSpot.uuid) ||
+                    (e.createdAt == importedSpot.createdAt &&
                         e.latitude == importedSpot.latitude &&
-                        e.longitude == importedSpot.longitude
+                        e.longitude == importedSpot.longitude)
             }
             if (!isDuplicate) {
-                val newSpotId = spotDao.insertSpot(importedSpot.copy(id = 0L, isImported = true, ownerUid = activeUid).toEntity())
+                val newSpotId = spotDao.insertSpot(
+                    importedSpot.copy(
+                        id = 0L,
+                        isImported = true,
+                        origin = SpotOrigin.IMPORTED,
+                        isSynced = true,
+                        ownerUid = activeUid
+                    ).toEntity()
+                )
                 importedDetail.images.forEach { image ->
                     spotDao.insertImage(image.copy(id = 0L, spotId = newSpotId, ownerUid = activeUid).toEntity())
                 }
@@ -375,58 +420,213 @@ class LocalSpotRepository(
         spotDao.markSpotAsSynced(spotUuid)
     }
 
+    override suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String) {
+        spotDao.updateImageRemoteUrl(imageId, remoteUrl)
+    }
+
     override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
+        if (existingSpot != null && existingSpot.origin == SpotOrigin.IMPORTED.name) {
+            return
+        }
         val finalSpotId = if (existingSpot != null) {
-            val spotWithLocalId = spotDetails.spot.copy(id = existingSpot.id, isSynced = true, ownerUid = activeUid)
-            spotDao.insertSpot(spotWithLocalId.toEntity())
+            val spotWithLocalId = spotDetails.spot.copy(
+                id = existingSpot.id,
+                isSynced = true,
+                ownerUid = activeUid ?: spotDetails.spot.ownerUid,
+                origin = SpotOrigin.OWN,
+                isImported = false
+            )
+            spotDao.updateSpot(spotWithLocalId.toEntity())
             existingSpot.id
         } else {
-            val spotToInsert = spotDetails.spot.copy(id = 0L, isSynced = true, ownerUid = activeUid)
+            val spotToInsert = spotDetails.spot.copy(
+                id = 0L,
+                isSynced = true,
+                ownerUid = activeUid ?: spotDetails.spot.ownerUid,
+                origin = SpotOrigin.OWN,
+                isImported = false
+            )
             spotDao.insertSpot(spotToInsert.toEntity())
         }
 
         spotDetails.images.forEach { image ->
-            val existingImage = spotDao.getImageByUuid(image.uuid)
-            val imageToInsert = if (existingImage != null) {
-                val localThumbExists = photoProcessor.fileExists(existingImage.thumbnailPath)
-                val localImageExists = photoProcessor.fileExists(existingImage.imagePath)
-                image.copy(
+            val existingImage = spotDao.getImageBySpotAndUuid(finalSpotId, image.uuid)
+            val remoteUrl = image.remoteThumbnailUrl.ifBlank {
+                if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+            }
+            if (existingImage != null) {
+                val localThumbExists = existingImage.thumbnailPath.isNotBlank() &&
+                    !existingImage.thumbnailPath.startsWith("http") &&
+                    photoProcessor.fileExists(existingImage.thumbnailPath)
+                val localImageExists = existingImage.imagePath.isNotBlank() &&
+                    !existingImage.imagePath.startsWith("http") &&
+                    photoProcessor.fileExists(existingImage.imagePath)
+                val resolvedRemoteUrl = remoteUrl.ifBlank { existingImage.remoteThumbnailUrl }
+                val updated = image.copy(
                     id = existingImage.id,
                     spotId = finalSpotId,
-                    ownerUid = activeUid,
-                    thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else image.thumbnailPath,
-                    imagePath = if (localImageExists) existingImage.imagePath else image.imagePath
+                    ownerUid = activeUid ?: image.ownerUid,
+                    thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else image.thumbnailPath.ifBlank { resolvedRemoteUrl },
+                    imagePath = if (localImageExists) existingImage.imagePath else image.imagePath.ifBlank { resolvedRemoteUrl },
+                    remoteThumbnailUrl = resolvedRemoteUrl
                 )
+                spotDao.updateImage(updated.toEntity())
             } else {
-                image.copy(id = 0L, spotId = finalSpotId, ownerUid = activeUid)
+                val inserted = image.copy(
+                    id = 0L,
+                    spotId = finalSpotId,
+                    ownerUid = activeUid ?: image.ownerUid,
+                    thumbnailPath = image.thumbnailPath.ifBlank { remoteUrl },
+                    imagePath = image.imagePath.ifBlank { remoteUrl },
+                    remoteThumbnailUrl = remoteUrl
+                )
+                spotDao.insertImage(inserted.toEntity())
             }
-            spotDao.insertImage(imageToInsert.toEntity())
         }
 
         spotDetails.notes.forEach { note ->
-            val existingNote = spotDao.getNoteByUuid(note.uuid)
-            val noteToInsert = if (existingNote != null) {
-                note.copy(id = existingNote.id, spotId = finalSpotId, ownerUid = activeUid)
+            val existingNote = spotDao.getNoteBySpotAndUuid(finalSpotId, note.uuid)
+            if (existingNote != null) {
+                spotDao.updateNote(note.copy(id = existingNote.id, spotId = finalSpotId, ownerUid = activeUid ?: note.ownerUid).toEntity())
             } else {
-                note.copy(id = 0L, spotId = finalSpotId, ownerUid = activeUid)
+                spotDao.insertNote(note.copy(id = 0L, spotId = finalSpotId, ownerUid = activeUid ?: note.ownerUid).toEntity())
             }
-            spotDao.insertNote(noteToInsert.toEntity())
+        }
+    }
+
+    override suspend fun savePublicSpot(spotDetails: SpotDetails) {
+        val remoteOwnerUid = spotDetails.spot.ownerUid
+        if (activeUid != null && remoteOwnerUid == activeUid) return
+
+        val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
+        // Never overwrite OWN or IMPORTED spots with a public cache entry (even when signed out)
+        if (existingSpot != null && existingSpot.origin != SpotOrigin.PUBLIC_CACHE.name) {
+            return
+        }
+
+        val finalSpotId = if (existingSpot != null) {
+            val spotWithLocalId = spotDetails.spot.copy(
+                id = existingSpot.id,
+                ownerUid = remoteOwnerUid ?: existingSpot.ownerUid,
+                isPublic = true,
+                isSynced = true,
+                isImported = false,
+                parentPackId = null,
+                isStarred = existingSpot.isStarred,
+                origin = SpotOrigin.PUBLIC_CACHE
+            )
+            spotDao.updateSpot(spotWithLocalId.toEntity())
+            existingSpot.id
+        } else {
+            val spotToInsert = spotDetails.spot.copy(
+                id = 0L,
+                ownerUid = remoteOwnerUid,
+                isPublic = true,
+                isSynced = true,
+                isImported = false,
+                parentPackId = null,
+                isStarred = false,
+                origin = SpotOrigin.PUBLIC_CACHE
+            )
+            spotDao.insertSpot(spotToInsert.toEntity())
+        }
+
+        val existingImages = spotDao.getImagesForSpot(finalSpotId)
+        val remoteImageUuids = spotDetails.images.map { it.uuid }.toSet()
+        existingImages.forEach { img ->
+            if (img.uuid !in remoteImageUuids) {
+                spotDao.deleteImageById(img.id)
+            }
+        }
+        spotDetails.images.forEach { image ->
+            val existingImage = spotDao.getImageBySpotAndUuid(finalSpotId, image.uuid)
+            val remoteUrl = image.remoteThumbnailUrl.ifBlank {
+                if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+            }
+            val resolvedThumb = remoteUrl.ifBlank { image.thumbnailPath }
+            val resolvedImg = remoteUrl.ifBlank { image.imagePath }
+            if (existingImage != null) {
+                spotDao.updateImage(
+                    image.copy(
+                        id = existingImage.id,
+                        spotId = finalSpotId,
+                        ownerUid = remoteOwnerUid ?: image.ownerUid,
+                        thumbnailPath = resolvedThumb,
+                        imagePath = resolvedImg,
+                        remoteThumbnailUrl = remoteUrl
+                    ).toEntity()
+                )
+            } else {
+                spotDao.insertImage(
+                    image.copy(
+                        id = 0L,
+                        spotId = finalSpotId,
+                        ownerUid = remoteOwnerUid ?: image.ownerUid,
+                        thumbnailPath = resolvedThumb,
+                        imagePath = resolvedImg,
+                        remoteThumbnailUrl = remoteUrl
+                    ).toEntity()
+                )
+            }
+        }
+
+        val existingNotes = spotDao.getNotesForSpot(finalSpotId)
+        val remoteNoteUuids = spotDetails.notes.map { it.uuid }.toSet()
+        existingNotes.forEach { note ->
+            if (note.uuid !in remoteNoteUuids) {
+                spotDao.deleteNoteById(note.id)
+            }
+        }
+        spotDetails.notes.forEach { note ->
+            val existingNote = spotDao.getNoteBySpotAndUuid(finalSpotId, note.uuid)
+            if (existingNote != null) {
+                spotDao.updateNote(
+                    note.copy(
+                        id = existingNote.id,
+                        spotId = finalSpotId,
+                        ownerUid = remoteOwnerUid ?: note.ownerUid
+                    ).toEntity()
+                )
+            } else {
+                spotDao.insertNote(
+                    note.copy(
+                        id = 0L,
+                        spotId = finalSpotId,
+                        ownerUid = remoteOwnerUid ?: note.ownerUid
+                    ).toEntity()
+                )
+            }
+        }
+    }
+
+    override suspend fun pruneRemovedPublicSpots(activePublicUuids: Set<String>) {
+        val cachedPublicSpots = spotDao.getCachedPublicSpots()
+        cachedPublicSpots.forEach { spotEntity ->
+            if (spotEntity.uuid !in activePublicUuids) {
+                spotDao.deleteSpotById(spotEntity.id)
+            }
+        }
+    }
+
+    override fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetails>> {
+        return spotDao.getPublicSpotsByAuthor(ownerUid).map { list ->
+            list.map { it.toDomain() }
         }
     }
 
     override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {
-        val targetOwner = if (backup) userUid else "local_only"
+        val targetOwner = if (backup) userUid else Spot.LOCAL_ONLY_UID
         val allSpots = spotDao.getAllSpotsDetails(null).first()
         allSpots.forEach { detail ->
-            if (detail.spot.ownerUid == null) {
+            if (detail.spot.origin == SpotOrigin.OWN.name && detail.spot.ownerUid == null) {
                 val updatedSpot = detail.spot.copy(ownerUid = targetOwner, isSynced = !backup)
-                spotDao.insertSpot(updatedSpot)
+                spotDao.updateSpot(updatedSpot)
                 detail.images.forEach { img ->
-                    spotDao.insertImage(img.copy(ownerUid = targetOwner))
+                    spotDao.updateImage(img.copy(ownerUid = targetOwner))
                 }
                 detail.notes.forEach { note ->
-                    spotDao.insertNote(note.copy(ownerUid = targetOwner))
+                    spotDao.updateNote(note.copy(ownerUid = targetOwner))
                 }
             }
         }
@@ -435,7 +635,7 @@ class LocalSpotRepository(
     override suspend fun clearUserCache(userUid: String) {
         val allSpots = spotDao.getAllSpotsDetails(userUid).first()
         allSpots.forEach { detail ->
-            if (detail.spot.ownerUid == userUid) {
+            if (detail.spot.origin == SpotOrigin.OWN.name && detail.spot.ownerUid == userUid) {
                 detail.images.forEach { image ->
                     photoProcessor.deleteFile(image.thumbnailPath)
                     photoProcessor.deleteFile(image.imagePath)
@@ -457,21 +657,41 @@ class LocalSpotRepository(
 
     override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
-        val spotId = existingSpot?.id ?: 0L
-        
-        val updatedSpot = spotDetails.spot.copy(id = spotId)
-        val savedSpotId = spotDao.insertSpot(updatedSpot.toEntity())
-        
-        spotDetails.images.forEach { image ->
-            val existingImg = spotDao.getImageByUuid(image.uuid)
-            val imgId = existingImg?.id ?: 0L
-            spotDao.insertImage(image.copy(id = imgId, spotId = savedSpotId).toEntity())
+        val savedSpotId = if (existingSpot != null) {
+            val updatedSpot = spotDetails.spot.copy(
+                id = existingSpot.id,
+                isImported = true,
+                origin = SpotOrigin.IMPORTED,
+                isSynced = true
+            )
+            spotDao.updateSpot(updatedSpot.toEntity())
+            existingSpot.id
+        } else {
+            val newSpot = spotDetails.spot.copy(
+                id = 0L,
+                isImported = true,
+                origin = SpotOrigin.IMPORTED,
+                isSynced = true
+            )
+            spotDao.insertSpot(newSpot.toEntity())
         }
-        
+
+        spotDetails.images.forEach { image ->
+            val existingImg = spotDao.getImageBySpotAndUuid(savedSpotId, image.uuid)
+            if (existingImg != null) {
+                spotDao.updateImage(image.copy(id = existingImg.id, spotId = savedSpotId).toEntity())
+            } else {
+                spotDao.insertImage(image.copy(id = 0L, spotId = savedSpotId).toEntity())
+            }
+        }
+
         spotDetails.notes.forEach { note ->
-            val existingNote = spotDao.getNoteByUuid(note.uuid)
-            val noteId = existingNote?.id ?: 0L
-            spotDao.insertNote(note.copy(id = noteId, spotId = savedSpotId).toEntity())
+            val existingNote = spotDao.getNoteBySpotAndUuid(savedSpotId, note.uuid)
+            if (existingNote != null) {
+                spotDao.updateNote(note.copy(id = existingNote.id, spotId = savedSpotId).toEntity())
+            } else {
+                spotDao.insertNote(note.copy(id = 0L, spotId = savedSpotId).toEntity())
+            }
         }
     }
 

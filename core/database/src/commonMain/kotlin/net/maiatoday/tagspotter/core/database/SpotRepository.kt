@@ -47,6 +47,11 @@ interface SpotRepository {
     suspend fun getUnsyncedSpots(): List<SpotDetails>
     suspend fun markSpotAsSynced(spotUuid: String)
     suspend fun saveSyncedSpot(spotDetails: SpotDetails)
+    suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String)
+
+    suspend fun savePublicSpot(spotDetails: SpotDetails)
+    suspend fun pruneRemovedPublicSpots(activePublicUuids: Set<String>)
+    fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetails>>
 
     suspend fun adoptLocalSpots(userUid: String, backup: Boolean)
     suspend fun clearUserCache(userUid: String)

@@ -24,4 +24,6 @@ interface SyncManager {
         minLon: Double = -180.0,
         maxLon: Double = 180.0
     ): List<SpotDetails> = emptyList()
+
+    suspend fun syncPublicSpots() {}
 }

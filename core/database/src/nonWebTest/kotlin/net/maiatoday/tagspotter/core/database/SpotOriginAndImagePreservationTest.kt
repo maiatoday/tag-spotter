@@ -1,0 +1,336 @@
+package net.maiatoday.tagspotter.core.database
+
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import net.maiatoday.tagspotter.core.model.Spot
+import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.model.SpotImage
+import net.maiatoday.tagspotter.core.model.SpotNote
+import net.maiatoday.tagspotter.core.model.SpotOrigin
+import net.maiatoday.tagspotter.core.photo.PhotoMetadata
+import net.maiatoday.tagspotter.core.photo.PhotoProcessor
+import net.maiatoday.tagspotter.core.photo.TempFileDetails
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+private class TestPhotoProcessor(
+    private val existingFiles: MutableSet<String> = mutableSetOf()
+) : PhotoProcessor {
+    override suspend fun saveImageToPublicGallery(filePath: String): String? = null
+    override suspend fun createThumbnailFromUri(uriString: String): String? = null
+    override suspend fun createThumbnailFromFile(filePath: String): String? = null
+    override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? = null
+    override fun createTempCameraFile(): TempFileDetails = TempFileDetails("", "")
+    override suspend fun decodeScaledBitmap(imagePath: String, maxDimension: Int): ByteArray? = null
+    override suspend fun writeBytesToFile(bytes: ByteArray, filePath: String): Boolean = false
+    override fun deleteFile(filePath: String): Boolean = existingFiles.remove(filePath)
+    override fun fileExists(filePath: String): Boolean = filePath in existingFiles
+}
+
+class SpotOriginAndImagePreservationTest : BaseDaoTest() {
+
+    private lateinit var db: SpotDatabase
+    private lateinit var photoProcessor: TestPhotoProcessor
+    private lateinit var repo: LocalSpotRepository
+
+    @BeforeTest
+    fun setup() {
+        db = getTestDatabaseBuilder().build()
+        photoProcessor = TestPhotoProcessor()
+        repo = LocalSpotRepository(db.spotDao(), photoProcessor)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        db.close()
+    }
+
+    @Test
+    fun saveSyncedSpotUpdatesWithoutCascadeDeletingLocalImages() = runTest {
+        repo.activeUid = "user-a"
+        val localThumb = "/local/thumbs/img1.jpg"
+        val localImg = "/local/images/img1.jpg"
+        photoProcessor = TestPhotoProcessor(mutableSetOf(localThumb, localImg))
+        repo = LocalSpotRepository(db.spotDao(), photoProcessor)
+        repo.activeUid = "user-a"
+
+        val spotId = repo.saveSpot(
+            spot = Spot(
+                latitude = 45.46,
+                longitude = 9.19,
+                createdAt = 1000L,
+                description = "Original",
+                tags = listOf("mural"),
+                category = "graffiti",
+                status = "active",
+                uuid = "spot-own-1"
+            ),
+            imagePath = localImg,
+            thumbnailPath = localThumb
+        )
+        val initial = repo.getSpotById(spotId).first()!!
+        val imgUuid = initial.images.first().uuid
+
+        // Simulate remote sync update coming back with HTTPS URLs
+        val remoteUpdate = initial.copy(
+            spot = initial.spot.copy(description = "Updated remotely", lastEditedAt = 2000L),
+            images = listOf(
+                initial.images.first().copy(
+                    imagePath = "https://storage.example/spots/user-a/spot-own-1/thumbnails/$imgUuid.jpg",
+                    thumbnailPath = "https://storage.example/spots/user-a/spot-own-1/thumbnails/$imgUuid.jpg",
+                    remoteThumbnailUrl = "https://storage.example/spots/user-a/spot-own-1/thumbnails/$imgUuid.jpg"
+                )
+            )
+        )
+        repo.saveSyncedSpot(remoteUpdate)
+
+        val afterSync = repo.getSpotById(spotId).first()!!
+        assertEquals("Updated remotely", afterSync.spot.description)
+        assertEquals(1, afterSync.images.size)
+        // Local file paths must be preserved AND remoteThumbnailUrl populated
+        assertEquals(localThumb, afterSync.images.first().thumbnailPath)
+        assertEquals(localImg, afterSync.images.first().imagePath)
+        assertEquals(
+            "https://storage.example/spots/user-a/spot-own-1/thumbnails/$imgUuid.jpg",
+            afterSync.images.first().remoteThumbnailUrl
+        )
+    }
+
+    @Test
+    fun importedAndPublicCacheSpotsAreNeverReturnedAsUnsynced() = runTest {
+        repo.activeUid = "user-a"
+
+        // 1. Own spot (unsynced)
+        repo.saveSpot(
+            spot = Spot(
+                latitude = 45.46,
+                longitude = 9.19,
+                createdAt = 1000L,
+                description = "My own spot",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active",
+                uuid = "own-1"
+            ),
+            imagePath = "",
+            thumbnailPath = ""
+        )
+
+        // 2. Imported pack spot
+        repo.saveImportedSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 45.47,
+                    longitude = 9.20,
+                    createdAt = 1100L,
+                    description = "Imported spot",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "imported-1",
+                    parentPackId = "PACK01",
+                    isImported = true
+                ),
+                images = emptyList(),
+                notes = emptyList()
+            )
+        )
+
+        // 3. Cached public spot from another user
+        repo.savePublicSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 45.48,
+                    longitude = 9.21,
+                    createdAt = 1200L,
+                    description = "Other user public spot",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "public-1",
+                    ownerUid = "user-b",
+                    isPublic = true
+                ),
+                images = emptyList(),
+                notes = emptyList()
+            )
+        )
+
+        val unsynced = repo.getUnsyncedSpots()
+        assertEquals(1, unsynced.size)
+        assertEquals("own-1", unsynced.first().spot.uuid)
+        assertEquals(SpotOrigin.OWN, unsynced.first().spot.origin)
+    }
+
+    @Test
+    fun publicRefreshCannotOverwriteOwnOrImportedSpotsEvenWhenSignedOut() = runTest {
+        repo.activeUid = "user-a"
+        repo.saveSpot(
+            spot = Spot(
+                latitude = 45.46,
+                longitude = 9.19,
+                createdAt = 1000L,
+                description = "My local edit",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active",
+                uuid = "own-public-1",
+                isPublic = true
+            ),
+            imagePath = "",
+            thumbnailPath = ""
+        )
+
+        // Sign out! activeUid becomes null
+        repo.activeUid = null
+
+        // Public refresh tries to save same UUID and prune everything not in active set
+        repo.savePublicSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 45.46,
+                    longitude = 9.19,
+                    createdAt = 1000L,
+                    description = "Stale remote public copy",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "own-public-1",
+                    ownerUid = "user-a",
+                    isPublic = true
+                ),
+                images = emptyList(),
+                notes = emptyList()
+            )
+        )
+        repo.pruneRemovedPublicSpots(emptySet())
+
+        // Re-sign in and verify user-a's own spot is completely intact
+        repo.activeUid = "user-a"
+        val spots = repo.getAllSpots().first()
+        val own = spots.find { it.spot.uuid == "own-public-1" }
+        assertNotNull(own)
+        assertEquals("My local edit", own.spot.description)
+        assertEquals(SpotOrigin.OWN, own.spot.origin)
+    }
+
+    @Test
+    fun publicSpotChildImageLookupIsScopedToParentSpot() = runTest {
+        repo.activeUid = "user-a"
+        val ownSpotId = repo.saveSpot(
+            spot = Spot(
+                latitude = 45.46,
+                longitude = 9.19,
+                createdAt = 1000L,
+                description = "Own spot",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active",
+                uuid = "own-spot-uuid"
+            ),
+            imagePath = "/local/private.jpg",
+            thumbnailPath = "/local/private_thumb.jpg"
+        )
+        val ownImageUuid = repo.getSpotById(ownSpotId).first()!!.images.first().uuid
+
+        // Malicious or colliding public spot carries the exact same image UUID
+        repo.savePublicSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 48.85,
+                    longitude = 2.35,
+                    createdAt = 2000L,
+                    description = "Public spot with colliding image UUID",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "public-spot-uuid",
+                    ownerUid = "user-b",
+                    isPublic = true
+                ),
+                images = listOf(
+                    SpotImage(
+                        spotId = 0L,
+                        imagePath = "https://example.com/public.jpg",
+                        thumbnailPath = "https://example.com/public.jpg",
+                        timestamp = 2000L,
+                        uuid = ownImageUuid,
+                        remoteThumbnailUrl = "https://example.com/public.jpg"
+                    )
+                ),
+                notes = listOf(
+                    SpotNote(
+                        spotId = 0L,
+                        noteText = "Public note",
+                        timestamp = 2000L,
+                        uuid = "note-uuid-1"
+                    )
+                )
+            )
+        )
+
+        // Own spot must still retain its private image untouched
+        val ownAfter = repo.getSpotById(ownSpotId).first()!!
+        assertEquals(1, ownAfter.images.size)
+        assertEquals("/local/private_thumb.jpg", ownAfter.images.first().thumbnailPath)
+    }
+
+    @Test
+    fun publicSpotsCanBeFilteredByAuthorAndPreserveStarsOnRefresh() = runTest {
+        repo.activeUid = "user-a"
+        val aliceDetail = SpotDetails(
+            spot = Spot(
+                latitude = 45.46,
+                longitude = 9.19,
+                createdAt = 1000L,
+                description = "Alice v1",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active",
+                uuid = "alice-1",
+                ownerUid = "alice",
+                isPublic = true
+            ),
+            images = emptyList(),
+            notes = emptyList()
+        )
+        val bobDetail = SpotDetails(
+            spot = Spot(
+                latitude = 51.50,
+                longitude = -0.12,
+                createdAt = 2000L,
+                description = "Bob v1",
+                tags = emptyList(),
+                category = "sculpture",
+                status = "active",
+                uuid = "bob-1",
+                ownerUid = "bob",
+                isPublic = true
+            ),
+            images = emptyList(),
+            notes = emptyList()
+        )
+
+        repo.savePublicSpot(aliceDetail)
+        repo.savePublicSpot(bobDetail)
+
+        val aliceRow = repo.getPublicSpotsByAuthor("alice").first()
+        assertEquals(1, aliceRow.size)
+        assertEquals("alice-1", aliceRow.first().spot.uuid)
+
+        // Star Alice's spot locally, then refresh it
+        repo.updateSpotStarred(aliceRow.first().spot.id, true)
+        repo.savePublicSpot(aliceDetail.copy(spot = aliceDetail.spot.copy(description = "Alice v2")))
+
+        val refreshedAlice = repo.getPublicSpotsByAuthor("alice").first().first()
+        assertEquals("Alice v2", refreshedAlice.spot.description)
+        assertTrue(refreshedAlice.spot.isStarred)
+        assertFalse(refreshedAlice.spot.isEditableBy("user-a"))
+        assertFalse(refreshedAlice.spot.isDeletableBy("user-a"))
+    }
+}

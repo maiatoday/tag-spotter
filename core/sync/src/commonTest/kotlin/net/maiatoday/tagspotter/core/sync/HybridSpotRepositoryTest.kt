@@ -115,6 +115,10 @@ class HybridSpotRepositoryTest {
         override suspend fun getUnsyncedSpots(): List<SpotDetails> = emptyList()
         override suspend fun markSpotAsSynced(spotUuid: String) {}
         override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {}
+        override suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String) {}
+        override suspend fun savePublicSpot(spotDetails: SpotDetails) {}
+        override suspend fun pruneRemovedPublicSpots(activePublicUuids: Set<String>) {}
+        override fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetails>> = flowOf(emptyList())
         override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {}
         override suspend fun clearUserCache(userUid: String) {}
         override suspend fun saveImportedSpot(spotDetails: SpotDetails) {

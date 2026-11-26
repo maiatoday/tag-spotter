@@ -11,6 +11,7 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
+import net.maiatoday.tagspotter.core.model.SpotOrigin
 import net.maiatoday.tagspotter.core.model.generateUuid
 
 @OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
@@ -385,7 +386,7 @@ class WasmSpotRepository : SpotRepository {
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         var count = 0
         spots.forEach { detail ->
-            saveSpot(detail.spot, detail.images.firstOrNull()?.imagePath ?: "", detail.images.firstOrNull()?.thumbnailPath ?: "")
+            saveImportedSpot(detail)
             count++
         }
         return count
@@ -501,8 +502,16 @@ class WasmSpotRepository : SpotRepository {
         persistToLocalStorage()
     }
 
+    private fun allocateSpotId(currentMap: Map<Long, SpotDetails> = spotsFlow.value): Long {
+        val candidate = maxOf(nextSpotId, (currentMap.keys.maxOrNull() ?: 0L) + 1L)
+        nextSpotId = candidate + 1L
+        return candidate
+    }
+
     override suspend fun getUnsyncedSpots(): List<SpotDetails> {
-        return spotsFlow.value.values.filter { !it.spot.isSynced }
+        return spotsFlow.value.values.filter {
+            it.spot.effectiveOrigin == SpotOrigin.OWN && !it.spot.isSynced
+        }
     }
 
     override suspend fun markSpotAsSynced(spotUuid: String) {
@@ -517,27 +526,120 @@ class WasmSpotRepository : SpotRepository {
         persistToLocalStorage()
     }
 
+    override suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String) {
+        spotsFlow.value = spotsFlow.value.mapValues { entry ->
+            val details = entry.value
+            if (details.images.any { it.id == imageId }) {
+                details.copy(
+                    images = details.images.map { img ->
+                        if (img.id == imageId) img.copy(remoteThumbnailUrl = remoteUrl) else img
+                    }
+                )
+            } else {
+                details
+            }
+        }
+        persistToLocalStorage()
+    }
+
     override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
         val existingEntry = spotsFlow.value.entries.find { it.value.spot.uuid == spotDetails.spot.uuid }
-        val finalSpotId = existingEntry?.key ?: nextSpotId++
-        
-        val spotToSave = spotDetails.spot.copy(id = finalSpotId, isSynced = true)
-        
+        if (existingEntry != null && existingEntry.value.spot.effectiveOrigin == SpotOrigin.IMPORTED) return
+        val finalSpotId = existingEntry?.key ?: allocateSpotId()
+
+        val spotToSave = spotDetails.spot.copy(
+            id = finalSpotId,
+            isSynced = true,
+            origin = SpotOrigin.OWN,
+            isImported = false
+        )
+
         val imagesToSave = spotDetails.images.map { image ->
             val existingImage = existingEntry?.value?.images?.find { it.uuid == image.uuid }
             val finalImgId = existingImage?.id ?: nextImageId++
-            image.copy(id = finalImgId, spotId = finalSpotId)
+            val remoteUrl = image.remoteThumbnailUrl.ifBlank {
+                if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+            }
+            image.copy(
+                id = finalImgId,
+                spotId = finalSpotId,
+                thumbnailPath = image.thumbnailPath.ifBlank { remoteUrl },
+                imagePath = image.imagePath.ifBlank { remoteUrl },
+                remoteThumbnailUrl = remoteUrl.ifBlank { existingImage?.remoteThumbnailUrl ?: "" }
+            )
         }
-        
+
         val notesToSave = spotDetails.notes.map { note ->
             val existingNote = existingEntry?.value?.notes?.find { it.uuid == note.uuid }
             val finalNoteId = existingNote?.id ?: nextNoteId++
             note.copy(id = finalNoteId, spotId = finalSpotId)
         }
-        
+
         val updatedDetails = SpotDetails(spotToSave, imagesToSave, notesToSave)
         spotsFlow.value = spotsFlow.value + (finalSpotId to updatedDetails)
         persistToLocalStorage()
+    }
+
+    override suspend fun savePublicSpot(spotDetails: SpotDetails) {
+        val remoteOwnerUid = spotDetails.spot.ownerUid
+        if (activeUid != null && remoteOwnerUid == activeUid) return
+
+        val existingEntry = spotsFlow.value.entries.find { it.value.spot.uuid == spotDetails.spot.uuid }
+        if (existingEntry != null && existingEntry.value.spot.effectiveOrigin != SpotOrigin.PUBLIC_CACHE) return
+
+        val finalSpotId = existingEntry?.key ?: allocateSpotId()
+        val spotToSave = spotDetails.spot.copy(
+            id = finalSpotId,
+            ownerUid = remoteOwnerUid ?: existingEntry?.value?.spot?.ownerUid,
+            isPublic = true,
+            isSynced = true,
+            isImported = false,
+            parentPackId = null,
+            isStarred = existingEntry?.value?.spot?.isStarred ?: false,
+            origin = SpotOrigin.PUBLIC_CACHE
+        )
+        val imagesToSave = spotDetails.images.map { image ->
+            val existingImage = existingEntry?.value?.images?.find { it.uuid == image.uuid }
+            val finalImgId = existingImage?.id ?: nextImageId++
+            val remoteUrl = image.remoteThumbnailUrl.ifBlank {
+                if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+            }
+            image.copy(
+                id = finalImgId,
+                spotId = finalSpotId,
+                ownerUid = remoteOwnerUid ?: image.ownerUid,
+                thumbnailPath = remoteUrl.ifBlank { image.thumbnailPath },
+                imagePath = remoteUrl.ifBlank { image.imagePath },
+                remoteThumbnailUrl = remoteUrl
+            )
+        }
+        val notesToSave = spotDetails.notes.map { note ->
+            val existingNote = existingEntry?.value?.notes?.find { it.uuid == note.uuid }
+            val finalNoteId = existingNote?.id ?: nextNoteId++
+            note.copy(
+                id = finalNoteId,
+                spotId = finalSpotId,
+                ownerUid = remoteOwnerUid ?: note.ownerUid
+            )
+        }
+        spotsFlow.value = spotsFlow.value + (finalSpotId to SpotDetails(spotToSave, imagesToSave, notesToSave))
+        persistToLocalStorage()
+    }
+
+    override suspend fun pruneRemovedPublicSpots(activePublicUuids: Set<String>) {
+        val filtered = spotsFlow.value.filterValues { detail ->
+            detail.spot.effectiveOrigin != SpotOrigin.PUBLIC_CACHE || detail.spot.uuid in activePublicUuids
+        }
+        if (filtered.size != spotsFlow.value.size) {
+            spotsFlow.value = filtered
+            persistToLocalStorage()
+        }
+    }
+
+    override fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetails>> {
+        return getAllSpots().map { list ->
+            list.filter { it.spot.effectiveOrigin == SpotOrigin.PUBLIC_CACHE && it.spot.ownerUid == ownerUid }
+        }
     }
 
     override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {}
@@ -556,29 +658,22 @@ class WasmSpotRepository : SpotRepository {
     override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
         val currentMap = spotsFlow.value.toMutableMap()
         val existing = currentMap.values.find { it.spot.uuid == spotDetails.spot.uuid }
-        if (existing != null) {
-            val spotId = existing.spot.id
-            val updatedSpot = spotDetails.spot.copy(id = spotId)
-            val updatedImages = spotDetails.images.map { img ->
-                val existingImg = existing.images.find { it.uuid == img.uuid }
-                img.copy(id = existingImg?.id ?: 0L, spotId = spotId)
-            }
-            val updatedNotes = spotDetails.notes.map { note ->
-                val existingNote = existing.notes.find { it.uuid == note.uuid }
-                note.copy(id = existingNote?.id ?: 0L, spotId = spotId)
-            }
-            currentMap[spotId] = SpotDetails(updatedSpot, updatedImages, updatedNotes)
-        } else {
-            val nextId = (currentMap.keys.maxOrNull() ?: 0L) + 1L
-            val updatedSpot = spotDetails.spot.copy(id = nextId)
-            val updatedImages = spotDetails.images.mapIndexed { idx, img ->
-                img.copy(id = idx + 1L, spotId = nextId)
-            }
-            val updatedNotes = spotDetails.notes.mapIndexed { idx, note ->
-                note.copy(id = idx + 1L, spotId = nextId)
-            }
-            currentMap[nextId] = SpotDetails(updatedSpot, updatedImages, updatedNotes)
+        val spotId = existing?.spot?.id ?: allocateSpotId(currentMap)
+        val updatedSpot = spotDetails.spot.copy(
+            id = spotId,
+            isImported = true,
+            origin = SpotOrigin.IMPORTED,
+            isSynced = true
+        )
+        val updatedImages = spotDetails.images.map { img ->
+            val existingImg = existing?.images?.find { it.uuid == img.uuid }
+            img.copy(id = existingImg?.id ?: nextImageId++, spotId = spotId)
         }
+        val updatedNotes = spotDetails.notes.map { note ->
+            val existingNote = existing?.notes?.find { it.uuid == note.uuid }
+            note.copy(id = existingNote?.id ?: nextNoteId++, spotId = spotId)
+        }
+        currentMap[spotId] = SpotDetails(updatedSpot, updatedImages, updatedNotes)
         spotsFlow.value = currentMap
         persistToLocalStorage()
     }

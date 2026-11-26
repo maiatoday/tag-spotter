@@ -3,14 +3,15 @@ package net.maiatoday.tagspotter.core.sync
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.model.SpotOrigin
 import kotlin.coroutines.resume
 
-// External JS helper declarations for Firestore & Storage
+// External JS helper declarations for canonical /spots/{uuid} Firestore & Storage
 external fun webFirestoreSaveSpot(
-    userId: String,
     spotUuid: String,
     spotJson: String,
     onSuccess: () -> Unit,
@@ -23,23 +24,29 @@ external fun webFirestoreListenSpots(
     onNoChange: () -> Unit
 )
 
+external fun webFirestoreFetchPublicSpots(
+    onSuccess: (spotsJson: String) -> Unit,
+    onFailure: (String) -> Unit
+)
+
 external fun webStorageUploadThumbnail(
     userId: String,
+    spotUuid: String,
     imageUuid: String,
     base64Data: String,
-    onSuccess: () -> Unit,
+    onSuccess: (String) -> Unit,
     onFailure: (String) -> Unit
 )
 
 external fun webStorageGetDownloadUrl(
     userId: String,
+    spotUuid: String,
     imageUuid: String,
     onSuccess: (String) -> Unit,
     onFailure: (String) -> Unit
 )
 
 external fun webFirestoreDeleteSpot(
-    userId: String,
     spotUuid: String,
     onSuccess: () -> Unit,
     onFailure: (String) -> Unit
@@ -55,23 +62,73 @@ class WasmSyncManager(
     private var activeUserId: String? = null
     private var isListening = false
     private val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun syncNow() {
-        val userId = activeUserId ?: return
+        val userId = activeUserId ?: run {
+            syncPublicSpots()
+            return
+        }
         if (_isSyncing.value) return
         _isSyncing.value = true
 
         try {
-            // 1. Push stage: find all unsynced local spots
+            // 1. Push stage: find all unsynced OWN local spots
             val unsyncedSpots = repository.getUnsyncedSpots()
             unsyncedSpots.forEach { localDetail ->
+                if (localDetail.spot.effectiveOrigin != SpotOrigin.OWN) return@forEach
                 val uuid = localDetail.spot.uuid
-                val jsonString = Json.encodeToString(SpotDetails.serializer(), localDetail)
 
-                // Save metadata to Firestore
+                var allThumbnailsReady = true
+                val remoteImages = localDetail.images.map { image ->
+                    if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
+                        val base64Data = if (image.thumbnailPath.startsWith("data:")) {
+                            image.thumbnailPath.substringAfter(",")
+                        } else {
+                            image.thumbnailPath
+                        }
+                        val uploadedUrl = suspendCancellableCoroutine { continuation ->
+                            webStorageUploadThumbnail(
+                                userId = userId,
+                                spotUuid = uuid,
+                                imageUuid = image.uuid,
+                                base64Data = base64Data,
+                                onSuccess = { url -> if (continuation.isActive) continuation.resume(url) },
+                                onFailure = { err ->
+                                    println("Web Storage upload failed for ${image.uuid}: $err")
+                                    if (continuation.isActive) continuation.resume("")
+                                }
+                            )
+                        }
+                        if (uploadedUrl.isEmpty()) {
+                            allThumbnailsReady = false
+                            image
+                        } else {
+                            if (image.id != 0L) {
+                                repository.updateImageRemoteUrl(image.id, uploadedUrl)
+                            }
+                            image.copy(thumbnailPath = uploadedUrl, imagePath = uploadedUrl, remoteThumbnailUrl = uploadedUrl)
+                        }
+                    } else {
+                        val existingUrl = image.remoteThumbnailUrl.ifBlank { image.thumbnailPath }
+                        image.copy(thumbnailPath = existingUrl, imagePath = existingUrl, remoteThumbnailUrl = existingUrl)
+                    }
+                }
+
+                if (!allThumbnailsReady) {
+                    println("Deferring Wasm sync for $uuid until thumbnail upload succeeds")
+                    return@forEach
+                }
+
+                val detailToPush = localDetail.copy(
+                    spot = localDetail.spot.copy(ownerUid = userId, origin = SpotOrigin.OWN, isImported = false),
+                    images = remoteImages
+                )
+                val firestoreDoc = FirestoreSpotDocument.fromSpotDetails(userId, detailToPush)
+                val jsonString = json.encodeToString(FirestoreSpotDocument.serializer(), firestoreDoc)
+
                 val saveSuccess = suspendCancellableCoroutine { continuation ->
                     webFirestoreSaveSpot(
-                        userId = userId,
                         spotUuid = uuid,
                         spotJson = jsonString,
                         onSuccess = { if (continuation.isActive) continuation.resume(true) },
@@ -83,34 +140,11 @@ class WasmSyncManager(
                 }
 
                 if (saveSuccess) {
-                    // Upload thumbnails if any and local
-                    localDetail.images.forEach { image ->
-                        if (image.thumbnailPath.isNotEmpty() && !image.thumbnailPath.startsWith("http")) {
-                            val base64Data = if (image.thumbnailPath.startsWith("data:")) {
-                                image.thumbnailPath.substringAfter(",")
-                            } else {
-                                image.thumbnailPath
-                            }
-                            suspendCancellableCoroutine { continuation ->
-                                webStorageUploadThumbnail(
-                                    userId = userId,
-                                    imageUuid = image.uuid,
-                                    base64Data = base64Data,
-                                    onSuccess = { if (continuation.isActive) continuation.resume(Unit) },
-                                    onFailure = { err ->
-                                        println("Web Storage upload failed for ${image.uuid}: $err")
-                                        if (continuation.isActive) continuation.resume(Unit)
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Mark as successfully synced locally
                     repository.markSpotAsSynced(uuid)
                 }
             }
 
+            syncPublicSpots()
         } catch (e: Exception) {
             println("Error during Wasm syncNow: ${e.message}")
         } finally {
@@ -129,7 +163,8 @@ class WasmSyncManager(
                 onUpdate = { spotJson ->
                     coroutineScope.launch {
                         try {
-                            val cloudDetail = Json.decodeFromString(SpotDetails.serializer(), spotJson)
+                            val cloudDoc = json.decodeFromString(FirestoreSpotDocument.serializer(), spotJson)
+                            val cloudDetail = cloudDoc.toSpotDetails()
                             val localSpots = repository.getAllSpots().first()
                             val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
                             val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail, localMatch)
@@ -137,9 +172,13 @@ class WasmSyncManager(
                             if (localMatch == null) {
                                 repository.saveSyncedSpot(resolvedDetail)
                             } else if (resolvedDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
-                                       resolvedDetail.images.size != localMatch.images.size ||
-                                       resolvedDetail.notes.size != localMatch.notes.size ||
-                                       localMatch.images.any { it.thumbnailPath != resolvedDetail.images.find { r -> r.uuid == it.uuid }?.thumbnailPath }) {
+                                resolvedDetail.images.size != localMatch.images.size ||
+                                resolvedDetail.notes.size != localMatch.notes.size ||
+                                localMatch.images.any { localImg ->
+                                    val remoteImg = resolvedDetail.images.find { it.uuid == localImg.uuid }
+                                    remoteImg != null && remoteImg.remoteThumbnailUrl.isNotBlank() && localImg.remoteThumbnailUrl != remoteImg.remoteThumbnailUrl
+                                }
+                            ) {
                                 repository.saveSyncedSpot(resolvedDetail)
                             }
                         } catch (e: Exception) {
@@ -153,7 +192,6 @@ class WasmSyncManager(
             println("Error starting web realtime sync: ${e.message}")
         }
 
-        // Trigger immediate incremental background sync
         coroutineScope.launch {
             syncNow()
         }
@@ -165,13 +203,15 @@ class WasmSyncManager(
     }
 
     override suspend fun deleteSpot(uuid: String) {
-        val userId = activeUserId ?: return
+        activeUserId ?: return
         suspendCancellableCoroutine { continuation ->
             webFirestoreDeleteSpot(
-                userId = userId,
                 spotUuid = uuid,
-                onSuccess = { continuation.resume(Unit) },
-                onFailure = { continuation.resume(Unit) }
+                onSuccess = { if (continuation.isActive) continuation.resume(Unit) },
+                onFailure = { err ->
+                    println("Web Firestore delete failed for $uuid: $err")
+                    if (continuation.isActive) continuation.resume(Unit)
+                }
             )
         }
     }
@@ -218,59 +258,105 @@ class WasmSyncManager(
             val updatedSpot = detail.spot.copy(
                 id = 0L,
                 parentPackId = sharedPack.packId,
-                isImported = true
+                isImported = true,
+                origin = SpotOrigin.IMPORTED,
+                isSynced = true
             )
             val updatedDetail = detail.copy(
                 spot = updatedSpot,
                 images = detail.images.map { it.copy(id = 0L) },
                 notes = detail.notes.map { it.copy(id = 0L) }
             )
-            repository.saveSpotDetails(updatedDetail)
+            repository.saveImportedSpot(updatedDetail)
         }
     }
 
-    private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails, localMatch: SpotDetails? = null): SpotDetails {
+    override suspend fun fetchPublicSpots(
+        minLat: Double,
+        maxLat: Double,
+        minLon: Double,
+        maxLon: Double
+    ): List<SpotDetails> {
+        return fetchPublicSpotsOrNull()?.filter { detail ->
+            detail.spot.isPublic &&
+                detail.spot.latitude in minLat..maxLat &&
+                detail.spot.longitude in minLon..maxLon
+        } ?: emptyList()
+    }
+
+    override suspend fun syncPublicSpots() {
+        try {
+            val remoteSpots = fetchPublicSpotsOrNull() ?: return
+            val currentUid = activeUserId ?: repository.activeUid
+            val activePublicUuids = remoteSpots.map { it.spot.uuid }.toSet()
+
+            remoteSpots.forEach { detail ->
+                if (currentUid != null && detail.spot.ownerUid == currentUid) {
+                    return@forEach
+                }
+                repository.savePublicSpot(detail)
+            }
+            repository.pruneRemovedPublicSpots(activePublicUuids)
+        } catch (e: Exception) {
+            println("Error during Wasm syncPublicSpots: ${e.message}")
+        }
+    }
+
+    private suspend fun fetchPublicSpotsOrNull(): List<SpotDetails>? {
+        val spotsJson = suspendCancellableCoroutine<String?> { continuation ->
+            webFirestoreFetchPublicSpots(
+                onSuccess = { payload -> if (continuation.isActive) continuation.resume(payload) },
+                onFailure = { err ->
+                    println("Failed to fetch web public spots: $err")
+                    if (continuation.isActive) continuation.resume(null)
+                }
+            )
+        } ?: return null
+
+        return try {
+            json.decodeFromString(ListSerializer(FirestoreSpotDocument.serializer()), spotsJson)
+                .map { it.toSpotDetails() }
+                .filter { it.spot.isPublic }
+        } catch (e: Exception) {
+            println("Error decoding web public spots JSON: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun resolveRemoteThumbnails(
+        userId: String,
+        cloudDetail: SpotDetails,
+        localMatch: SpotDetails? = null
+    ): SpotDetails {
+        val spotUuid = cloudDetail.spot.uuid
         val updatedImages = cloudDetail.images.map { image ->
             val existingLocalImage = localMatch?.images?.find { it.uuid == image.uuid }
-            val existingHttpUrl = if (existingLocalImage?.thumbnailPath?.startsWith("http") == true) existingLocalImage.thumbnailPath else ""
+            val existingHttpUrl = image.remoteThumbnailUrl.ifBlank {
+                if (image.thumbnailPath.startsWith("http")) image.thumbnailPath
+                else if (existingLocalImage?.remoteThumbnailUrl?.startsWith("http") == true) existingLocalImage.remoteThumbnailUrl
+                else ""
+            }
 
-            if (image.uuid.isNotEmpty() && !image.thumbnailPath.startsWith("http") && !image.thumbnailPath.startsWith("data:")) {
-                try {
-                    val downloadUrl = suspendCancellableCoroutine { continuation ->
-                        webStorageGetDownloadUrl(
-                            userId = userId,
-                            imageUuid = image.uuid,
-                            onSuccess = { url -> if (continuation.isActive) continuation.resume(url) },
-                            onFailure = { err ->
-                                println("Failed to resolve WASM remote thumbnail for ${image.uuid}: $err")
-                                if (continuation.isActive) continuation.resume("")
-                            }
-                        )
-                    }
-                    if (downloadUrl.isNotEmpty()) {
-                        image.copy(
-                            thumbnailPath = downloadUrl,
-                            imagePath = if (image.imagePath.isEmpty() || (!image.imagePath.startsWith("http") && !image.imagePath.startsWith("data:"))) downloadUrl else image.imagePath
-                        )
-                    } else if (existingHttpUrl.isNotEmpty()) {
-                        image.copy(
-                            thumbnailPath = existingHttpUrl,
-                            imagePath = if (image.imagePath.isEmpty() || (!image.imagePath.startsWith("http") && !image.imagePath.startsWith("data:"))) existingHttpUrl else image.imagePath
-                        )
-                    } else {
-                        val fallbackUrl = "https://firebasestorage.googleapis.com/v0/b/tagspotter-d58b1.firebasestorage.app/o/users%2F$userId%2Fthumbnails%2F${image.uuid}.jpg?alt=media"
-                        image.copy(
-                            thumbnailPath = fallbackUrl,
-                            imagePath = if (image.imagePath.isEmpty() || (!image.imagePath.startsWith("http") && !image.imagePath.startsWith("data:"))) fallbackUrl else image.imagePath
-                        )
-                    }
-                } catch (e: Exception) {
-                    println("Error resolving remote thumbnail for ${image.uuid}: ${e.message}")
-                    if (existingHttpUrl.isNotEmpty()) {
-                        image.copy(thumbnailPath = existingHttpUrl)
-                    } else {
-                        image
-                    }
+            if (existingHttpUrl.isNotEmpty()) {
+                image.copy(
+                    thumbnailPath = existingHttpUrl,
+                    imagePath = existingHttpUrl,
+                    remoteThumbnailUrl = existingHttpUrl
+                )
+            } else if (image.uuid.isNotEmpty()) {
+                val downloadUrl = suspendCancellableCoroutine { continuation ->
+                    webStorageGetDownloadUrl(
+                        userId = userId,
+                        spotUuid = spotUuid,
+                        imageUuid = image.uuid,
+                        onSuccess = { url -> if (continuation.isActive) continuation.resume(url) },
+                        onFailure = { _ -> if (continuation.isActive) continuation.resume("") }
+                    )
+                }
+                if (downloadUrl.isNotEmpty()) {
+                    image.copy(thumbnailPath = downloadUrl, imagePath = downloadUrl, remoteThumbnailUrl = downloadUrl)
+                } else {
+                    image
                 }
             } else {
                 image
