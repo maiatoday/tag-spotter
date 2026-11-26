@@ -27,6 +27,10 @@ class FakeSpotRepository : SpotRepository {
     fun setSpots(spots: List<SpotDetails>) {
         spotsMap.clear()
         spots.forEach { spotsMap[it.spot.id] = it }
+        val maxImg = spots.flatMap { it.images }.maxOfOrNull { it.id } ?: 0L
+        val maxNote = spots.flatMap { it.notes }.maxOfOrNull { it.id } ?: 0L
+        if (nextImageId <= maxImg) nextImageId = maxImg + 1L
+        if (nextNoteId <= maxNote) nextNoteId = maxNote + 1L
         updateFlow()
     }
 
@@ -71,9 +75,9 @@ class FakeSpotRepository : SpotRepository {
 
     override suspend fun addImageToSpot(spotId: Long, imagePath: String, thumbnailPath: String, timestamp: Long, rating: Long, isMain: Boolean): Long {
         val details = spotsMap[spotId] ?: return -1L
-        val nextImageId = (details.images.maxOfOrNull { it.id } ?: 0L) + 1L
+        val nextId = allocateImageId()
         val updatedImages = details.images + SpotImage(
-            id = nextImageId,
+            id = nextId,
             spotId = spotId,
             imagePath = imagePath,
             thumbnailPath = thumbnailPath,
@@ -83,21 +87,21 @@ class FakeSpotRepository : SpotRepository {
         )
         spotsMap[spotId] = details.copy(images = updatedImages)
         updateFlow()
-        return nextImageId
+        return nextId
     }
 
     override suspend fun addNoteToSpot(spotId: Long, noteText: String, timestamp: Long): Long {
         val details = spotsMap[spotId] ?: return -1L
-        val nextNoteId = (details.notes.maxOfOrNull { it.id } ?: 0L) + 1L
+        val nextId = allocateNoteId()
         val updatedNotes = details.notes + SpotNote(
-            id = nextNoteId,
+            id = nextId,
             spotId = spotId,
             noteText = noteText,
             timestamp = timestamp
         )
         spotsMap[spotId] = details.copy(notes = updatedNotes)
         updateFlow()
-        return nextNoteId
+        return nextId
     }
 
     override suspend fun updateSpotStatus(spotId: Long, status: String) {

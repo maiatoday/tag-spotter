@@ -137,7 +137,8 @@ class WasmSpotRepository : SpotRepository {
                 val updatedDetail = detail.copy(images = updatedImages)
 
                 val existing = current.values.find { it.spot.uuid == detail.spot.uuid }
-                val spotId = existing?.spot?.id ?: nextSpotId++
+                if (existing?.spot?.effectiveOrigin == SpotOrigin.OWN) return@forEach
+                val spotId = existing?.spot?.id ?: allocateSpotId(current)
                 val finalDetail = updatedDetail.copy(spot = updatedDetail.spot.copy(id = spotId))
                 current[spotId] = finalDetail
                 importedCount++
