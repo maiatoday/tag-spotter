@@ -148,7 +148,7 @@ actual fun SpotMapView(
                 }
                 val marker = Marker(map).apply {
                     position = GeoPoint(mapMarker.latitude, mapMarker.longitude)
-                    icon = createPinDrawable(map.context, markerColor, mapMarker.isStarred)
+                    icon = createPinDrawable(map.context, markerColor, mapMarker.isStarred, mapMarker.isPublicCommunity)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     title = mapMarker.title
                     
@@ -166,7 +166,12 @@ actual fun SpotMapView(
     )
 }
 
-private fun createPinDrawable(context: Context, colorSource: Int, isStarred: Boolean): Drawable {
+private fun createPinDrawable(
+    context: Context,
+    colorSource: Int,
+    isStarred: Boolean,
+    isPublicCommunity: Boolean = false
+): Drawable {
     val density = context.resources.displayMetrics.density
     val size = (36 * density).toInt()
     
@@ -203,6 +208,14 @@ private fun createPinDrawable(context: Context, colorSource: Int, isStarred: Boo
             strokeWidth = 2.5f * density
         }
         canvas.drawCircle(centerX, centerY, radius + 1.25f * density, borderPaint)
+    } else if (isPublicCommunity) {
+        val borderPaint = Paint().apply {
+            isAntiAlias = true
+            color = "#00BCD4".toColorInt() // Subtle cyan ring for community public spots
+            style = Paint.Style.STROKE
+            strokeWidth = 2.0f * density
+        }
+        canvas.drawCircle(centerX, centerY, radius + 1.0f * density, borderPaint)
     }
 
     return bitmap.toDrawable(context.resources)

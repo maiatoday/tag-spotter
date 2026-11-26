@@ -63,6 +63,11 @@ class MainViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            if (settingsRepository.showPublicSpots.first()) {
+                syncManager.syncPublicSpots()
+            }
+        }
     }
 
     private val _uiState = MutableStateFlow(MainUiState())

@@ -22,6 +22,7 @@ import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
 import kotlinx.coroutines.flow.first
 
+import net.maiatoday.tagspotter.core.sync.AuthService
 import net.maiatoday.tagspotter.core.sync.SyncManager
 
 class GalleryViewModel(
@@ -30,7 +31,8 @@ class GalleryViewModel(
     private val settingsRepository: SettingsRepository,
     private val locationProvider: LocationProvider,
     private val photoProcessor: PhotoProcessor,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val authService: AuthService
 ) : ViewModel() {
 
     val photographerName: StateFlow<String> = settingsRepository.photographerName
@@ -176,13 +178,30 @@ class GalleryViewModel(
     val activeFilterCenter: StateFlow<FilterCenter?> = filterManager.activeFilterCenter
     val activeRadiusMeters: StateFlow<Double> = filterManager.activeRadiusMeters
 
+    val showPublicSpots: StateFlow<Boolean> = settingsRepository.showPublicSpots
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    val currentUserUid: StateFlow<String?> = authService.currentUserFlow
+        .map { it?.uid }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
     private data class FilterState(
         val category: String,
         val source: String,
         val query: String,
         val filterCenter: FilterCenter?,
         val radiusMeters: Double,
-        val showStarredOnly: Boolean
+        val showStarredOnly: Boolean,
+        val showPublicSpots: Boolean,
+        val currentUserUid: String?
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -194,18 +213,40 @@ class GalleryViewModel(
             filterManager.activeFilterCenter,
             filterManager.activeRadiusMeters
         ) { category, source, query, filterCenter, radiusMeters ->
-            FilterState(category, source, query, filterCenter, radiusMeters, false)
+            FilterState(
+                category = category,
+                source = source,
+                query = query,
+                filterCenter = filterCenter,
+                radiusMeters = radiusMeters,
+                showStarredOnly = false,
+                showPublicSpots = true,
+                currentUserUid = null
+            )
         },
-        filterManager.showStarredOnly
-    ) { state, showStarredOnly ->
-        state.copy(showStarredOnly = showStarredOnly)
+        filterManager.showStarredOnly,
+        settingsRepository.showPublicSpots,
+        authService.currentUserFlow.map { it?.uid }
+    ) { state, showStarredOnly, showPublicSpots, currentUserUid ->
+        state.copy(
+            showStarredOnly = showStarredOnly,
+            showPublicSpots = showPublicSpots,
+            currentUserUid = currentUserUid
+        )
     }.flatMapLatest { state ->
         repository.getSpotsByCategory(state.category).map { list ->
-            // First apply source filtering
+            // Hide other users' public spots when the toggle is off
+            val visibilityFiltered = if (state.showPublicSpots) {
+                list
+            } else {
+                list.filter { !it.spot.isOtherUsersPublic(state.currentUserUid) }
+            }
+            // Apply source filtering
             val sourceFiltered = when (state.source) {
-                "My Spots" -> list.filter { !it.spot.isImported }
-                "Imported" -> list.filter { it.spot.isImported }
-                else -> list
+                "My Spots" -> visibilityFiltered.filter { it.spot.isEditableBy(state.currentUserUid) }
+                "Public" -> visibilityFiltered.filter { it.spot.isOtherUsersPublic(state.currentUserUid) }
+                "Imported" -> visibilityFiltered.filter { it.spot.isImported }
+                else -> visibilityFiltered
             }
             // Apply starred filtering
             val starredFiltered = if (state.showStarredOnly) {
@@ -262,6 +303,21 @@ class GalleryViewModel(
         filterManager.setShowStarredOnly(show)
     }
 
+    fun setShowPublicSpots(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateShowPublicSpots(show)
+            if (show) {
+                try {
+                    syncManager.syncPublicSpots()
+                } catch (_: Exception) {
+                    // Ignore sync errors on toggle
+                }
+            } else if (filterManager.selectedSource.value == "Public") {
+                filterManager.selectSource("All")
+            }
+        }
+    }
+
     fun setLocationFilter(center: FilterCenter?, radiusMeters: Double) {
         if (center is FilterCenter.GPS) {
             viewModelScope.launch {
@@ -297,11 +353,16 @@ class GalleryViewModel(
 
     fun deleteSpots(ids: List<Long>, onCompleted: () -> Unit) {
         viewModelScope.launch {
+            val uid = authService.currentUserFlow.first()?.uid
             val allSpots = spots.value
             ids.forEach { id ->
                 allSpots.find { it.spot.id == id }?.let { detail ->
-                    repository.deleteSpot(detail)
-                    syncManager.deleteSpot(detail.spot.uuid)
+                    if (detail.spot.isDeletableBy(uid)) {
+                        repository.deleteSpot(detail)
+                        if (detail.spot.isEditableBy(uid)) {
+                            syncManager.deleteSpot(detail.spot.uuid)
+                        }
+                    }
                 }
             }
             onCompleted()

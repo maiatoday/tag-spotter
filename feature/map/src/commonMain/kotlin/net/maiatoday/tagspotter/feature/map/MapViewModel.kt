@@ -11,19 +11,24 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.database.SpotRepository
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.settings.FilterManager
+import net.maiatoday.tagspotter.core.sync.AuthService
+import net.maiatoday.tagspotter.core.sync.SyncManager
 import net.maiatoday.tagspotter.feature.gallery.EmojiSearchMap
 import kotlin.math.roundToInt
 
 class MapViewModel(
     private val repository: SpotRepository,
     private val filterManager: FilterManager,
-    settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val authService: AuthService,
+    private val syncManager: SyncManager
 ) : ViewModel() {
 
     val homeCity: StateFlow<String> = settingsRepository.homeCity
@@ -50,13 +55,42 @@ class MapViewModel(
     val showStarredOnly: StateFlow<Boolean> = filterManager.showStarredOnly
     val searchQuery: StateFlow<String> = filterManager.searchQuery
 
+    val showPublicSpots: StateFlow<Boolean> = settingsRepository.showPublicSpots
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    val currentUserUid: StateFlow<String?> = authService.currentUserFlow
+        .map { it?.uid }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    init {
+        viewModelScope.launch {
+            combine(settingsRepository.showPublicSpots, authService.currentUserFlow.map { it?.uid }) { showPublic, uid ->
+                showPublic to uid
+            }.collect { (showPublic, uid) ->
+                if (!showPublic && _selectedSpot.value?.spot?.isOtherUsersPublic(uid) == true) {
+                    _selectedSpot.value = null
+                }
+            }
+        }
+    }
+
     private data class MapFilterState(
         val category: String,
         val source: String,
         val query: String,
         val filterCenter: FilterCenter?,
         val radiusMeters: Double,
-        val showStarredOnly: Boolean
+        val showStarredOnly: Boolean,
+        val showPublicSpots: Boolean,
+        val currentUserUid: String?
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -68,17 +102,38 @@ class MapViewModel(
             filterManager.activeFilterCenter,
             filterManager.activeRadiusMeters
         ) { category, source, query, filterCenter, radiusMeters ->
-            MapFilterState(category, source, query, filterCenter, radiusMeters, false)
+            MapFilterState(
+                category = category,
+                source = source,
+                query = query,
+                filterCenter = filterCenter,
+                radiusMeters = radiusMeters,
+                showStarredOnly = false,
+                showPublicSpots = true,
+                currentUserUid = null
+            )
         },
-        filterManager.showStarredOnly
-    ) { state, showStarredOnly ->
-        state.copy(showStarredOnly = showStarredOnly)
+        filterManager.showStarredOnly,
+        settingsRepository.showPublicSpots,
+        authService.currentUserFlow.map { it?.uid }
+    ) { state, showStarredOnly, showPublicSpots, currentUserUid ->
+        state.copy(
+            showStarredOnly = showStarredOnly,
+            showPublicSpots = showPublicSpots,
+            currentUserUid = currentUserUid
+        )
     }.flatMapLatest { state ->
         repository.getSpotsByCategory(state.category).map { list ->
+            val visibilityFiltered = if (state.showPublicSpots) {
+                list
+            } else {
+                list.filter { !it.spot.isOtherUsersPublic(state.currentUserUid) }
+            }
             val sourceFiltered = when (state.source) {
-                "My Spots" -> list.filter { !it.spot.isImported }
-                "Imported" -> list.filter { it.spot.isImported }
-                else -> list
+                "My Spots" -> visibilityFiltered.filter { it.spot.isEditableBy(state.currentUserUid) }
+                "Public" -> visibilityFiltered.filter { it.spot.isOtherUsersPublic(state.currentUserUid) }
+                "Imported" -> visibilityFiltered.filter { it.spot.isImported }
+                else -> visibilityFiltered
             }
             val starredFiltered = if (state.showStarredOnly) {
                 sourceFiltered.filter { it.spot.isStarred }
@@ -148,6 +203,21 @@ class MapViewModel(
         filterManager.toggleShowStarredOnly()
     }
 
+    fun setShowPublicSpots(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateShowPublicSpots(show)
+            if (show) {
+                try {
+                    syncManager.syncPublicSpots()
+                } catch (_: Exception) {
+                    // Ignore sync errors on toggle
+                }
+            } else if (filterManager.selectedSource.value == "Public") {
+                filterManager.selectSource("All")
+            }
+        }
+    }
+
     fun setLocationFilter(center: FilterCenter?, radiusMeters: Double) {
         filterManager.setLocationFilter(center, radiusMeters)
     }
@@ -172,27 +242,36 @@ class MapViewModel(
         return CITIES[homeCityName] ?: CITIES["Milan"]!!
     }
 
-    val initialMapCenter: StateFlow<MapPoint?> = repository.getAllSpots()
-        .combine(settingsRepository.homeCity) { allSpots, homeCityName ->
-            if (allSpots.isNotEmpty()) {
-                val groups = allSpots.groupBy { spotDetails ->
-                    Pair(
-                        (spotDetails.spot.latitude * 10).roundToInt() / 10.0,
-                        (spotDetails.spot.longitude * 10).roundToInt() / 10.0
-                    )
-                }
-                val mostPopulatedGroup = groups.maxByOrNull { it.value.size }
-                if (mostPopulatedGroup != null) {
-                    val avgLat = mostPopulatedGroup.value.map { it.spot.latitude }.average()
-                    val avgLng = mostPopulatedGroup.value.map { it.spot.longitude }.average()
-                    MapPoint(avgLat, avgLng)
-                } else {
-                    resolveCityCoordinate(homeCityName)
-                }
+    val initialMapCenter: StateFlow<MapPoint?> = combine(
+        repository.getAllSpots(),
+        settingsRepository.homeCity,
+        settingsRepository.showPublicSpots,
+        authService.currentUserFlow.map { it?.uid }
+    ) { allSpots, homeCityName, showPublic, uid ->
+        val visibleSpots = if (showPublic) {
+            allSpots
+        } else {
+            allSpots.filterNot { it.spot.isOtherUsersPublic(uid) }
+        }
+        if (visibleSpots.isNotEmpty()) {
+            val groups = visibleSpots.groupBy { spotDetails ->
+                Pair(
+                    (spotDetails.spot.latitude * 10).roundToInt() / 10.0,
+                    (spotDetails.spot.longitude * 10).roundToInt() / 10.0
+                )
+            }
+            val mostPopulatedGroup = groups.maxByOrNull { it.value.size }
+            if (mostPopulatedGroup != null) {
+                val avgLat = mostPopulatedGroup.value.map { it.spot.latitude }.average()
+                val avgLng = mostPopulatedGroup.value.map { it.spot.longitude }.average()
+                MapPoint(avgLat, avgLng)
             } else {
                 resolveCityCoordinate(homeCityName)
             }
+        } else {
+            resolveCityCoordinate(homeCityName)
         }
+    }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

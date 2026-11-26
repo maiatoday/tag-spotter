@@ -74,6 +74,7 @@ class DataStoreSettingsRepository(
         val PHOTOGRAPHER_NAME = stringPreferencesKey("photographer_name")
         val HOME_CITY = stringPreferencesKey("home_city")
         val SHOW_TEST_DATA = booleanPreferencesKey("show_test_data")
+        val SHOW_PUBLIC_SPOTS = booleanPreferencesKey("show_public_spots")
 
         val DARK_MAP_ENABLED = booleanPreferencesKey("dark_map_enabled")
         val ARTIST_RECOGNITION_ENABLED = booleanPreferencesKey("artist_recognition_enabled")
@@ -115,6 +116,18 @@ class DataStoreSettingsRepository(
             preferences[SHOW_TEST_DATA] ?: false
         }
 
+    override val showPublicSpots: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[SHOW_PUBLIC_SPOTS] ?: true
+        }
+
     override val darkMapEnabled: Flow<Boolean> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {
@@ -154,6 +167,12 @@ class DataStoreSettingsRepository(
     override suspend fun updateShowTestData(show: Boolean) {
         dataStore.edit { preferences ->
             preferences[SHOW_TEST_DATA] = show
+        }
+    }
+
+    override suspend fun updateShowPublicSpots(show: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SHOW_PUBLIC_SPOTS] = show
         }
     }
 

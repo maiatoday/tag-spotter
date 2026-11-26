@@ -19,6 +19,8 @@ interface SettingsRepository {
     suspend fun updateHomeCity(city: String)
     val showTestData: Flow<Boolean>
     suspend fun updateShowTestData(show: Boolean)
+    val showPublicSpots: Flow<Boolean>
+    suspend fun updateShowPublicSpots(show: Boolean)
 
     val darkMapEnabled: Flow<Boolean>
     suspend fun updateDarkMapEnabled(enabled: Boolean)

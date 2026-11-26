@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import net.maiatoday.tagspotter.core.model.FilterCenter
@@ -55,7 +56,9 @@ fun FilterBottomSheet(
     selectedSource: String? = null,
     onApplySourceFilter: ((String) -> Unit)? = null,
     showStarredOnly: Boolean? = null,
-    onApplyStarredFilter: ((Boolean) -> Unit)? = null
+    onApplyStarredFilter: ((Boolean) -> Unit)? = null,
+    showPublicSpots: Boolean? = null,
+    onApplyPublicSpotsFilter: ((Boolean) -> Unit)? = null
 ) {
     val permissionState = rememberLocationPermissionState { granted ->
         if (granted) {
@@ -93,6 +96,10 @@ fun FilterBottomSheet(
 
     var localStarredOnly by remember(showStarredOnly) {
         mutableStateOf(showStarredOnly ?: false)
+    }
+
+    var localShowPublicSpots by remember(showPublicSpots) {
+        mutableStateOf(showPublicSpots ?: true)
     }
 
     val updateFilter = { type: String, focusCity: String, radius: Double ->
@@ -155,7 +162,11 @@ fun FilterBottomSheet(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val sourcesList = listOf("All", "My Spots", "Imported")
+                        val sourcesList = if (showPublicSpots != null && localShowPublicSpots) {
+                            listOf("All", "My Spots", "Public", "Imported")
+                        } else {
+                            listOf("All", "My Spots", "Imported")
+                        }
                         sourcesList.forEach { src ->
                             val isSelected = localSource == src
                             Surface(
@@ -172,10 +183,13 @@ fun FilterBottomSheet(
                             ) {
                                 Text(
                                     text = src,
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+                                    style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
                                     color = if (isSelected) MaterialTheme.colorScheme.onSecondary else Color.Gray
                                 )
                             }
@@ -189,7 +203,7 @@ fun FilterBottomSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "STARRED SPOTS",
                             style = MaterialTheme.typography.labelMedium,
@@ -213,6 +227,43 @@ fun FilterBottomSheet(
                             checkedTrackColor = MaterialTheme.colorScheme.secondaryContainer
                         )
                     )
+                }
+
+                // Show Public Spots Switch section
+                if (showPublicSpots != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "PUBLIC SPOTS",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = "Show public spots shared by others",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                        Switch(
+                            checked = localShowPublicSpots,
+                            onCheckedChange = { checked ->
+                                localShowPublicSpots = checked
+                                if (!checked && localSource == "Public") {
+                                    localSource = "All"
+                                }
+                                onApplyPublicSpotsFilter?.invoke(checked)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.secondary,
+                                checkedTrackColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        )
+                    }
                 }
             }
 

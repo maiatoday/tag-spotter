@@ -26,6 +26,9 @@ class FakeSettingsRepository(
     private val _showTestData = MutableStateFlow(false)
     override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
 
+    private val _showPublicSpots = MutableStateFlow(true)
+    override val showPublicSpots: Flow<Boolean> = _showPublicSpots.asStateFlow()
+
 
 
     private val _darkMapEnabled = MutableStateFlow(false)
@@ -47,6 +50,10 @@ class FakeSettingsRepository(
 
     override suspend fun updateShowTestData(show: Boolean) {
         _showTestData.value = show
+    }
+
+    override suspend fun updateShowPublicSpots(show: Boolean) {
+        _showPublicSpots.value = show
     }
 
 

@@ -29,6 +29,9 @@ class WasmSettingsRepository(
     private val _showTestData = MutableStateFlow(settings.getBoolean("show_test_data", false))
     override val showTestData: Flow<Boolean> = _showTestData.asStateFlow()
 
+    private val _showPublicSpots = MutableStateFlow(settings.getBoolean("show_public_spots", true))
+    override val showPublicSpots: Flow<Boolean> = _showPublicSpots.asStateFlow()
+
     private val _darkMapEnabled = MutableStateFlow(settings.getBoolean("dark_map_enabled", false))
     override val darkMapEnabled: Flow<Boolean> = _darkMapEnabled.asStateFlow()
 
@@ -51,6 +54,11 @@ class WasmSettingsRepository(
     override suspend fun updateShowTestData(show: Boolean) {
         settings.putBoolean("show_test_data", show)
         _showTestData.value = show
+    }
+
+    override suspend fun updateShowPublicSpots(show: Boolean) {
+        settings.putBoolean("show_public_spots", show)
+        _showPublicSpots.value = show
     }
 
     override suspend fun updateDarkMapEnabled(enabled: Boolean) {

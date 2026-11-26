@@ -21,6 +21,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import net.maiatoday.tagspotter.core.sync.AuthService
+import net.maiatoday.tagspotter.core.sync.FirebaseUserWrapper
 import net.maiatoday.tagspotter.core.sync.SyncManager
 
 
@@ -45,6 +47,7 @@ class GalleryViewModelTest {
     private val locationProvider = FakeLocationProvider()
     private val photoProcessor = FakePhotoProcessor()
     private val syncManager = FakeSyncManager()
+    private val authService = FakeGalleryAuthService()
 
     @Test
     fun spotsFilteredByCategoryCorrectly() = runTest {
@@ -74,7 +77,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
 
         // Collect spots in backgroundScope to trigger WhileSubscribed StateFlow updates
         backgroundScope.launch(testDispatcher) {
@@ -124,7 +127,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -186,7 +189,7 @@ class GalleryViewModelTest {
             )
         )
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -237,7 +240,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
 
         // Collect spots StateFlow in backgroundScope
         backgroundScope.launch(testDispatcher) {
@@ -334,7 +337,7 @@ class GalleryViewModelTest {
 
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -372,7 +375,7 @@ class GalleryViewModelTest {
         val spotDetails2 = SpotDetails(spot2, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1, spotDetails2))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
 
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -397,7 +400,7 @@ class GalleryViewModelTest {
                 syncCalled = true
             }
         }
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager, authService)
         viewModel.syncNow()
         assertTrue(syncCalled)
     }
@@ -415,7 +418,7 @@ class GalleryViewModelTest {
                 return "PACK123"
             }
         }
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager, authService)
         
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
@@ -436,7 +439,7 @@ class GalleryViewModelTest {
                 return expectedPack
             }
         }
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager, authService)
         
         var returnedPack: net.maiatoday.tagspotter.core.model.SharedPack? = null
         viewModel.importPackByCode("code", onSuccess = { returnedPack = it }, onError = {})
@@ -453,7 +456,7 @@ class GalleryViewModelTest {
                 saveCalled = true
             }
         }
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager, authService)
         
         backgroundScope.launch(testDispatcher) {
             viewModel.loadedPacks.collect {}
@@ -474,7 +477,7 @@ class GalleryViewModelTest {
         val spotDetails1 = SpotDetails(spot1, emptyList(), emptyList())
         repository.setSpots(listOf(spotDetails1))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
         backgroundScope.launch(testDispatcher) {
             viewModel.spots.collect {}
         }
@@ -490,7 +493,7 @@ class GalleryViewModelTest {
 
     @Test
     fun unloadPack_deletesFromRepository() = runTest {
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
         
         backgroundScope.launch(testDispatcher) {
             viewModel.loadedPacks.collect {}
@@ -510,7 +513,7 @@ class GalleryViewModelTest {
     @Test
     fun setLocationFilter_GPS_resolvesCurrentLocation() = runTest {
         locationProvider.locationToReturn = net.maiatoday.tagspotter.core.location.LocationData(45.1111, 9.2222, false)
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
         
         viewModel.setLocationFilter(FilterCenter.GPS(0.0, 0.0), 1000.0)
         
@@ -525,7 +528,7 @@ class GalleryViewModelTest {
         val spot2 = Spot(id = 2L, latitude = 3.0, longitude = 4.0, createdAt = 2000L, description = "B", tags = emptyList(), category = "sculpture", status = "active", isImported = true)
         repository.setSpots(listOf(SpotDetails(spot1, emptyList(), emptyList()), SpotDetails(spot2, emptyList(), emptyList())))
 
-        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager)
+        val viewModel = GalleryViewModel(repository, filterManager, settingsRepository, locationProvider, photoProcessor, syncManager, authService)
 
         viewModel.spots.test {
             assertEquals(2, awaitItem().size)
@@ -546,6 +549,123 @@ class GalleryViewModelTest {
             cancelAndConsumeRemainingEvents()
         }
     }
+
+    @Test
+    fun showPublicSpotsToggleAndFourSourceFiltersWorkCorrectly() = runTest {
+        authService.userFlow.value = FirebaseUserWrapper("viewer-uid", "viewer@test.com", "Viewer")
+        var syncPublicSpotsCalled = 0
+        val customSyncManager = object : FakeSyncManager() {
+            override suspend fun syncPublicSpots() {
+                syncPublicSpotsCalled++
+            }
+        }
+
+        val ownSpot = Spot(
+            id = 1L, latitude = 1.0, longitude = 2.0, createdAt = 1000L,
+            description = "Own", tags = emptyList(), category = "graffiti", status = "active",
+            ownerUid = "viewer-uid", isPublic = true, isImported = false
+        )
+        val otherPublicSpot = Spot(
+            id = 2L, latitude = 3.0, longitude = 4.0, createdAt = 2000L,
+            description = "Other Public", tags = emptyList(), category = "graffiti", status = "active",
+            ownerUid = "author-other", isPublic = true, isImported = false
+        )
+        val importedSpot = Spot(
+            id = 3L, latitude = 5.0, longitude = 6.0, createdAt = 3000L,
+            description = "Imported", tags = emptyList(), category = "graffiti", status = "active",
+            ownerUid = "pack-author", isPublic = true, isImported = true, parentPackId = "PACK01"
+        )
+        repository.setSpots(
+            listOf(
+                SpotDetails(ownSpot, emptyList(), emptyList()),
+                SpotDetails(otherPublicSpot, emptyList(), emptyList()),
+                SpotDetails(importedSpot, emptyList(), emptyList())
+            )
+        )
+
+        val viewModel = GalleryViewModel(
+            repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager, authService
+        )
+        backgroundScope.launch(testDispatcher) { viewModel.spots.collect {} }
+        backgroundScope.launch(testDispatcher) { viewModel.showPublicSpots.collect {} }
+
+        // Default showPublicSpots = true -> All returns all 3
+        assertTrue(viewModel.showPublicSpots.value)
+        assertEquals(setOf(1L, 2L, 3L), viewModel.spots.value.map { it.spot.id }.toSet())
+
+        // My Spots -> only editable own spot
+        viewModel.selectSource("My Spots")
+        assertEquals(listOf(1L), viewModel.spots.value.map { it.spot.id })
+
+        // Public -> only other user's public spot (excludes own public and imported)
+        viewModel.selectSource("Public")
+        assertEquals(listOf(2L), viewModel.spots.value.map { it.spot.id })
+
+        // Imported -> only imported spot
+        viewModel.selectSource("Imported")
+        assertEquals(listOf(3L), viewModel.spots.value.map { it.spot.id })
+
+        // Select Public, then toggle showPublicSpots OFF -> resets source to All & hides other user's public spot
+        viewModel.selectSource("Public")
+        assertEquals("Public", viewModel.selectedSource.value)
+        viewModel.setShowPublicSpots(false)
+        assertEquals(false, viewModel.showPublicSpots.value)
+        assertEquals("All", viewModel.selectedSource.value)
+        assertEquals(setOf(1L, 3L), viewModel.spots.value.map { it.spot.id }.toSet())
+
+        // Toggle showPublicSpots ON -> triggers syncPublicSpots() and shows other user's public spot again
+        viewModel.setShowPublicSpots(true)
+        assertEquals(true, viewModel.showPublicSpots.value)
+        assertEquals(1, syncPublicSpotsCalled)
+        assertEquals(setOf(1L, 2L, 3L), viewModel.spots.value.map { it.spot.id }.toSet())
+    }
+
+    @Test
+    fun deleteSpots_allowsOwnAndImportedSpots_blocksOtherUsersPublicSpots() = runTest {
+        authService.userFlow.value = FirebaseUserWrapper("viewer-uid", "viewer@test.com", "Viewer")
+        val deletedRemoteUuids = mutableListOf<String>()
+        val customSyncManager = object : FakeSyncManager() {
+            override suspend fun deleteSpot(uuid: String) {
+                deletedRemoteUuids.add(uuid)
+            }
+        }
+
+        val ownSpot = Spot(
+            id = 1L, uuid = "uuid-own", latitude = 1.0, longitude = 2.0, createdAt = 1000L,
+            description = "Own", tags = emptyList(), category = "graffiti", status = "active",
+            ownerUid = "viewer-uid", isPublic = false
+        )
+        val otherPublicSpot = Spot(
+            id = 2L, uuid = "uuid-other-pub", latitude = 3.0, longitude = 4.0, createdAt = 2000L,
+            description = "Other Public", tags = emptyList(), category = "graffiti", status = "active",
+            ownerUid = "author-other", isPublic = true
+        )
+        val importedSpot = Spot(
+            id = 3L, uuid = "uuid-imported", latitude = 5.0, longitude = 6.0, createdAt = 3000L,
+            description = "Imported", tags = emptyList(), category = "graffiti", status = "active",
+            ownerUid = "pack-author", isImported = true, parentPackId = "PACK01"
+        )
+        repository.setSpots(
+            listOf(
+                SpotDetails(ownSpot, emptyList(), emptyList()),
+                SpotDetails(otherPublicSpot, emptyList(), emptyList()),
+                SpotDetails(importedSpot, emptyList(), emptyList())
+            )
+        )
+
+        val viewModel = GalleryViewModel(
+            repository, filterManager, settingsRepository, locationProvider, photoProcessor, customSyncManager, authService
+        )
+        backgroundScope.launch(testDispatcher) { viewModel.spots.collect {} }
+
+        var completed = false
+        viewModel.deleteSpots(listOf(1L, 2L, 3L)) { completed = true }
+
+        assertTrue(completed)
+        // Own spot is deleted locally and remotely; imported spot is deleted locally only; other user's public spot is kept
+        assertEquals(listOf("uuid-own"), deletedRemoteUuids)
+        assertEquals(listOf(2L), viewModel.spots.value.map { it.spot.id })
+    }
 }
 
 open class FakeSyncManager : SyncManager {
@@ -557,5 +677,16 @@ open class FakeSyncManager : SyncManager {
     open override suspend fun sharePack(title: String, description: String, authorName: String, spots: List<SpotDetails>): String = ""
     open override suspend fun importPackByCode(code: String): net.maiatoday.tagspotter.core.model.SharedPack = error("not implemented")
     open override suspend fun saveImportedPack(sharedPack: net.maiatoday.tagspotter.core.model.SharedPack) {}
+}
+
+class FakeGalleryAuthService(initialUser: FirebaseUserWrapper? = null) : AuthService {
+    val userFlow = kotlinx.coroutines.flow.MutableStateFlow(initialUser)
+    override val currentUserFlow = userFlow
+    override val isGoogleSignInSupported: Boolean = false
+    override suspend fun signInWithGoogle(idToken: String?): Result<Unit> = Result.success(Unit)
+    override suspend fun signInWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
+    override suspend fun signUpWithEmailAndPassword(email: String, password: String): Result<Unit> = Result.success(Unit)
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = Result.success(Unit)
+    override suspend fun signOut() { userFlow.value = null }
 }
 

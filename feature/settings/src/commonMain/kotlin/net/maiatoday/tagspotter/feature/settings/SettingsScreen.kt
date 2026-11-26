@@ -812,6 +812,40 @@ fun SettingsScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Show Public Spots",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Display public spots shared by other users in Gallery and Map",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+                            val showPublicSpots by viewModel.showPublicSpots.collectAsStateWithLifecycle()
+                            Switch(
+                                checked = showPublicSpots,
+                                onCheckedChange = { isChecked ->
+                                    viewModel.updateShowPublicSpots(isChecked)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    uncheckedThumbColor = Color.Gray,
+                                    uncheckedTrackColor = Color.DarkGray
+                                )
+                            )
+                        }
+
                         val isSystemDark = isSystemInDarkTheme()
                         if (isSystemDark) {
                             Spacer(modifier = Modifier.height(16.dp))

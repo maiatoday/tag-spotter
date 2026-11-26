@@ -966,10 +966,18 @@ class DetailViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.canEdit.collect {}
         }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.canDelete.collect {}
+        }
 
         assertFalse(viewModel.canEdit.value)
+        assertTrue(viewModel.canDelete.value)
         viewModel.updateDescription("Attempted Edit")
         assertEquals("Pack Spot", viewModel.spotDetails.value?.spot?.description)
+
+        var deleted = false
+        viewModel.deleteSpot(SpotDetails(spot, emptyList(), emptyList())) { deleted = true }
+        assertTrue(deleted)
     }
 
     @Test
