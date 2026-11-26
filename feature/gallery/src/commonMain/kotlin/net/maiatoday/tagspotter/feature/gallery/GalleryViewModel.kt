@@ -17,6 +17,7 @@ import net.maiatoday.tagspotter.core.location.LocationProvider
 import net.maiatoday.tagspotter.core.model.FilterCenter
 import net.maiatoday.tagspotter.core.model.LocationUtils
 import net.maiatoday.tagspotter.core.model.SpotDetails
+import net.maiatoday.tagspotter.core.model.SpotOrigin
 import net.maiatoday.tagspotter.core.settings.FilterManager
 import net.maiatoday.tagspotter.core.settings.SettingsRepository
 import net.maiatoday.tagspotter.core.photo.PhotoProcessor
@@ -245,7 +246,7 @@ class GalleryViewModel(
             val sourceFiltered = when (state.source) {
                 "My Spots" -> visibilityFiltered.filter { it.spot.isEditableBy(state.currentUserUid) }
                 "Public" -> visibilityFiltered.filter { it.spot.isOtherUsersPublic(state.currentUserUid) }
-                "Imported" -> visibilityFiltered.filter { it.spot.isImported }
+                "Imported" -> visibilityFiltered.filter { it.spot.effectiveOrigin == SpotOrigin.IMPORTED }
                 else -> visibilityFiltered
             }
             // Apply starred filtering
