@@ -10,10 +10,17 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
+import net.maiatoday.tagspotter.core.model.SpotOrigin
+import net.maiatoday.tagspotter.core.model.generateUuid
 
 @Entity(
     tableName = "spots",
-    indices = [Index(value = ["uuid"])]
+    indices = [
+        Index(value = ["uuid"], unique = true),
+        Index(value = ["ownerUid"]),
+        Index(value = ["origin"]),
+        Index(value = ["origin", "ownerUid"])
+    ]
 )
 data class SpotEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -29,13 +36,14 @@ data class SpotEntity(
     val isImported: Boolean = false,
     val isStarred: Boolean = false,
     val artworkDate: String = "",
-    val uuid: String = "",
+    val uuid: String = generateUuid(),
     val photographerUuid: String = "",
     val lastEditedAt: Long = createdAt,
     val isSynced: Boolean = false,
     val ownerUid: String? = null,
     val parentPackId: String? = null,
-    val isPublic: Boolean = false
+    val isPublic: Boolean = false,
+    val origin: String = SpotOrigin.OWN.name
 )
 
 @Entity(
@@ -48,7 +56,11 @@ data class SpotEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["spotId"]), Index(value = ["uuid"])]
+    indices = [
+        Index(value = ["spotId"]),
+        Index(value = ["uuid"]),
+        Index(value = ["spotId", "uuid"])
+    ]
 )
 data class SpotImageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -60,7 +72,8 @@ data class SpotImageEntity(
     val rating: Long = 0L,
     val uuid: String = "",
     val lastEditedAt: Long = timestamp,
-    val ownerUid: String? = null
+    val ownerUid: String? = null,
+    val remoteThumbnailUrl: String = ""
 )
 
 @Entity(
@@ -73,7 +86,11 @@ data class SpotImageEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["spotId"]), Index(value = ["uuid"])]
+    indices = [
+        Index(value = ["spotId"]),
+        Index(value = ["uuid"]),
+        Index(value = ["spotId", "uuid"])
+    ]
 )
 data class SpotNoteEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -101,6 +118,12 @@ data class SpotDetailsEntity(
 
 // Mapping extensions to map Entities to Domain Models
 
+private fun parseSpotOrigin(raw: String, isImported: Boolean, parentPackId: String?): SpotOrigin {
+    val parsed = SpotOrigin.entries.firstOrNull { it.name == raw }
+    if (parsed != null) return parsed
+    return if (isImported || parentPackId != null) SpotOrigin.IMPORTED else SpotOrigin.OWN
+}
+
 fun SpotEntity.toDomain(): Spot = Spot(
     id = id,
     latitude = latitude,
@@ -121,7 +144,8 @@ fun SpotEntity.toDomain(): Spot = Spot(
     isSynced = isSynced,
     ownerUid = ownerUid,
     parentPackId = parentPackId,
-    isPublic = isPublic
+    isPublic = isPublic,
+    origin = parseSpotOrigin(origin, isImported, parentPackId)
 )
 
 fun Spot.toEntity(): SpotEntity = SpotEntity(
@@ -135,7 +159,7 @@ fun Spot.toEntity(): SpotEntity = SpotEntity(
     status = status,
     artists = artists,
     photographer = photographer,
-    isImported = isImported,
+    isImported = isImported || effectiveOrigin == SpotOrigin.IMPORTED,
     isStarred = isStarred,
     artworkDate = artworkDate,
     uuid = uuid,
@@ -144,7 +168,8 @@ fun Spot.toEntity(): SpotEntity = SpotEntity(
     isSynced = isSynced,
     ownerUid = ownerUid,
     parentPackId = parentPackId,
-    isPublic = isPublic
+    isPublic = isPublic,
+    origin = effectiveOrigin.name
 )
 
 fun SpotImageEntity.toDomain(): SpotImage = SpotImage(
@@ -157,7 +182,8 @@ fun SpotImageEntity.toDomain(): SpotImage = SpotImage(
     rating = rating,
     uuid = uuid,
     lastEditedAt = lastEditedAt,
-    ownerUid = ownerUid
+    ownerUid = ownerUid,
+    remoteThumbnailUrl = remoteThumbnailUrl
 )
 
 fun SpotImage.toEntity(): SpotImageEntity = SpotImageEntity(
@@ -170,7 +196,8 @@ fun SpotImage.toEntity(): SpotImageEntity = SpotImageEntity(
     rating = rating,
     uuid = uuid,
     lastEditedAt = lastEditedAt,
-    ownerUid = ownerUid
+    ownerUid = ownerUid,
+    remoteThumbnailUrl = remoteThumbnailUrl
 )
 
 fun SpotNoteEntity.toDomain(): SpotNote = SpotNote(

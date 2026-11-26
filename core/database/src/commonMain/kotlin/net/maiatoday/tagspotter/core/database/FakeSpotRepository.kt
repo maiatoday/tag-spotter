@@ -7,6 +7,7 @@ import net.maiatoday.tagspotter.core.model.Spot
 import net.maiatoday.tagspotter.core.model.SpotDetails
 import net.maiatoday.tagspotter.core.model.SpotImage
 import net.maiatoday.tagspotter.core.model.SpotNote
+import net.maiatoday.tagspotter.core.model.SpotOrigin
 import kotlin.collections.plus
 
 class FakeSpotRepository : SpotRepository {
@@ -287,7 +288,7 @@ class FakeSpotRepository : SpotRepository {
             }
             if (!isDuplicate) {
                 val nextId = (spotsMap.keys.maxOrNull() ?: 0L) + 1L
-                val spotCopy = importedSpot.copy(id = nextId, isImported = true)
+                val spotCopy = importedSpot.copy(id = nextId, isImported = true, origin = SpotOrigin.IMPORTED, isSynced = true)
                 val imagesCopy = importedDetail.images.mapIndexed { idx, img -> img.copy(id = idx + 1L, spotId = nextId) }
                 val notesCopy = importedDetail.notes.mapIndexed { idx, note -> note.copy(id = idx + 1L, spotId = nextId) }
                 spotsMap[nextId] = SpotDetails(spotCopy, imagesCopy, notesCopy)
@@ -352,7 +353,9 @@ class FakeSpotRepository : SpotRepository {
     }
 
     override suspend fun getUnsyncedSpots(): List<SpotDetails> {
-        return spotsMap.values.filter { !it.spot.isSynced }
+        return spotsMap.values.filter {
+            it.spot.effectiveOrigin == SpotOrigin.OWN && !it.spot.isSynced
+        }
     }
 
     override suspend fun markSpotAsSynced(spotUuid: String) {
@@ -362,11 +365,21 @@ class FakeSpotRepository : SpotRepository {
         updateFlow()
     }
 
+    override suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String) {
+        val spotEntry = spotsMap.values.find { details -> details.images.any { it.id == imageId } } ?: return
+        val updatedImages = spotEntry.images.map { img ->
+            if (img.id == imageId) img.copy(remoteThumbnailUrl = remoteUrl) else img
+        }
+        spotsMap[spotEntry.spot.id] = spotEntry.copy(images = updatedImages)
+        updateFlow()
+    }
+
     override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
         val existingEntry = spotsMap.values.find { it.spot.uuid == spotDetails.spot.uuid }
+        if (existingEntry != null && existingEntry.spot.effectiveOrigin == SpotOrigin.IMPORTED) return
         if (existingEntry != null) {
             val localId = existingEntry.spot.id
-            val spotWithLocalId = spotDetails.spot.copy(id = localId, isSynced = true)
+            val spotWithLocalId = spotDetails.spot.copy(id = localId, isSynced = true, origin = SpotOrigin.OWN, isImported = false)
             val imagesWithLocalId = spotDetails.images.mapIndexed { index, img ->
                 val existingImg = existingEntry.images.find { it.uuid == img.uuid }
                 img.copy(
@@ -384,7 +397,7 @@ class FakeSpotRepository : SpotRepository {
             spotsMap[localId] = SpotDetails(spotWithLocalId, imagesWithLocalId, notesWithLocalId)
         } else {
             val nextId = (spotsMap.keys.maxOrNull() ?: 0L) + 1L
-            val spotWithLocalId = spotDetails.spot.copy(id = nextId, isSynced = true)
+            val spotWithLocalId = spotDetails.spot.copy(id = nextId, isSynced = true, origin = SpotOrigin.OWN, isImported = false)
             val imagesWithLocalId = spotDetails.images.mapIndexed { index, img ->
                 img.copy(id = (index + 1).toLong(), spotId = nextId)
             }
@@ -394,6 +407,49 @@ class FakeSpotRepository : SpotRepository {
             spotsMap[nextId] = SpotDetails(spotWithLocalId, imagesWithLocalId, notesWithLocalId)
         }
         updateFlow()
+    }
+
+    override suspend fun savePublicSpot(spotDetails: SpotDetails) {
+        val remoteOwnerUid = spotDetails.spot.ownerUid
+        if (activeUid != null && remoteOwnerUid == activeUid) return
+        val existingEntry = spotsMap.values.find { it.spot.uuid == spotDetails.spot.uuid }
+        if (existingEntry != null && existingEntry.spot.effectiveOrigin != SpotOrigin.PUBLIC_CACHE) return
+
+        val finalSpotId = existingEntry?.spot?.id ?: ((spotsMap.keys.maxOrNull() ?: 0L) + 1L)
+        val spotToSave = spotDetails.spot.copy(
+            id = finalSpotId,
+            ownerUid = remoteOwnerUid ?: existingEntry?.spot?.ownerUid,
+            isPublic = true,
+            isSynced = true,
+            isImported = false,
+            parentPackId = null,
+            isStarred = existingEntry?.spot?.isStarred ?: false,
+            origin = SpotOrigin.PUBLIC_CACHE
+        )
+        val imagesToSave = spotDetails.images.mapIndexed { idx, img ->
+            val existingImg = existingEntry?.images?.find { it.uuid == img.uuid }
+            img.copy(id = existingImg?.id ?: (idx + 1L), spotId = finalSpotId)
+        }
+        val notesToSave = spotDetails.notes.mapIndexed { idx, note ->
+            val existingNote = existingEntry?.notes?.find { it.uuid == note.uuid }
+            note.copy(id = existingNote?.id ?: (idx + 1L), spotId = finalSpotId)
+        }
+        spotsMap[finalSpotId] = SpotDetails(spotToSave, imagesToSave, notesToSave)
+        updateFlow()
+    }
+
+    override suspend fun pruneRemovedPublicSpots(activePublicUuids: Set<String>) {
+        val keysToRemove = spotsMap.filter { (_, detail) ->
+            detail.spot.effectiveOrigin == SpotOrigin.PUBLIC_CACHE && detail.spot.uuid !in activePublicUuids
+        }.keys
+        keysToRemove.forEach { spotsMap.remove(it) }
+        updateFlow()
+    }
+
+    override fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetails>> {
+        return spotsFlow.map { list ->
+            list.filter { it.spot.effectiveOrigin == SpotOrigin.PUBLIC_CACHE && it.spot.ownerUid == ownerUid }
+        }
     }
 
     override suspend fun adoptLocalSpots(userUid: String, backup: Boolean) {

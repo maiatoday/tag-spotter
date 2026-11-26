@@ -3,6 +3,13 @@ package net.maiatoday.tagspotter.core.model
 import kotlinx.serialization.Serializable
 
 @Serializable
+enum class SpotOrigin {
+    OWN,
+    IMPORTED,
+    PUBLIC_CACHE
+}
+
+@Serializable
 data class Spot(
     val id: Long = 0,
     val latitude: Double,
@@ -23,25 +30,54 @@ data class Spot(
     val isSynced: Boolean = false,
     val ownerUid: String? = null,
     val parentPackId: String? = null,
-    val isPublic: Boolean = false
+    val isPublic: Boolean = false,
+    val origin: SpotOrigin = SpotOrigin.OWN
 ) {
+    /**
+     * Resolved provenance accounting for legacy backups where [isImported] or [parentPackId]
+     * may be set without an explicit [origin].
+     */
+    val effectiveOrigin: SpotOrigin
+        get() = when {
+            origin == SpotOrigin.PUBLIC_CACHE -> SpotOrigin.PUBLIC_CACHE
+            origin == SpotOrigin.IMPORTED || isImported || parentPackId != null -> SpotOrigin.IMPORTED
+            else -> SpotOrigin.OWN
+        }
+
     /**
      * Returns true if the user identified by [currentUserUid] is the author of this spot
      * and therefore allowed to edit it.
      *
-     * - Imported spots (`isImported == true`) and spots belonging to a loaded shared pack
-     *   (`parentPackId != null`) are never editable.
+     * - Only [SpotOrigin.OWN] spots can be edited; [SpotOrigin.IMPORTED] and
+     *   [SpotOrigin.PUBLIC_CACHE] spots are never editable.
      * - Local spots without an author UID (`ownerUid.isNullOrBlank()`) or marked as
      *   [LOCAL_ONLY_UID] are editable on the device that created them.
      * - Spots with an explicit `ownerUid` (including public spots) are editable only when
      *   [currentUserUid] matches `ownerUid`.
      */
     fun isEditableBy(currentUserUid: String?): Boolean {
-        if (isImported || parentPackId != null) return false
+        if (effectiveOrigin != SpotOrigin.OWN) return false
         val owner = ownerUid
         if (owner.isNullOrBlank() || owner == LOCAL_ONLY_UID) return true
         return currentUserUid != null && owner == currentUserUid
     }
+
+    /**
+     * Returns true if this spot can be deleted locally by the user identified by [currentUserUid].
+     *
+     * Authors can delete their own spots, and users can also delete spots they imported from a pack
+     * (local removal only). Other users' cached public spots cannot be deleted.
+     */
+    fun isDeletableBy(currentUserUid: String?): Boolean =
+        isEditableBy(currentUserUid) || effectiveOrigin == SpotOrigin.IMPORTED
+
+    /**
+     * Returns true if this spot is a read-only public spot shared by another user
+     * (distinct from the viewer's own spots and imported pack spots).
+     */
+    fun isOtherUsersPublic(currentUserUid: String?): Boolean =
+        effectiveOrigin == SpotOrigin.PUBLIC_CACHE ||
+            (effectiveOrigin == SpotOrigin.OWN && isPublic && !isEditableBy(currentUserUid))
 
     companion object {
         const val LOCAL_ONLY_UID = "local_only"
@@ -60,8 +96,21 @@ data class SpotImage(
     val rating: Long = 0L,
     val uuid: String = generateUuid(),
     val lastEditedAt: Long = timestamp,
-    val ownerUid: String? = null
-)
+    val ownerUid: String? = null,
+    val remoteThumbnailUrl: String = ""
+) {
+    /**
+     * Preferred thumbnail path for display: local/explicit thumbnailPath, falling back to [remoteThumbnailUrl].
+     */
+    val displayThumbnailPath: String
+        get() = thumbnailPath.ifBlank { remoteThumbnailUrl }
+
+    /**
+     * Preferred full image path for display: local/explicit imagePath, falling back to [remoteThumbnailUrl].
+     */
+    val displayImagePath: String
+        get() = imagePath.ifBlank { remoteThumbnailUrl }
+}
 
 @Serializable
 data class SpotNote(

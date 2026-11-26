@@ -12,17 +12,26 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SpotDao {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSpot(spot: SpotEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertImage(image: SpotImageEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertNote(note: SpotNoteEntity): Long
 
     @Update
     suspend fun updateSpot(spot: SpotEntity)
+
+    @Update
+    suspend fun updateImage(image: SpotImageEntity)
+
+    @Update
+    suspend fun updateNote(note: SpotNoteEntity)
+
+    @Query("UPDATE spot_images SET remoteThumbnailUrl = :remoteUrl WHERE id = :imageId")
+    suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String)
 
     @Delete
     suspend fun deleteSpot(spot: SpotEntity)
@@ -59,26 +68,30 @@ interface SpotDao {
     fun getSpotDetails(id: Long): Flow<SpotDetailsEntity?>
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM spots WHERE origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid) ORDER BY createdAt DESC")
     fun getAllSpotsDetails(activeUid: String?): Flow<List<SpotDetailsEntity>>
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE category = :category AND (ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM spots WHERE category = :category AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)) ORDER BY createdAt DESC")
     fun getAllSpotsDetailsByCategory(category: String, activeUid: String?): Flow<List<SpotDetailsEntity>>
 
-    @Query("SELECT DISTINCT tags FROM spots WHERE ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)")
+    @Transaction
+    @Query("SELECT * FROM spots WHERE origin = 'PUBLIC_CACHE' AND ownerUid = :ownerUid ORDER BY createdAt DESC")
+    fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetailsEntity>>
+
+    @Query("SELECT DISTINCT tags FROM spots WHERE origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)")
     fun getAllUsedTags(activeUid: String?): Flow<List<String>>
 
-    @Query("UPDATE spots SET isStarred = :isStarred, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
+    @Query("UPDATE spots SET isStarred = :isStarred, lastEditedAt = :lastEditedAt, isSynced = CASE WHEN origin = 'OWN' THEN 0 ELSE isSynced END WHERE id = :spotId")
     suspend fun updateSpotStarred(spotId: Long, isStarred: Boolean, lastEditedAt: Long)
 
     @Query("UPDATE spots SET isPublic = :isPublic, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
     suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean, lastEditedAt: Long)
 
-    @Query("SELECT * FROM spots WHERE isStarred = 1 AND (ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
+    @Query("SELECT * FROM spots WHERE isStarred = 1 AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
     suspend fun getStarredSpots(activeUid: String?): List<SpotEntity>
 
-    @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1 AND (ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
+    @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1 AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
     suspend fun getStarredSpotsCount(activeUid: String?): Int
 
     @Query("UPDATE spot_images SET isMain = 0 WHERE spotId = :spotId")
@@ -118,7 +131,7 @@ interface SpotDao {
     suspend fun getSpotIdForImage(imageId: Long): Long?
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE isSynced = 0 AND (ownerUid = :activeUid OR ownerUid IS NULL)")
+    @Query("SELECT * FROM spots WHERE origin = 'OWN' AND isImported = 0 AND parentPackId IS NULL AND isSynced = 0 AND (ownerUid = :activeUid OR ownerUid IS NULL)")
     suspend fun getUnsyncedSpotsDetails(activeUid: String): List<SpotDetailsEntity>
 
     @Query("UPDATE spots SET isSynced = 1 WHERE uuid = :uuid")
@@ -127,11 +140,17 @@ interface SpotDao {
     @Query("SELECT * FROM spots WHERE uuid = :uuid")
     suspend fun getSpotByUuid(uuid: String): SpotEntity?
 
-    @Query("SELECT * FROM spot_images WHERE uuid = :uuid")
-    suspend fun getImageByUuid(uuid: String): SpotImageEntity?
+    @Query("SELECT * FROM spots WHERE origin = 'PUBLIC_CACHE'")
+    suspend fun getCachedPublicSpots(): List<SpotEntity>
 
-    @Query("SELECT * FROM spot_notes WHERE uuid = :uuid")
-    suspend fun getNoteByUuid(uuid: String): SpotNoteEntity?
+    @Query("SELECT * FROM spot_images WHERE spotId = :spotId AND uuid = :uuid")
+    suspend fun getImageBySpotAndUuid(spotId: Long, uuid: String): SpotImageEntity?
+
+    @Query("SELECT * FROM spot_notes WHERE spotId = :spotId AND uuid = :uuid")
+    suspend fun getNoteBySpotAndUuid(spotId: Long, uuid: String): SpotNoteEntity?
+
+    @Query("SELECT * FROM spot_notes WHERE spotId = :spotId ORDER BY timestamp ASC")
+    suspend fun getNotesForSpot(spotId: Long): List<SpotNoteEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLoadedPack(pack: LoadedPackEntity)

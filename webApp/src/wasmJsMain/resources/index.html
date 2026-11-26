@@ -85,10 +85,10 @@
                 .catch((err) => onFailure(err.message));
         };
 
-        window.webFirestoreSaveSpot = function(userId, spotUuid, spotJson, onSuccess, onFailure) {
+        window.webFirestoreSaveSpot = function(spotUuid, spotJson, onSuccess, onFailure) {
             try {
                 const data = JSON.parse(spotJson);
-                firebase.firestore().collection("users").doc(userId).collection("spots").doc(spotUuid)
+                firebase.firestore().collection("spots").doc(spotUuid)
                     .set(data)
                     .then(() => onSuccess())
                     .catch((err) => onFailure(err.message));
@@ -97,9 +97,9 @@
             }
         };
 
-        window.webFirestoreDeleteSpot = function(userId, spotUuid, onSuccess, onFailure) {
+        window.webFirestoreDeleteSpot = function(spotUuid, onSuccess, onFailure) {
             try {
-                firebase.firestore().collection("users").doc(userId).collection("spots").doc(spotUuid)
+                firebase.firestore().collection("spots").doc(spotUuid)
                     .delete()
                     .then(() => onSuccess())
                     .catch((err) => onFailure(err.message));
@@ -109,7 +109,7 @@
         };
 
         window.webFirestoreListenSpots = function(userId, onUpdate, onNoChange) {
-            firebase.firestore().collection("users").doc(userId).collection("spots")
+            firebase.firestore().collection("spots").where("ownerUid", "==", userId)
                 .onSnapshot((snapshot) => {
                     snapshot.docChanges().forEach((change) => {
                         if (change.type === "added" || change.type === "modified") {
@@ -121,32 +121,34 @@
                 });
         };
 
-        window.webStorageUploadThumbnail = function(userId, imageUuid, base64Data, onSuccess, onFailure) {
-            firebase.storage().ref("users/" + userId + "/thumbnails/" + imageUuid + ".jpg")
-                .putString(base64Data, "base64", { contentType: "image/jpeg" })
-                .then(() => onSuccess())
+        window.webFirestoreFetchPublicSpots = function(onSuccess, onFailure) {
+            firebase.firestore().collection("spots").where("isPublic", "==", true)
+                .get()
+                .then((snapshot) => {
+                    const docs = [];
+                    snapshot.forEach((doc) => docs.push(doc.data()));
+                    onSuccess(JSON.stringify(docs));
+                })
                 .catch((err) => onFailure(err.message));
         };
 
-        window.webStorageGetDownloadUrl = function(userId, imageUuid, onSuccess, onFailure) {
-            console.log("[FirebaseStorage] Resolving download URL for user:", userId, "imageUuid:", imageUuid);
-            const thumbRef = firebase.storage().ref("users/" + userId + "/thumbnails/" + imageUuid + ".jpg");
-            thumbRef.getDownloadURL()
-                .then((url) => {
-                    console.log("[FirebaseStorage] Successfully resolved thumbnail URL for", imageUuid, ":", url);
-                    onSuccess(url);
-                })
+        window.webStorageUploadThumbnail = function(userId, spotUuid, imageUuid, base64Data, onSuccess, onFailure) {
+            const ref = firebase.storage().ref("spots/" + userId + "/" + spotUuid + "/thumbnails/" + imageUuid + ".jpg");
+            ref.putString(base64Data, "base64", { contentType: "image/jpeg" })
+                .then(() => ref.getDownloadURL())
+                .then((url) => onSuccess(url))
+                .catch((err) => onFailure(err.message));
+        };
+
+        window.webStorageGetDownloadUrl = function(userId, spotUuid, imageUuid, onSuccess, onFailure) {
+            const canonicalRef = firebase.storage().ref("spots/" + userId + "/" + spotUuid + "/thumbnails/" + imageUuid + ".jpg");
+            canonicalRef.getDownloadURL()
+                .then((url) => onSuccess(url))
                 .catch((err) => {
-                    const imgRef = firebase.storage().ref("users/" + userId + "/images/" + imageUuid + ".jpg");
-                    imgRef.getDownloadURL()
-                        .then((url) => {
-                            console.log("[FirebaseStorage] Successfully resolved fallback image URL for", imageUuid, ":", url);
-                            onSuccess(url);
-                        })
-                        .catch((err2) => {
-                            console.warn("[FirebaseStorage] Failed to resolve URL for", imageUuid, ":", err.message);
-                            onFailure(err.message);
-                        });
+                    const legacyRef = firebase.storage().ref("users/" + userId + "/thumbnails/" + imageUuid + ".jpg");
+                    legacyRef.getDownloadURL()
+                        .then((url) => onSuccess(url))
+                        .catch((err2) => onFailure(err2.message || err.message));
                 });
         };
     </script>

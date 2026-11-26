@@ -92,13 +92,45 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
     }
 }
 
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(connection: SQLiteConnection) {
+        // 1. Add explicit spot provenance column and backfill imported spots
+        connection.execSQL("ALTER TABLE spots ADD COLUMN origin TEXT NOT NULL DEFAULT 'OWN'")
+        connection.execSQL("UPDATE spots SET origin = 'IMPORTED' WHERE isImported = 1 OR parentPackId IS NOT NULL")
+
+        // 2. Add separate remoteThumbnailUrl column to spot_images and backfill any existing HTTPS URLs
+        connection.execSQL("ALTER TABLE spot_images ADD COLUMN remoteThumbnailUrl TEXT NOT NULL DEFAULT ''")
+        connection.execSQL("UPDATE spot_images SET remoteThumbnailUrl = thumbnailPath WHERE thumbnailPath LIKE 'http%'")
+
+        // 3. Ensure every spot has a non-empty unique UUID before creating the unique index
+        val rfc4122v4UuidExpr = "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))"
+        connection.execSQL("UPDATE spots SET uuid = ($rfc4122v4UuidExpr) WHERE uuid = ''")
+        // Deduplicate any duplicate UUID rows (keep the most recently edited / highest id)
+        connection.execSQL("""
+            DELETE FROM spots
+            WHERE id NOT IN (
+                SELECT MAX(id) FROM spots GROUP BY uuid
+            )
+        """.trimIndent())
+
+        // 4. Recreate spots UUID index as UNIQUE and add ownerUid / origin / scoped child indexes
+        connection.execSQL("DROP INDEX IF EXISTS index_spots_uuid")
+        connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_spots_uuid ON spots(uuid)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_spots_ownerUid ON spots(ownerUid)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_spots_origin ON spots(origin)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_spots_origin_ownerUid ON spots(origin, ownerUid)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_spot_images_spotId_uuid ON spot_images(spotId, uuid)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS index_spot_notes_spotId_uuid ON spot_notes(spotId, uuid)")
+    }
+}
+
 fun RoomDatabase.Builder<SpotDatabase>.configureSpotDatabase(): RoomDatabase.Builder<SpotDatabase> {
-    return this.addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+    return this.addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
 }
 
 @Database(
     entities = [SpotEntity::class, SpotImageEntity::class, SpotNoteEntity::class, LoadedPackEntity::class],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

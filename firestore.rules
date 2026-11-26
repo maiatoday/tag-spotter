@@ -8,7 +8,7 @@ service cloud.firestore {
     //
     // Collection: users/{userId}/{document=**}
     // Document ID: userId / subcollection document IDs
-    // Purpose: Private user workspace, settings, and personal spots.
+    // Purpose: Private user workspace and settings.
     // Access: Owner only (request.auth.uid == userId).
     //
     // Collection: shared_packs/{code}
@@ -21,19 +21,24 @@ service cloud.firestore {
     //   - spots: list (required) - List of SpotDetails in the pack
     // Access: Authenticated users can read and create/update shared packs.
     //
-    // Collection: public_spots/{uuid}
+    // Collection: spots/{uuid}
     // Document ID: uuid (UUID string matching spot.uuid)
+    // Purpose: Canonical collection for both private and public spots.
     // Fields:
+    //   - ownerUid: string (required, 1..128 chars, immutable) - Author's Firebase Auth UID
+    //   - isPublic: bool (required) - Public visibility flag
     //   - spot: map (required)
-    //     - uuid: string (required) - Unique spot UUID
-    //     - ownerUid: string (required, immutable) - Author's Firebase Auth UID
-    //     - isPublic: bool (required, must be true) - Public visibility flag
+    //     - uuid: string (optional, max 128 chars) - Unique spot UUID
+    //     - ownerUid: string (optional, must match top-level ownerUid if present)
+    //     - isPublic: bool (optional, must match top-level isPublic if present)
     //     - description: string (optional, max 5000 chars)
     //     - category: string (optional, max 100 chars)
     //     - status: string (optional, max 100 chars)
     //     - tags: list of strings (optional, max 100 items)
     //     - artists: list of strings (optional, max 100 items)
     //     - photographer: string (optional, max 100 chars)
+    //     - photographerUuid: string (optional, max 128 chars)
+    //     - parentPackId: string or null (optional, max 128 chars)
     //     - artworkDate: string (optional, max 100 chars)
     //     - latitude: number (optional) - Coordinate latitude
     //     - longitude: number (optional) - Coordinate longitude
@@ -42,10 +47,13 @@ service cloud.firestore {
     //   - images: list of maps (optional, max 100 items) - Attached spot images
     //   - notes: list of maps (optional, max 100 items) - Attached spot notes
     // Access:
-    //   - Read: Open / public read access.
-    //   - Create: Authenticated author only (request.auth.uid == spot.ownerUid, spot.isPublic == true).
-    //   - Update: Authenticated author only, ownerUid immutable, spot.isPublic == true.
-    //   - Delete: Authenticated author only (request.auth.uid == resource.data.spot.ownerUid).
+    //   - Read: Public when resource.data.isPublic == true; otherwise owner-only.
+    //   - Create: Authenticated owner only (request.auth.uid == ownerUid) with valid payload.
+    //   - Update: Authenticated owner only, ownerUid immutable, with valid payload.
+    //   - Delete: Authenticated owner only (request.auth.uid == resource.data.ownerUid).
+    //
+    // Retired Collection: public_spots/{uuid}
+    //   Replaced by canonical /spots/{uuid}; denied by default rule below.
     //
     // ===============================================================
 
@@ -68,18 +76,29 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == spotOwnerUid;
     }
 
-    // Domain validator for public spots (used in both create and update)
-    function isValidPublicSpot(data) {
-      return data.spot is map &&
-             data.spot.ownerUid is string &&
-             data.spot.ownerUid.size() > 0 &&
-             data.spot.ownerUid.size() <= 128 &&
-             data.spot.isPublic == true &&
+    // Ensure top-level ownerUid is not modified on update
+    function ownerUidNotModified() {
+      return request.resource.data.ownerUid == resource.data.ownerUid;
+    }
+
+    // Domain validator for canonical spots (used in both create and update)
+    function isValidSpot(data) {
+      return data.keys().hasAll(['ownerUid', 'isPublic', 'spot']) &&
+             data.keys().hasOnly(['ownerUid', 'isPublic', 'spot', 'images', 'notes']) &&
+             data.ownerUid is string &&
+             data.ownerUid.size() > 0 &&
+             data.ownerUid.size() <= 128 &&
+             data.isPublic is bool &&
+             data.spot is map &&
+             (!('ownerUid' in data.spot) || data.spot.ownerUid == data.ownerUid) &&
+             (!('isPublic' in data.spot) || data.spot.isPublic == data.isPublic) &&
              (!('uuid' in data.spot) || (data.spot.uuid is string && data.spot.uuid.size() <= 128)) &&
              (!('description' in data.spot) || (data.spot.description is string && data.spot.description.size() <= 5000)) &&
              (!('category' in data.spot) || (data.spot.category is string && data.spot.category.size() <= 100)) &&
              (!('status' in data.spot) || (data.spot.status is string && data.spot.status.size() <= 100)) &&
              (!('photographer' in data.spot) || (data.spot.photographer is string && data.spot.photographer.size() <= 100)) &&
+             (!('photographerUuid' in data.spot) || (data.spot.photographerUuid is string && data.spot.photographerUuid.size() <= 128)) &&
+             (!('parentPackId' in data.spot) || data.spot.parentPackId == null || (data.spot.parentPackId is string && data.spot.parentPackId.size() <= 128)) &&
              (!('artworkDate' in data.spot) || (data.spot.artworkDate is string && data.spot.artworkDate.size() <= 100)) &&
              (!('tags' in data.spot) || (data.spot.tags is list && data.spot.tags.size() <= 100)) &&
              (!('artists' in data.spot) || (data.spot.artists is list && data.spot.artists.size() <= 100)) &&
@@ -103,22 +122,25 @@ service cloud.firestore {
       allow create, update: if isAuthenticated();
     }
 
-    // Public Spots: open community discovery with author-only write controls
-    match /public_spots/{uuid} {
-      // Open read access for community discovery
-      allow read: if true;
+    // Canonical Spots: unified private and public spots with owner-only write controls
+    match /spots/{uuid} {
+      // Public spots are readable by anyone; private spots are readable only by their owner
+      allow read: if resource.data.isPublic == true ||
+                     (isAuthenticated() && request.auth.uid == resource.data.ownerUid);
 
-      // Author-only create: author UID must match authenticated UID and isPublic must be true
-      allow create: if isSpotAuthor(request.resource.data.spot.ownerUid) &&
-                       isValidPublicSpot(request.resource.data);
+      // Owner-only create: ownerUid must match authenticated UID and payload must be valid
+      allow create: if isValidSpot(request.resource.data) &&
+                       isSpotAuthor(request.resource.data.ownerUid);
 
-      // Author-only update: owner cannot be changed and data must remain valid public spot
-      allow update: if isSpotAuthor(resource.data.spot.ownerUid) &&
-                       request.resource.data.spot.ownerUid == resource.data.spot.ownerUid &&
-                       isValidPublicSpot(request.resource.data);
+      // Owner-only update: ownerUid is immutable and payload must remain valid
+      allow update: if isSpotAuthor(resource.data.ownerUid) &&
+                       ownerUidNotModified() &&
+                       isValidSpot(request.resource.data);
 
-      // Author-only delete: only author can remove the public spot
-      allow delete: if isSpotAuthor(resource.data.spot.ownerUid);
+      // Owner-only delete: only the spot owner can remove the spot
+      allow delete: if isSpotAuthor(resource.data.ownerUid);
     }
+
+    // Retired: /public_spots/{uuid} has been replaced by /spots/{uuid} and is denied by default.
   }
 }
