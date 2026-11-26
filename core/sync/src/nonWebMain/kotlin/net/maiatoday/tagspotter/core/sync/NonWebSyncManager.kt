@@ -188,7 +188,7 @@ class NonWebSyncManager(
                             }
                         }
 
-                        if (!hadDecodeFailure) {
+                        if (!hadDecodeFailure && !querySnapshot.metadata.isFromCache) {
                             localSpots.filter {
                                 it.spot.effectiveOrigin == SpotOrigin.OWN &&
                                     it.spot.ownerUid == userId &&
@@ -286,6 +286,7 @@ class NonWebSyncManager(
         val uuid = localDetail.spot.uuid
         var uploaded = 0
         var spotModified = false
+        var allThumbnailsReady = true
         val remoteImages = localDetail.images.map { image ->
             val bytes = readBytesFromFile(image.thumbnailPath) ?: readBytesFromFile(image.imagePath)
             if (bytes != null) {
@@ -300,6 +301,7 @@ class NonWebSyncManager(
                     spotModified = true
                     image.copy(thumbnailPath = downloadUrl, imagePath = downloadUrl, remoteThumbnailUrl = downloadUrl)
                 } catch (e: Exception) {
+                    allThumbnailsReady = false
                     platformLogError(TAG, "Force backup failed for ${image.uuid}", e)
                     image
                 }
@@ -310,12 +312,13 @@ class NonWebSyncManager(
                 if (fallbackUrl.isNotEmpty()) {
                     image.copy(thumbnailPath = fallbackUrl, imagePath = fallbackUrl, remoteThumbnailUrl = fallbackUrl)
                 } else {
+                    allThumbnailsReady = false
                     image
                 }
             }
         }
 
-        if (spotModified) {
+        if (spotModified && allThumbnailsReady) {
             val detailToPush = localDetail.copy(
                 spot = localDetail.spot.copy(ownerUid = userId, origin = SpotOrigin.OWN, isImported = false),
                 images = remoteImages
@@ -451,14 +454,11 @@ class NonWebSyncManager(
 
                 val currentUid = activeUserId ?: repository.activeUid
                 val activePublicUuids = remoteSpots.map { it.spot.uuid }.toSet()
-
-                remoteSpots.forEach { detail ->
-                    if (currentUid != null && detail.spot.ownerUid == currentUid) {
-                        return@forEach
-                    }
-                    repository.savePublicSpot(detail)
+                val otherUsersSpots = remoteSpots.filter { detail ->
+                    currentUid == null || detail.spot.ownerUid != currentUid
                 }
-                if (!hadDecodeFailure) {
+                repository.savePublicSpots(otherUsersSpots)
+                if (!hadDecodeFailure && !snapshot.metadata.isFromCache) {
                     repository.pruneRemovedPublicSpots(activePublicUuids)
                 }
                 platformLog(TAG, "syncPublicSpots completed: ${remoteSpots.size} remote public spots")
@@ -533,6 +533,8 @@ class NonWebSyncManager(
     }
 
     private fun shouldApplyRemoteUpdate(localMatch: SpotDetails, remoteDetail: SpotDetails): Boolean {
+        // Protect pending local edits / deferred thumbnail uploads from being overwritten by older remote snapshots
+        if (!localMatch.spot.isSynced) return false
         if (remoteDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) return true
         if (remoteDetail.images.size != localMatch.images.size) return true
         if (remoteDetail.notes.size != localMatch.notes.size) return true

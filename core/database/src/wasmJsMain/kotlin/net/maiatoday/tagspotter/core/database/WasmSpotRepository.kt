@@ -386,6 +386,10 @@ class WasmSpotRepository : SpotRepository {
     override suspend fun importSpots(spots: List<SpotDetails>): Int {
         var count = 0
         spots.forEach { detail ->
+            val existing = spotsFlow.value.values.find { it.spot.uuid == detail.spot.uuid }
+            if (existing != null && existing.spot.effectiveOrigin == SpotOrigin.OWN) {
+                return@forEach
+            }
             saveImportedSpot(detail)
             count++
         }
@@ -580,50 +584,63 @@ class WasmSpotRepository : SpotRepository {
         persistToLocalStorage()
     }
 
-    override suspend fun savePublicSpot(spotDetails: SpotDetails) {
-        val remoteOwnerUid = spotDetails.spot.ownerUid
-        if (activeUid != null && remoteOwnerUid == activeUid) return
+    override suspend fun savePublicSpots(spots: List<SpotDetails>) {
+        if (spots.isEmpty()) return
+        val updatedMap = spotsFlow.value.toMutableMap()
+        var changed = false
+        spots.forEach { spotDetails ->
+            val remoteOwnerUid = spotDetails.spot.ownerUid
+            if (activeUid != null && remoteOwnerUid == activeUid) return@forEach
 
-        val existingEntry = spotsFlow.value.entries.find { it.value.spot.uuid == spotDetails.spot.uuid }
-        if (existingEntry != null && existingEntry.value.spot.effectiveOrigin != SpotOrigin.PUBLIC_CACHE) return
+            val existingEntry = updatedMap.entries.find { it.value.spot.uuid == spotDetails.spot.uuid }
+            if (existingEntry != null && existingEntry.value.spot.effectiveOrigin != SpotOrigin.PUBLIC_CACHE) return@forEach
 
-        val finalSpotId = existingEntry?.key ?: allocateSpotId()
-        val spotToSave = spotDetails.spot.copy(
-            id = finalSpotId,
-            ownerUid = remoteOwnerUid ?: existingEntry?.value?.spot?.ownerUid,
-            isPublic = true,
-            isSynced = true,
-            isImported = false,
-            parentPackId = null,
-            isStarred = existingEntry?.value?.spot?.isStarred ?: false,
-            origin = SpotOrigin.PUBLIC_CACHE
-        )
-        val imagesToSave = spotDetails.images.map { image ->
-            val existingImage = existingEntry?.value?.images?.find { it.uuid == image.uuid }
-            val finalImgId = existingImage?.id ?: nextImageId++
-            val remoteUrl = image.remoteThumbnailUrl.ifBlank {
-                if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+            val finalSpotId = existingEntry?.key ?: allocateSpotId(updatedMap)
+            val spotToSave = spotDetails.spot.copy(
+                id = finalSpotId,
+                ownerUid = remoteOwnerUid ?: existingEntry?.value?.spot?.ownerUid,
+                isPublic = true,
+                isSynced = true,
+                isImported = false,
+                parentPackId = null,
+                isStarred = existingEntry?.value?.spot?.isStarred ?: false,
+                origin = SpotOrigin.PUBLIC_CACHE
+            )
+            val imagesToSave = spotDetails.images.map { image ->
+                val existingImage = existingEntry?.value?.images?.find { it.uuid == image.uuid }
+                val finalImgId = existingImage?.id ?: nextImageId++
+                val remoteUrl = image.remoteThumbnailUrl.ifBlank {
+                    if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+                }
+                image.copy(
+                    id = finalImgId,
+                    spotId = finalSpotId,
+                    ownerUid = remoteOwnerUid ?: image.ownerUid,
+                    thumbnailPath = remoteUrl.ifBlank { image.thumbnailPath },
+                    imagePath = remoteUrl.ifBlank { image.imagePath },
+                    remoteThumbnailUrl = remoteUrl
+                )
             }
-            image.copy(
-                id = finalImgId,
-                spotId = finalSpotId,
-                ownerUid = remoteOwnerUid ?: image.ownerUid,
-                thumbnailPath = remoteUrl.ifBlank { image.thumbnailPath },
-                imagePath = remoteUrl.ifBlank { image.imagePath },
-                remoteThumbnailUrl = remoteUrl
-            )
+            val notesToSave = spotDetails.notes.map { note ->
+                val existingNote = existingEntry?.value?.notes?.find { it.uuid == note.uuid }
+                val finalNoteId = existingNote?.id ?: nextNoteId++
+                note.copy(
+                    id = finalNoteId,
+                    spotId = finalSpotId,
+                    ownerUid = remoteOwnerUid ?: note.ownerUid
+                )
+            }
+            updatedMap[finalSpotId] = SpotDetails(spotToSave, imagesToSave, notesToSave)
+            changed = true
         }
-        val notesToSave = spotDetails.notes.map { note ->
-            val existingNote = existingEntry?.value?.notes?.find { it.uuid == note.uuid }
-            val finalNoteId = existingNote?.id ?: nextNoteId++
-            note.copy(
-                id = finalNoteId,
-                spotId = finalSpotId,
-                ownerUid = remoteOwnerUid ?: note.ownerUid
-            )
+        if (changed) {
+            spotsFlow.value = updatedMap
+            persistToLocalStorage()
         }
-        spotsFlow.value = spotsFlow.value + (finalSpotId to SpotDetails(spotToSave, imagesToSave, notesToSave))
-        persistToLocalStorage()
+    }
+
+    override suspend fun savePublicSpot(spotDetails: SpotDetails) {
+        savePublicSpots(listOf(spotDetails))
     }
 
     override suspend fun pruneRemovedPublicSpots(activePublicUuids: Set<String>) {
@@ -658,6 +675,9 @@ class WasmSpotRepository : SpotRepository {
     override suspend fun saveImportedSpot(spotDetails: SpotDetails) {
         val currentMap = spotsFlow.value.toMutableMap()
         val existing = currentMap.values.find { it.spot.uuid == spotDetails.spot.uuid }
+        if (existing != null && existing.spot.effectiveOrigin == SpotOrigin.OWN) {
+            return
+        }
         val spotId = existing?.spot?.id ?: allocateSpotId(currentMap)
         val updatedSpot = spotDetails.spot.copy(
             id = spotId,

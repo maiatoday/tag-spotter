@@ -39,6 +39,9 @@ interface SpotDao {
     @Query("DELETE FROM spots WHERE id = :spotId")
     suspend fun deleteSpotById(spotId: Long)
 
+    @Query("DELETE FROM spots WHERE id = :spotId AND origin = 'PUBLIC_CACHE'")
+    suspend fun deletePublicCacheSpotById(spotId: Long)
+
     @Query("UPDATE spots SET lastEditedAt = :lastEdited, isSynced = 0 WHERE id = :spotId")
     suspend fun touchSpot(spotId: Long, lastEdited: Long)
 

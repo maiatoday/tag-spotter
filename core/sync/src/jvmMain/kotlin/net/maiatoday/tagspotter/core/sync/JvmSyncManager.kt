@@ -194,14 +194,15 @@ class JvmSyncManager(
                     val localMatch = localSpots.find { it.spot.uuid == updatedCloudDetail.spot.uuid }
                     if (localMatch == null) {
                         repository.saveSyncedSpot(updatedCloudDetail)
-                    } else if (updatedCloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
+                    } else if (localMatch.spot.isSynced && (
+                        updatedCloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
                         updatedCloudDetail.images.size != localMatch.images.size ||
                         updatedCloudDetail.notes.size != localMatch.notes.size ||
                         localMatch.images.any { localImg ->
                             val remoteImg = updatedCloudDetail.images.find { it.uuid == localImg.uuid }
                             remoteImg != null && remoteImg.remoteThumbnailUrl.isNotBlank() && localImg.remoteThumbnailUrl != remoteImg.remoteThumbnailUrl
                         }
-                    ) {
+                    )) {
                         repository.saveSyncedSpot(updatedCloudDetail)
                     }
                 }
@@ -329,34 +330,54 @@ class JvmSyncManager(
         }
     }
 
+    private fun isSafePathSegment(value: String): Boolean =
+        value.isNotEmpty() && value.all { it.isLetterOrDigit() || it == '-' || it == '_' }
+
+    private fun isApprovedStorageUrl(url: String): Boolean =
+        url.startsWith("https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/")
+
     private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
         val spotUuid = cloudDetail.spot.uuid
+        val userHome = System.getProperty("user.home")
+        val cacheRoot = java.io.File("$userHome/Pictures/TagSpotter/thumbnails").canonicalFile
         val updatedImages = cloudDetail.images.map { image ->
-            val userHome = System.getProperty("user.home")
-            val localThumbnailFile = java.io.File("$userHome/Pictures/TagSpotter/thumbnails/$userId/${image.uuid}.jpg")
+            val canCacheLocally = isSafePathSegment(userId) && isSafePathSegment(image.uuid)
+            val localThumbnailFile = if (canCacheLocally) {
+                val candidate = java.io.File(cacheRoot, "$userId/${image.uuid}.jpg").canonicalFile
+                if (candidate.path.startsWith(cacheRoot.path + java.io.File.separator)) candidate else null
+            } else {
+                null
+            }
             val existingRemote = image.remoteThumbnailUrl.ifBlank {
                 if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
             }
 
-            if (localThumbnailFile.exists() && localThumbnailFile.isFile) {
+            if (localThumbnailFile != null && localThumbnailFile.exists() && localThumbnailFile.isFile) {
                 image.copy(
                     thumbnailPath = localThumbnailFile.absolutePath,
                     remoteThumbnailUrl = existingRemote
                 )
             } else if (existingRemote.isNotEmpty()) {
-                try {
-                    val downloadResponse = client.authClient.get(existingRemote)
-                    if (downloadResponse.status.value == 200) {
-                        val bytes = downloadResponse.readBytes()
-                        localThumbnailFile.parentFile?.mkdirs()
-                        localThumbnailFile.writeBytes(bytes)
+                if (localThumbnailFile != null && isApprovedStorageUrl(existingRemote)) {
+                    try {
+                        val downloadResponse = client.authClient.get(existingRemote)
+                        if (downloadResponse.status.value == 200) {
+                            val bytes = downloadResponse.readBytes()
+                            localThumbnailFile.parentFile?.mkdirs()
+                            localThumbnailFile.writeBytes(bytes)
+                        }
+                    } catch (_: Exception) {
+                        // Fallback to remote URL in UI
                     }
-                } catch (_: Exception) {
-                    // Fallback to remote URL in UI
+                }
+                val resolvedPath = if (localThumbnailFile != null && localThumbnailFile.exists()) {
+                    localThumbnailFile.absolutePath
+                } else {
+                    existingRemote
                 }
                 image.copy(
-                    thumbnailPath = if (localThumbnailFile.exists()) localThumbnailFile.absolutePath else existingRemote,
-                    imagePath = if (localThumbnailFile.exists()) localThumbnailFile.absolutePath else existingRemote,
+                    thumbnailPath = resolvedPath,
+                    imagePath = resolvedPath,
                     remoteThumbnailUrl = existingRemote
                 )
             } else {
@@ -522,14 +543,12 @@ class JvmSyncManager(
                 ) ?: return
 
                 val currentUid = activeUserId ?: repository.activeUid
-                val activePublicUuids = result.spots.filter { it.spot.isPublic }.map { it.spot.uuid }.toSet()
-
-                result.spots.filter { it.spot.isPublic }.forEach { detail ->
-                    if (currentUid != null && detail.spot.ownerUid == currentUid) {
-                        return@forEach
-                    }
-                    repository.savePublicSpot(detail)
+                val publicSpots = result.spots.filter { it.spot.isPublic }
+                val activePublicUuids = publicSpots.map { it.spot.uuid }.toSet()
+                val otherUsersSpots = publicSpots.filter { detail ->
+                    currentUid == null || detail.spot.ownerUid != currentUid
                 }
+                repository.savePublicSpots(otherUsersSpots)
                 if (!result.hadDecodeFailure) {
                     repository.pruneRemovedPublicSpots(activePublicUuids)
                 }

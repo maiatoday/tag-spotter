@@ -105,11 +105,26 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
         // 3. Ensure every spot has a non-empty unique UUID before creating the unique index
         val rfc4122v4UuidExpr = "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))"
         connection.execSQL("UPDATE spots SET uuid = ($rfc4122v4UuidExpr) WHERE uuid = ''")
-        // Deduplicate any duplicate UUID rows (keep the most recently edited / highest id)
+        // Reassign child images/notes from duplicate-UUID rows to the winner (latest lastEditedAt, tie-break highest id)
+        // before deleting duplicate parent rows so ON DELETE CASCADE does not drop child content.
+        val winnerIdSubquery = """
+            SELECT s2.id FROM spots s2
+            WHERE s2.uuid = (SELECT s1.uuid FROM spots s1 WHERE s1.id = spotId)
+            ORDER BY s2.lastEditedAt DESC, s2.id DESC
+            LIMIT 1
+        """.trimIndent()
+        connection.execSQL("UPDATE spot_images SET spotId = ($winnerIdSubquery) WHERE spotId NOT IN (SELECT s.id FROM spots s WHERE s.id = (SELECT s2.id FROM spots s2 WHERE s2.uuid = s.uuid ORDER BY s2.lastEditedAt DESC, s2.id DESC LIMIT 1))")
+        connection.execSQL("UPDATE spot_notes SET spotId = ($winnerIdSubquery) WHERE spotId NOT IN (SELECT s.id FROM spots s WHERE s.id = (SELECT s2.id FROM spots s2 WHERE s2.uuid = s.uuid ORDER BY s2.lastEditedAt DESC, s2.id DESC LIMIT 1))")
         connection.execSQL("""
             DELETE FROM spots
             WHERE id NOT IN (
-                SELECT MAX(id) FROM spots GROUP BY uuid
+                SELECT s.id FROM spots s
+                WHERE s.id = (
+                    SELECT s2.id FROM spots s2
+                    WHERE s2.uuid = s.uuid
+                    ORDER BY s2.lastEditedAt DESC, s2.id DESC
+                    LIMIT 1
+                )
             )
         """.trimIndent())
 
