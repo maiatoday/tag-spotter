@@ -24,7 +24,7 @@ class DataStoreSettingsRepositoryTest {
         val repository = createRepository()
 
         assertEquals("", repository.photographerName.first())
-        assertEquals("Milan", repository.homeCity.first())
+        assertEquals("Berlin", repository.homeCity.first())
         assertFalse(repository.showTestData.first())
 
         assertFalse(repository.darkMapEnabled.first())

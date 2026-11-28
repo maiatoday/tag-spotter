@@ -162,7 +162,7 @@ class GalleryViewModel(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "Milan"
+            initialValue = LocationUtils.DEFAULT_CITY
         )
 
     sealed interface UiEvent {
@@ -326,7 +326,7 @@ class GalleryViewModel(
                 val finalCenter = if (currentLoc != null) {
                     FilterCenter.GPS(currentLoc.latitude, currentLoc.longitude)
                 } else {
-                    val gp = LocationUtils.CITIES[homeCity.value] ?: LocationUtils.CITIES["Milan"]!!
+                    val gp = LocationUtils.resolveCityCoordinates(homeCity.value)
                     FilterCenter.GPS(gp.first, gp.second)
                 }
                 filterManager.setLocationFilter(finalCenter, radiusMeters)

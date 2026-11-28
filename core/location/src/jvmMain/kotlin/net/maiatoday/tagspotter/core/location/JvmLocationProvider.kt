@@ -10,7 +10,7 @@ class JvmLocationProvider(
     override suspend fun getCurrentLocation(): LocationData {
         val homeCity = runCatching { settingsRepository?.homeCity?.first() }.getOrNull()
             ?.takeIf { it.isNotBlank() }
-            ?: "Milan"
+            ?: LocationUtils.DEFAULT_CITY
         val (lat, lon) = LocationUtils.resolveCityCoordinates(homeCity)
         return LocationData(
             latitude = lat,

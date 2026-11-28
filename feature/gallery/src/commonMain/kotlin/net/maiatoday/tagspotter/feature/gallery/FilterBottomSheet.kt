@@ -112,12 +112,12 @@ fun FilterBottomSheet(
         } else {
             val finalCenter = when (type) {
                 "Home" -> {
-                    val gp = LocationUtils.CITIES[homeCityName] ?: LocationUtils.CITIES["Milan"]!!
+                    val gp = LocationUtils.resolveCityCoordinates(homeCityName)
                     FilterCenter.HomeCity(homeCityName, gp.first, gp.second)
                 }
 
                 "Focus" -> {
-                    val gp = LocationUtils.CITIES[focusCity] ?: LocationUtils.CITIES["Milan"]!!
+                    val gp = LocationUtils.resolveCityCoordinates(focusCity)
                     FilterCenter.FocusCity(focusCity, gp.first, gp.second)
                 }
 

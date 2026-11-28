@@ -10,10 +10,10 @@ import kotlin.test.assertTrue
 class JvmLocationProviderTest {
 
     @Test
-    fun defaultsToMilanWhenSettingsRepositoryIsNull() = runTest {
+    fun defaultsToBerlinWhenSettingsRepositoryIsNull() = runTest {
         val provider = JvmLocationProvider(settingsRepository = null)
         val location = provider.getCurrentLocation()
-        val expected = LocationUtils.CITIES.getValue("Milan")
+        val expected = LocationUtils.CITIES.getValue("Berlin")
 
         assertEquals(expected.first, location.latitude)
         assertEquals(expected.second, location.longitude)
@@ -44,11 +44,11 @@ class JvmLocationProviderTest {
     }
 
     @Test
-    fun fallsBackToMilanForInvalidCustomHomeCity() = runTest {
+    fun fallsBackToBerlinForInvalidCustomHomeCity() = runTest {
         val settings = FakeSettingsRepository(initialHomeCity = "Custom: invalid")
         val provider = JvmLocationProvider(settingsRepository = settings)
         val location = provider.getCurrentLocation()
-        val expected = LocationUtils.CITIES.getValue("Milan")
+        val expected = LocationUtils.CITIES.getValue("Berlin")
 
         assertEquals(expected.first, location.latitude)
         assertEquals(expected.second, location.longitude)
