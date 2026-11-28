@@ -1,11 +1,9 @@
 package net.maiatoday.tagspotter.core.a2ui.engine
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.contextable.a2ui4k.agent.A2UiRenderTool
 import com.contextable.a2ui4k.data.DataModel
 import com.contextable.a2ui4k.model.ActionEvent
@@ -297,9 +295,7 @@ class KmpA2UIEngine : A2UIRendererEngine {
         if (uiDef != null) {
             A2UISurface(
                 definition = uiDef,
-                // Bound max height so A2UI List (LazyColumn) components rendered inline inside
-                // the chat LazyColumn never crash on infinite height constraints.
-                modifier = modifier.heightIn(max = 600.dp),
+                modifier = modifier,
                 dataModel = dataModel,
                 catalog = catalog,
                 onEvent = { event ->
@@ -330,7 +326,7 @@ class KmpA2UIEngine : A2UIRendererEngine {
             if (uiDef != null) {
                 A2UISurface(
                     definition = uiDef,
-                    modifier = modifier.heightIn(max = 600.dp),
+                    modifier = modifier,
                     dataModel = dataModel,
                     catalog = catalog,
                     onEvent = { event ->

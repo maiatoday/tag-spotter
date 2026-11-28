@@ -2,8 +2,11 @@ package net.maiatoday.tagspotter.core.a2ui.engine
 
 import android.content.Context
 import androidx.a2ui.compose.runtime.A2uiComponentProperties
+import androidx.a2ui.compose.runtime.A2uiComponentReference
 import androidx.a2ui.compose.runtime.A2uiComponentScope
+import androidx.a2ui.compose.runtime.A2uiComponentState
 import androidx.a2ui.compose.runtime.A2uiProperty
+import androidx.a2ui.compose.runtime.observeA2uiComponentState
 import androidx.a2ui.compose.ui.A2uiCatalog
 import androidx.a2ui.compose.ui.A2uiComponent
 import androidx.a2ui.compose.ui.toJsonSchemaString
@@ -16,10 +19,19 @@ import androidx.a2ui.model.schema.A2uiNumberSchema
 import androidx.a2ui.model.schema.A2uiObjectSchema
 import androidx.a2ui.model.schema.A2uiSchema
 import androidx.a2ui.model.schema.A2uiStringSchema
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.a2ui.catalog.MaterialA2uiBasicCatalogV1Defaults
 import androidx.compose.material3.a2ui.catalog.materialA2uiBasicCatalogV1
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.ui.components.NeonArtistBioCard
 import net.maiatoday.tagspotter.core.ui.components.NeonArtworkThumbnail
@@ -50,6 +62,62 @@ fun createJetpackHybridCatalog(
     onFocusMap: ((Double, Double, String?) -> Unit)? = null,
     onOpenSpotDetail: ((String) -> Unit)? = null
 ): A2uiCatalog {
+    // Render vertical A2UI Lists as a non-lazy Column so surfaces embedded inside the chat
+    // LazyColumn expand to their full natural height without nested-scroll crashes or clipping.
+    val inlineVerticalList = object : A2uiBasicCatalogV1.List {
+        @Composable
+        override fun A2uiComponentScope.TypedContent(
+            children: List<A2uiComponentReference>,
+            direction: A2uiBasicCatalogV1.List.Direction,
+            align: A2uiBasicCatalogV1.List.Align,
+            accessibility: A2uiBasicCatalogV1.AccessibilityAttributes?,
+            modifier: Modifier,
+        ) {
+            if (direction == A2uiBasicCatalogV1.List.Direction.Horizontal) {
+                with(MaterialA2uiBasicCatalogV1Defaults.list) {
+                    TypedContent(children, direction, align, accessibility, modifier)
+                }
+                return
+            }
+
+            val itemModifier = if (align == A2uiBasicCatalogV1.List.Align.Stretch) {
+                Modifier.fillMaxWidth()
+            } else {
+                Modifier
+            }
+            val horizontalAlignment = when (align) {
+                A2uiBasicCatalogV1.List.Align.Center -> Alignment.CenterHorizontally
+                A2uiBasicCatalogV1.List.Align.End -> Alignment.End
+                else -> Alignment.Start
+            }
+
+            Column(
+                modifier = modifier,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = horizontalAlignment,
+            ) {
+                children.forEach { childRef ->
+                    when (val state = observeA2uiComponentState(childRef)) {
+                        is A2uiComponentState.Error -> {
+                            Text(
+                                text = state.exception.message ?: "Component error",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = itemModifier
+                            )
+                        }
+                        is A2uiComponentState.Loading -> {
+                            Box(modifier = itemModifier.fillMaxWidth().height(56.dp))
+                        }
+                        is A2uiComponentState.Success -> {
+                            A2uiComponent(component = state.component, modifier = itemModifier)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     val basicCatalog = materialA2uiBasicCatalogV1(
         image = MaterialA2uiBasicCatalogV1Defaults.image { url, contentDescription, contentScale, modifier, onError ->
             AsyncImage(
@@ -68,7 +136,8 @@ fun createJetpackHybridCatalog(
             object : A2uiBasicCatalogV1.Functions {
                 override fun openUrl(url: String, executionContext: A2uiExecutionContext) {}
             }
-        }
+        },
+        list = inlineVerticalList
     )
 
     val customComponents = listOf(
