@@ -524,8 +524,39 @@ class LocalSpotRepository(
         if (activeUid != null && remoteOwnerUid == activeUid) return@withLock
 
         val existingSpot = spotDao.getSpotByUuid(spotDetails.spot.uuid)
-        // Never overwrite OWN or IMPORTED spots with a public cache entry (even when signed out)
+        // Never overwrite OWN or IMPORTED spots with a public cache entry (even when signed out).
+        // On a shared device, safely heal missing/non-local image URLs on another account's already-synced OWN row.
         if (existingSpot != null && existingSpot.origin != SpotOrigin.PUBLIC_CACHE.name) {
+            if (existingSpot.origin == SpotOrigin.OWN.name &&
+                existingSpot.isSynced &&
+                !existingSpot.ownerUid.isNullOrBlank() &&
+                existingSpot.ownerUid != Spot.LOCAL_ONLY_UID &&
+                existingSpot.ownerUid == remoteOwnerUid &&
+                existingSpot.ownerUid != activeUid
+            ) {
+                spotDetails.images.forEach { image ->
+                    val remoteUrl = image.remoteThumbnailUrl.ifBlank {
+                        if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+                    }
+                    if (remoteUrl.isBlank()) return@forEach
+                    val existingImage = spotDao.getImageBySpotAndUuid(existingSpot.id, image.uuid)
+                    if (existingImage != null) {
+                        val localThumbExists = existingImage.thumbnailPath.isNotBlank() &&
+                            !existingImage.thumbnailPath.startsWith("http") &&
+                            photoProcessor.fileExists(existingImage.thumbnailPath)
+                        val localImageExists = existingImage.imagePath.isNotBlank() &&
+                            !existingImage.imagePath.startsWith("http") &&
+                            photoProcessor.fileExists(existingImage.imagePath)
+                        spotDao.updateImage(
+                            existingImage.copy(
+                                thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else remoteUrl,
+                                imagePath = if (localImageExists) existingImage.imagePath else remoteUrl,
+                                remoteThumbnailUrl = remoteUrl
+                            )
+                        )
+                    }
+                }
+            }
             return@withLock
         }
 
