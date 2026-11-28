@@ -534,26 +534,54 @@ class LocalSpotRepository(
                 existingSpot.ownerUid == remoteOwnerUid &&
                 existingSpot.ownerUid != activeUid
             ) {
-                spotDetails.images.forEach { image ->
+                val remoteImagesWithUrls = spotDetails.images.mapNotNull { image ->
                     val remoteUrl = image.remoteThumbnailUrl.ifBlank {
                         if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
                     }
-                    if (remoteUrl.isBlank()) return@forEach
-                    val existingImage = spotDao.getImageBySpotAndUuid(existingSpot.id, image.uuid)
-                    if (existingImage != null) {
-                        val localThumbExists = existingImage.thumbnailPath.isNotBlank() &&
-                            !existingImage.thumbnailPath.startsWith("http") &&
-                            photoProcessor.fileExists(existingImage.thumbnailPath)
-                        val localImageExists = existingImage.imagePath.isNotBlank() &&
-                            !existingImage.imagePath.startsWith("http") &&
-                            photoProcessor.fileExists(existingImage.imagePath)
-                        spotDao.updateImage(
-                            existingImage.copy(
-                                thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else remoteUrl,
-                                imagePath = if (localImageExists) existingImage.imagePath else remoteUrl,
-                                remoteThumbnailUrl = remoteUrl
+                    if (remoteUrl.isBlank()) null else image to remoteUrl
+                }
+                if (remoteImagesWithUrls.isNotEmpty()) {
+                    val remoteUuids = remoteImagesWithUrls.map { it.first.uuid }.toSet()
+                    // Remove stale image rows whose UUID is no longer in remote AND whose local files do not exist on disk
+                    spotDao.getImagesForSpot(existingSpot.id).forEach { localImg ->
+                        val localThumbExists = localImg.thumbnailPath.isNotBlank() &&
+                            !localImg.thumbnailPath.startsWith("http") &&
+                            photoProcessor.fileExists(localImg.thumbnailPath)
+                        val localImageExists = localImg.imagePath.isNotBlank() &&
+                            !localImg.imagePath.startsWith("http") &&
+                            photoProcessor.fileExists(localImg.imagePath)
+                        if (localImg.uuid !in remoteUuids && !localThumbExists && !localImageExists) {
+                            spotDao.deleteImageById(localImg.id)
+                        }
+                    }
+                    remoteImagesWithUrls.forEach { (image, remoteUrl) ->
+                        val existingImage = spotDao.getImageBySpotAndUuid(existingSpot.id, image.uuid)
+                        if (existingImage != null) {
+                            val localThumbExists = existingImage.thumbnailPath.isNotBlank() &&
+                                !existingImage.thumbnailPath.startsWith("http") &&
+                                photoProcessor.fileExists(existingImage.thumbnailPath)
+                            val localImageExists = existingImage.imagePath.isNotBlank() &&
+                                !existingImage.imagePath.startsWith("http") &&
+                                photoProcessor.fileExists(existingImage.imagePath)
+                            spotDao.updateImage(
+                                existingImage.copy(
+                                    thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else remoteUrl,
+                                    imagePath = if (localImageExists) existingImage.imagePath else remoteUrl,
+                                    remoteThumbnailUrl = remoteUrl
+                                )
                             )
-                        )
+                        } else {
+                            spotDao.insertImage(
+                                image.copy(
+                                    id = 0L,
+                                    spotId = existingSpot.id,
+                                    ownerUid = remoteOwnerUid,
+                                    thumbnailPath = remoteUrl,
+                                    imagePath = remoteUrl,
+                                    remoteThumbnailUrl = remoteUrl
+                                ).toEntity()
+                            )
+                        }
                     }
                 }
             }
