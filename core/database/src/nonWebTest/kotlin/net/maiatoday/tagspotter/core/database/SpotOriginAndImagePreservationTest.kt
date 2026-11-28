@@ -415,4 +415,64 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
         assertFalse(refreshedAlice.spot.isEditableBy("user-a"))
         assertFalse(refreshedAlice.spot.isDeletableBy("user-a"))
     }
+
+    @Test
+    fun publicRefreshHealsBrokenCrossDeviceImageOnSyncedOwnRowWithoutOverwritingOrigin() = runTest {
+        repo.activeUid = "user-a"
+        val spotId = repo.saveSpot(
+            spot = Spot(
+                latitude = 52.52,
+                longitude = 13.37,
+                createdAt = 1000L,
+                description = "Cube",
+                tags = emptyList(),
+                category = "architecture",
+                status = "active",
+                uuid = "cube-uuid",
+                isPublic = true,
+                isSynced = true
+            ),
+            imagePath = "/data/user/0/missing.jpg",
+            thumbnailPath = "/data/user/0/missing_thumb.jpg"
+        )
+        val imgUuid = repo.getSpotById(spotId).first()!!.images.first().uuid
+
+        // Sign out on shared device (activeUid = null) and pull updated public spot with HTTPS URL
+        repo.activeUid = null
+        val remoteUrl = "https://firebasestorage.googleapis.com/v0/b/test/o/spots%2Fuser-a%2Fcube-uuid%2Fthumbnails%2F$imgUuid.jpg?alt=media"
+        repo.savePublicSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 52.52,
+                    longitude = 13.37,
+                    createdAt = 1000L,
+                    description = "Cube remote",
+                    tags = emptyList(),
+                    category = "architecture",
+                    status = "active",
+                    uuid = "cube-uuid",
+                    ownerUid = "user-a",
+                    isPublic = true
+                ),
+                images = listOf(
+                    SpotImage(
+                        spotId = 0L,
+                        imagePath = remoteUrl,
+                        thumbnailPath = remoteUrl,
+                        timestamp = 1000L,
+                        uuid = imgUuid,
+                        ownerUid = "user-a",
+                        remoteThumbnailUrl = remoteUrl
+                    )
+                ),
+                notes = emptyList()
+            )
+        )
+
+        val healed = repo.getSpotById(spotId).first()!!
+        assertEquals(SpotOrigin.OWN, healed.spot.origin)
+        assertEquals("Cube", healed.spot.description)
+        assertEquals(remoteUrl, healed.images.first().thumbnailPath)
+        assertEquals(remoteUrl, healed.images.first().remoteThumbnailUrl)
+    }
 }
