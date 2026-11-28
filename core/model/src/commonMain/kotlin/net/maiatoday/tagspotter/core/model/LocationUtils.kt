@@ -49,6 +49,20 @@ object LocationUtils {
         "Sydney" to Pair(-33.8688, 151.2093)
     )
 
+    fun resolveCityCoordinates(homeCityName: String): Pair<Double, Double> {
+        if (homeCityName.startsWith("Custom:")) {
+            val coords = homeCityName.removePrefix("Custom:").trim().split(",")
+            if (coords.size == 2) {
+                val lat = coords[0].trim().toDoubleOrNull()
+                val lng = coords[1].trim().toDoubleOrNull()
+                if (lat != null && lng != null) {
+                    return Pair(lat, lng)
+                }
+            }
+        }
+        return CITIES[homeCityName] ?: CITIES.getValue("Milan")
+    }
+
     private fun toRadians(deg: Double): Double = deg * kotlin.math.PI / 180.0
 
     /**

@@ -1,11 +1,21 @@
 package net.maiatoday.tagspotter.core.location
 
-class JvmLocationProvider : LocationProvider {
-    override suspend fun getCurrentLocation(): LocationData? {
+import kotlinx.coroutines.flow.first
+import net.maiatoday.tagspotter.core.model.LocationUtils
+import net.maiatoday.tagspotter.core.settings.SettingsRepository
+
+class JvmLocationProvider(
+    private val settingsRepository: SettingsRepository? = null
+) : LocationProvider {
+    override suspend fun getCurrentLocation(): LocationData {
+        val homeCity = runCatching { settingsRepository?.homeCity?.first() }.getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?: "Milan"
+        val (lat, lon) = LocationUtils.resolveCityCoordinates(homeCity)
         return LocationData(
-            latitude = 48.1351, // Munich
-            longitude = 11.5820,
-            isFallback = false
+            latitude = lat,
+            longitude = lon,
+            isFallback = true
         )
     }
 }
