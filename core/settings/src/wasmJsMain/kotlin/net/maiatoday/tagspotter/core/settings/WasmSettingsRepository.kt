@@ -23,7 +23,7 @@ class WasmSettingsRepository(
     private val _photographerName = MutableStateFlow(settings.getString("photographer_name", ""))
     override val photographerName: Flow<String> = _photographerName.asStateFlow()
 
-    private val _homeCity = MutableStateFlow(settings.getString("home_city", "Milan"))
+    private val _homeCity = MutableStateFlow(settings.getString("home_city", "Berlin"))
     override val homeCity: Flow<String> = _homeCity.asStateFlow()
 
     private val _showTestData = MutableStateFlow(settings.getBoolean("show_test_data", false))

@@ -157,7 +157,7 @@ class SettingsViewModel(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "Milan"
+            initialValue = "Berlin"
         )
 
     val showTestData: StateFlow<Boolean> = settingsRepository.showTestData

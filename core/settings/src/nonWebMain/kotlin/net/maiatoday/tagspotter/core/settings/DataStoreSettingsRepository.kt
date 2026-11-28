@@ -101,7 +101,7 @@ class DataStoreSettingsRepository(
             }
         }
         .map { preferences ->
-            preferences[HOME_CITY] ?: "Milan"
+            preferences[HOME_CITY] ?: "Berlin"
         }
 
     override val showTestData: Flow<Boolean> = dataStore.data

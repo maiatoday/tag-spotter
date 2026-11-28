@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class FakeSettingsRepository(
     initialName: String = "",
-    initialHomeCity: String = "Milan",
+    initialHomeCity: String = "Berlin",
     initialThemeMode: ThemeMode = ThemeMode.SYSTEM
 ) : SettingsRepository {
     private val _themeMode = MutableStateFlow(initialThemeMode)

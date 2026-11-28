@@ -37,6 +37,8 @@ sealed interface FilterCenter {
 }
 
 object LocationUtils {
+    const val DEFAULT_CITY = "Berlin"
+
     val CITIES = mapOf(
         "Milan" to Pair(45.4642, 9.1900),
         "London" to Pair(51.5074, -0.1278),
@@ -60,7 +62,7 @@ object LocationUtils {
                 }
             }
         }
-        return CITIES[homeCityName] ?: CITIES.getValue("Milan")
+        return CITIES[homeCityName] ?: CITIES.getValue(DEFAULT_CITY)
     }
 
     private fun toRadians(deg: Double): Double = deg * kotlin.math.PI / 180.0

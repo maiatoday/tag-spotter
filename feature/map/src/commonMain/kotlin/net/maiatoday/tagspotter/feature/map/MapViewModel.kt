@@ -36,7 +36,7 @@ class MapViewModel(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "Milan"
+            initialValue = "Berlin"
         )
 
     val darkMapEnabled: StateFlow<Boolean> = settingsRepository.darkMapEnabled
@@ -240,7 +240,7 @@ class MapViewModel(
                 e.printStackTrace()
             }
         }
-        return CITIES[homeCityName] ?: CITIES["Milan"]!!
+        return CITIES[homeCityName] ?: CITIES.getValue(LocationUtils.DEFAULT_CITY)
     }
 
     val initialMapCenter: StateFlow<MapPoint?> = combine(
