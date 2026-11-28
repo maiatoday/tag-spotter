@@ -74,4 +74,14 @@ class LocationUtilsTest {
         assertEquals("London", focus.displayName)
         assertEquals("London", focus.cityName)
     }
+
+    @Test
+    fun testResolveCityCoordinates_validCustomAndBounds() {
+        assertEquals(Pair(48.1351, 11.5820), LocationUtils.resolveCityCoordinates("Custom: 48.1351, 11.5820"))
+        assertEquals(Pair(-90.0, 180.0), LocationUtils.resolveCityCoordinates("Custom: -90.0, 180.0"))
+        val berlin = LocationUtils.CITIES.getValue(LocationUtils.DEFAULT_CITY)
+        assertEquals(berlin, LocationUtils.resolveCityCoordinates("Custom: 91, 181"))
+        assertEquals(berlin, LocationUtils.resolveCityCoordinates("Custom: NaN, 10"))
+        assertEquals(berlin, LocationUtils.resolveCityCoordinates("Custom: Infinity, 10"))
+    }
 }
