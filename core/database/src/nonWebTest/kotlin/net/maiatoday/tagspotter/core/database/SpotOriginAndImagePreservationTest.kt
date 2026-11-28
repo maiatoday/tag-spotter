@@ -207,6 +207,24 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
         // Sign out! activeUid becomes null
         repo.activeUid = null
 
+        // Account A's public spot remains visible as a read-only public spot on the same device
+        val signedOutSpots = repo.getAllSpots().first()
+        val publicWhileSignedOut = signedOutSpots.find { it.spot.uuid == "own-public-1" }
+        assertNotNull(publicWhileSignedOut)
+        assertTrue(publicWhileSignedOut.spot.isOtherUsersPublic(null))
+        assertFalse(publicWhileSignedOut.spot.isEditableBy(null))
+
+        // Switching to another account on the same device also sees Account A's public spot as read-only
+        repo.activeUid = "user-b"
+        val userBSpots = repo.getAllSpots().first()
+        val publicForUserB = userBSpots.find { it.spot.uuid == "own-public-1" }
+        assertNotNull(publicForUserB)
+        assertTrue(publicForUserB.spot.isOtherUsersPublic("user-b"))
+        assertFalse(publicForUserB.spot.isEditableBy("user-b"))
+
+        // Back to signed out for public refresh & prune guard checks
+        repo.activeUid = null
+
         // Public refresh tries to save same UUIDs for both OWN and IMPORTED, then prunes
         repo.savePublicSpot(
             SpotDetails(

@@ -71,18 +71,18 @@ interface SpotDao {
     fun getSpotDetails(id: Long): Flow<SpotDetailsEntity?>
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM spots WHERE origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR isPublic = 1 OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid) ORDER BY createdAt DESC")
     fun getAllSpotsDetails(activeUid: String?): Flow<List<SpotDetailsEntity>>
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE category = :category AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM spots WHERE category = :category AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR isPublic = 1 OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)) ORDER BY createdAt DESC")
     fun getAllSpotsDetailsByCategory(category: String, activeUid: String?): Flow<List<SpotDetailsEntity>>
 
     @Transaction
-    @Query("SELECT * FROM spots WHERE origin = 'PUBLIC_CACHE' AND ownerUid = :ownerUid ORDER BY createdAt DESC")
+    @Query("SELECT * FROM spots WHERE (origin = 'PUBLIC_CACHE' OR isPublic = 1) AND ownerUid = :ownerUid ORDER BY createdAt DESC")
     fun getPublicSpotsByAuthor(ownerUid: String): Flow<List<SpotDetailsEntity>>
 
-    @Query("SELECT DISTINCT tags FROM spots WHERE origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)")
+    @Query("SELECT DISTINCT tags FROM spots WHERE origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR isPublic = 1 OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid)")
     fun getAllUsedTags(activeUid: String?): Flow<List<String>>
 
     @Query("UPDATE spots SET isStarred = :isStarred, lastEditedAt = :lastEditedAt, isSynced = CASE WHEN origin = 'OWN' THEN 0 ELSE isSynced END WHERE id = :spotId")
@@ -91,10 +91,10 @@ interface SpotDao {
     @Query("UPDATE spots SET isPublic = :isPublic, lastEditedAt = :lastEditedAt, isSynced = 0 WHERE id = :spotId")
     suspend fun updateSpotPublic(spotId: Long, isPublic: Boolean, lastEditedAt: Long)
 
-    @Query("SELECT * FROM spots WHERE isStarred = 1 AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
+    @Query("SELECT * FROM spots WHERE isStarred = 1 AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR isPublic = 1 OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
     suspend fun getStarredSpots(activeUid: String?): List<SpotEntity>
 
-    @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1 AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
+    @Query("SELECT COUNT(*) FROM spots WHERE isStarred = 1 AND (origin = 'PUBLIC_CACHE' OR origin = 'IMPORTED' OR isPublic = 1 OR ownerUid IS NULL OR ownerUid = 'local_only' OR (:activeUid IS NOT NULL AND ownerUid = :activeUid))")
     suspend fun getStarredSpotsCount(activeUid: String?): Int
 
     @Query("UPDATE spot_images SET isMain = 0 WHERE spotId = :spotId")

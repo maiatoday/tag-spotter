@@ -60,6 +60,9 @@ class MainViewModel(
                     syncManager.startRealtimeSync(user.uid)
                 } else {
                     syncManager.stopRealtimeSync()
+                    if (settingsRepository.showPublicSpots.first()) {
+                        syncManager.syncPublicSpots()
+                    }
                 }
             }
         }
