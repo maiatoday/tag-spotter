@@ -57,7 +57,10 @@ object LocationUtils {
             if (coords.size == 2) {
                 val lat = coords[0].trim().toDoubleOrNull()
                 val lng = coords[1].trim().toDoubleOrNull()
-                if (lat != null && lng != null) {
+                if (lat != null && lng != null &&
+                    lat.isFinite() && lng.isFinite() &&
+                    lat in -90.0..90.0 && lng in -180.0..180.0
+                ) {
                     return Pair(lat, lng)
                 }
             }
