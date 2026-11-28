@@ -204,23 +204,44 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
             )
         )
 
+        // Also seed a private Account A spot to ensure private spots stay hidden across sign-out / account switch
+        repo.saveSpot(
+            spot = Spot(
+                latitude = 45.45,
+                longitude = 9.18,
+                createdAt = 1050L,
+                description = "My private spot",
+                tags = emptyList(),
+                category = "graffiti",
+                status = "active",
+                uuid = "own-private-1",
+                isPublic = false
+            ),
+            imagePath = "",
+            thumbnailPath = ""
+        )
+
         // Sign out! activeUid becomes null
         repo.activeUid = null
 
-        // Account A's public spot remains visible as a read-only public spot on the same device
+        // Account A's public spot remains visible as a read-only public spot on the same device,
+        // while Account A's private spot stays hidden
         val signedOutSpots = repo.getAllSpots().first()
         val publicWhileSignedOut = signedOutSpots.find { it.spot.uuid == "own-public-1" }
         assertNotNull(publicWhileSignedOut)
         assertTrue(publicWhileSignedOut.spot.isOtherUsersPublic(null))
         assertFalse(publicWhileSignedOut.spot.isEditableBy(null))
+        assertEquals(null, signedOutSpots.find { it.spot.uuid == "own-private-1" })
 
         // Switching to another account on the same device also sees Account A's public spot as read-only
+        // and does not see Account A's private spot
         repo.activeUid = "user-b"
         val userBSpots = repo.getAllSpots().first()
         val publicForUserB = userBSpots.find { it.spot.uuid == "own-public-1" }
         assertNotNull(publicForUserB)
         assertTrue(publicForUserB.spot.isOtherUsersPublic("user-b"))
         assertFalse(publicForUserB.spot.isEditableBy("user-b"))
+        assertEquals(null, userBSpots.find { it.spot.uuid == "own-private-1" })
 
         // Back to signed out for public refresh & prune guard checks
         repo.activeUid = null

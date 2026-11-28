@@ -541,7 +541,7 @@ class LocalSpotRepository(
                     if (remoteUrl.isBlank()) null else image to remoteUrl
                 }
                 if (remoteImagesWithUrls.isNotEmpty()) {
-                    val remoteUuids = remoteImagesWithUrls.map { it.first.uuid }.toSet()
+                    val remoteUuids = spotDetails.images.map { it.uuid }.toSet()
                     // Remove stale image rows whose UUID is no longer in remote AND whose local files do not exist on disk
                     spotDao.getImagesForSpot(existingSpot.id).forEach { localImg ->
                         val localThumbExists = localImg.thumbnailPath.isNotBlank() &&
@@ -563,12 +563,11 @@ class LocalSpotRepository(
                             val localImageExists = existingImage.imagePath.isNotBlank() &&
                                 !existingImage.imagePath.startsWith("http") &&
                                 photoProcessor.fileExists(existingImage.imagePath)
-                            spotDao.updateImage(
-                                existingImage.copy(
-                                    thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else remoteUrl,
-                                    imagePath = if (localImageExists) existingImage.imagePath else remoteUrl,
-                                    remoteThumbnailUrl = remoteUrl
-                                )
+                            spotDao.updateImagePaths(
+                                imageId = existingImage.id,
+                                thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else remoteUrl,
+                                imagePath = if (localImageExists) existingImage.imagePath else remoteUrl,
+                                remoteThumbnailUrl = remoteUrl
                             )
                         } else {
                             spotDao.insertImage(
