@@ -59,16 +59,27 @@ class SettingsViewModel(
             initialValue = false
         )
 
+    val syncError: StateFlow<String?> = syncManager.syncError
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    fun clearSyncError() {
+        syncManager.clearSyncError()
+    }
+
     fun syncNow() {
         viewModelScope.launch {
             syncManager.syncNow()
         }
     }
 
-    fun forceBackupAllImages(onResult: ((Int) -> Unit)? = null) {
+    fun forceBackupAllImages(onResult: ((net.maiatoday.tagspotter.core.sync.BackupResult) -> Unit)? = null) {
         viewModelScope.launch {
-            val count = syncManager.forceBackupAllImages()
-            onResult?.invoke(count)
+            val result = syncManager.forceBackupAllImages()
+            onResult?.invoke(result)
         }
     }
     val isGoogleSignInSupported: Boolean = authService.isGoogleSignInSupported

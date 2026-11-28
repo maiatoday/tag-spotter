@@ -499,4 +499,46 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
         assertEquals(remoteUrl, healed.images.first().thumbnailPath)
         assertEquals(remoteUrl, healed.images.first().remoteThumbnailUrl)
     }
+
+    @Test
+    fun saveSyncedSpotPrefersRemoteUrlOverMissingOtherDeviceLocalPath() = runTest {
+        repo.activeUid = "user-a"
+        val remoteUrl = "https://firebasestorage.googleapis.com/v0/b/test/o/spots%2Fuser-a%2Fspot-2%2Fthumbnails%2Fimg-2.jpg?alt=media&token=xyz"
+        val staleOtherDevicePath = "/data/user/0/net.maiatoday.tagspotter/files/thumbnails/thumb_old.jpg"
+
+        repo.saveSyncedSpot(
+            SpotDetails(
+                spot = Spot(
+                    latitude = 52.52,
+                    longitude = 13.405,
+                    createdAt = 1000L,
+                    description = "Synced from Android",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "spot-2",
+                    ownerUid = "user-a",
+                    isSynced = true
+                ),
+                images = listOf(
+                    SpotImage(
+                        spotId = 0L,
+                        imagePath = staleOtherDevicePath,
+                        thumbnailPath = staleOtherDevicePath,
+                        timestamp = 1000L,
+                        uuid = "img-2",
+                        ownerUid = "user-a",
+                        remoteThumbnailUrl = remoteUrl
+                    )
+                ),
+                notes = emptyList()
+            )
+        )
+
+        val saved = repo.getAllSpots().first().find { it.spot.uuid == "spot-2" }!!
+        assertEquals(1, saved.images.size)
+        assertEquals(remoteUrl, saved.images.first().thumbnailPath)
+        assertEquals(remoteUrl, saved.images.first().imagePath)
+        assertEquals(remoteUrl, saved.images.first().remoteThumbnailUrl)
+    }
 }

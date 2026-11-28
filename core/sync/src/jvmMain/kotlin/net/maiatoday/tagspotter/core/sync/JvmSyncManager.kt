@@ -102,13 +102,21 @@ fun JsonObject.fromFirestoreValue(): JsonElement {
 class JvmSyncManager(
     private val repository: SpotRepository,
     private val client: JvmFirebaseClient,
-    private val firestoreOrigin: String = "https://firestore.googleapis.com"
+    private val firestoreOrigin: String = "https://firestore.googleapis.com",
+    private val storageOrigin: String = "https://firebasestorage.googleapis.com",
+    private val thumbnailCacheRoot: java.io.File = java.io.File(System.getProperty("user.home"), "Pictures/TagSpotter/thumbnails")
 ) : SyncManager {
 
     private val _isSyncing = MutableStateFlow(false)
     override val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+    private val _syncError = MutableStateFlow<String?>(null)
+    override val syncError: StateFlow<String?> = _syncError.asStateFlow()
     private val syncMutex = Mutex()
     private val publicSyncMutex = Mutex()
+
+    override fun clearSyncError() {
+        _syncError.value = null
+    }
 
     private var realtimeJob: Job? = null
     private var activeUserId: String? = null
@@ -121,6 +129,7 @@ class JvmSyncManager(
         }
         if (!syncMutex.tryLock()) return
         _isSyncing.value = true
+        var runError: String? = null
 
         try {
             // 1. Push stage: find all unsynced OWN local spots
@@ -149,6 +158,7 @@ class JvmSyncManager(
                 }
 
                 if (!allThumbnailsReady) {
+                    runError = "Photo thumbnail upload failed; some spots are waiting to sync."
                     println("Deferring JVM sync for $uuid until thumbnail upload succeeds")
                     return@forEach
                 }
@@ -173,6 +183,7 @@ class JvmSyncManager(
                 if (patchResponse.status.value in 200..299) {
                     repository.markSpotAsSynced(uuid)
                 } else {
+                    runError = "Cloud sync failed (HTTP ${patchResponse.status.value})"
                     println("Failed to push spot metadata for $uuid: ${patchResponse.bodyAsText()}")
                 }
             }
@@ -194,15 +205,7 @@ class JvmSyncManager(
                     val localMatch = localSpots.find { it.spot.uuid == updatedCloudDetail.spot.uuid }
                     if (localMatch == null) {
                         repository.saveSyncedSpot(updatedCloudDetail)
-                    } else if (localMatch.spot.isSynced && (
-                        updatedCloudDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt ||
-                        updatedCloudDetail.images.size != localMatch.images.size ||
-                        updatedCloudDetail.notes.size != localMatch.notes.size ||
-                        localMatch.images.any { localImg ->
-                            val remoteImg = updatedCloudDetail.images.find { it.uuid == localImg.uuid }
-                            remoteImg != null && remoteImg.remoteThumbnailUrl.isNotBlank() && localImg.remoteThumbnailUrl != remoteImg.remoteThumbnailUrl
-                        }
-                    )) {
+                    } else if (shouldApplyRemoteUpdate(localMatch, updatedCloudDetail)) {
                         repository.saveSyncedSpot(updatedCloudDetail)
                     }
                 }
@@ -223,7 +226,9 @@ class JvmSyncManager(
 
             // 3. Pull public spots from other users
             syncPublicSpots()
+            _syncError.value = runError
         } catch (e: Exception) {
+            _syncError.value = "Cloud sync failed: ${e.message ?: "unknown error"}"
             println("Error during JvmSyncManager syncNow: ${e.message}")
         } finally {
             _isSyncing.value = false
@@ -267,6 +272,174 @@ class JvmSyncManager(
         activeUserId = null
     }
 
+    override suspend fun forceBackupAllImages(): BackupResult {
+        val userId = activeUserId ?: return BackupResult()
+        return syncMutex.withLock {
+            _isSyncing.value = true
+            var total = BackupResult()
+            try {
+                val allSpots = repository.getAllSpots().first()
+                    .filter { it.spot.effectiveOrigin == SpotOrigin.OWN && it.spot.isEditableBy(userId) }
+                allSpots.forEach { localDetail ->
+                    total += backupSpotImagesLocked(userId, localDetail)
+                }
+            } catch (e: Exception) {
+                println("Error during JvmSyncManager forceBackupAllImages: ${e.message}")
+            } finally {
+                _isSyncing.value = false
+            }
+            total
+        }
+    }
+
+    override suspend fun forceBackupSpot(uuid: String): BackupResult {
+        val userId = activeUserId ?: return BackupResult()
+        return syncMutex.withLock {
+            _isSyncing.value = true
+            var result = BackupResult()
+            try {
+                val localDetail = repository.getAllSpots().first()
+                    .find { it.spot.uuid == uuid && it.spot.effectiveOrigin == SpotOrigin.OWN && it.spot.isEditableBy(userId) }
+                if (localDetail != null) {
+                    result = backupSpotImagesLocked(userId, localDetail)
+                }
+            } catch (e: Exception) {
+                println("Error during JvmSyncManager forceBackupSpot: ${e.message}")
+            } finally {
+                _isSyncing.value = false
+            }
+            result
+        }
+    }
+
+    private suspend fun backupSpotImagesLocked(userId: String, localDetail: SpotDetails): BackupResult {
+        val uuid = localDetail.spot.uuid
+        var uploaded = 0
+        var refreshedUrls = 0
+        var failed = 0
+        var skippedNoLocalFile = 0
+        var spotModified = false
+        var allThumbnailsReady = true
+
+        val remoteImages = localDetail.images.map { image ->
+            val objectPath = spotThumbnailStoragePath(userId, uuid, image.uuid)
+            val bytes = readBytesFromFile(image.thumbnailPath) ?: readBytesFromFile(image.imagePath)
+            if (bytes != null) {
+                val downloadUrl = uploadBytesToStorage(objectPath, bytes)
+                if (downloadUrl != null) {
+                    if (image.id != 0L) {
+                        repository.updateImageRemoteUrl(image.id, downloadUrl)
+                    }
+                    uploaded++
+                    spotModified = true
+                    image.copy(thumbnailPath = downloadUrl, imagePath = downloadUrl, remoteThumbnailUrl = downloadUrl)
+                } else {
+                    allThumbnailsReady = false
+                    failed++
+                    image
+                }
+            } else {
+                val refreshedUrl = fetchDownloadUrlFromStorage(objectPath)
+                if (!refreshedUrl.isNullOrBlank()) {
+                    if (refreshedUrl != image.remoteThumbnailUrl) {
+                        if (image.id != 0L) {
+                            repository.updateImageRemoteUrl(image.id, refreshedUrl)
+                        }
+                        refreshedUrls++
+                        spotModified = true
+                    } else {
+                        skippedNoLocalFile++
+                    }
+                    image.copy(thumbnailPath = refreshedUrl, imagePath = refreshedUrl, remoteThumbnailUrl = refreshedUrl)
+                } else {
+                    val fallbackUrl = image.remoteThumbnailUrl.ifBlank {
+                        if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
+                    }
+                    if (fallbackUrl.isNotEmpty()) {
+                        skippedNoLocalFile++
+                        image.copy(thumbnailPath = fallbackUrl, imagePath = fallbackUrl, remoteThumbnailUrl = fallbackUrl)
+                    } else {
+                        allThumbnailsReady = false
+                        failed++
+                        image
+                    }
+                }
+            }
+        }
+
+        if (spotModified && allThumbnailsReady) {
+            val detailToPush = localDetail.copy(
+                spot = localDetail.spot.copy(ownerUid = userId, origin = SpotOrigin.OWN, isImported = false),
+                images = remoteImages
+            )
+            val firestoreDoc = FirestoreSpotDocument.fromSpotDetails(userId, detailToPush)
+            val jsonElement = client.jsonConfig.encodeToJsonElement(FirestoreSpotDocument.serializer(), firestoreDoc)
+            val firestoreFields = jsonElement.jsonObject.toFirestoreValue()["mapValue"]?.jsonObject?.get("fields")?.jsonObject
+            if (firestoreFields != null) {
+                val docUrl = "$firestoreOrigin/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/spots/$uuid"
+                val patchResponse = client.authenticatedClient.patch(docUrl) {
+                    contentType(ContentType.Application.Json)
+                    setBody(buildJsonObject {
+                        put("fields", firestoreFields)
+                    })
+                }
+                if (patchResponse.status.value in 200..299) {
+                    repository.markSpotAsSynced(uuid)
+                } else {
+                    failed++
+                    println("Failed to push spot metadata after force backup for $uuid: ${patchResponse.bodyAsText()}")
+                }
+            } else {
+                failed++
+            }
+        }
+
+        return BackupResult(
+            uploaded = uploaded,
+            refreshedUrls = refreshedUrls,
+            failed = failed,
+            skippedNoLocalFile = skippedNoLocalFile
+        )
+    }
+
+    private fun extractFirstDownloadToken(responseBody: String): String? {
+        return try {
+            val responseJson = client.jsonConfig.parseToJsonElement(responseBody).jsonObject
+            responseJson["downloadTokens"]?.jsonPrimitive?.content
+                ?.substringBefore(",")
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun uploadBytesToStorage(objectPath: String, bytes: ByteArray): String? {
+        val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
+        return try {
+            val storageUrl = "$storageOrigin/v0/b/${JvmFirebaseConfig.storageBucket}/o?uploadType=media&name=$encodedPath"
+            val storageResponse = client.authenticatedClient.post(storageUrl) {
+                contentType(ContentType.Image.JPEG)
+                setBody(bytes)
+            }
+            if (storageResponse.status.value in 200..299) {
+                val token = extractFirstDownloadToken(storageResponse.bodyAsText())
+                if (token != null) {
+                    "$storageOrigin/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media&token=$token"
+                } else {
+                    println("Storage upload for $objectPath succeeded without downloadTokens; refusing to persist tokenless URL")
+                    null
+                }
+            } else {
+                println("Storage upload failed for $objectPath: ${storageResponse.bodyAsText()}")
+                null
+            }
+        } catch (e: Exception) {
+            println("Failed to upload thumbnail $objectPath: ${e.message}")
+            null
+        }
+    }
+
     private suspend fun uploadOrResolveThumbnail(
         userId: String,
         spotUuid: String,
@@ -274,122 +447,118 @@ class JvmSyncManager(
     ): String? {
         val localPath = image.thumbnailPath.ifEmpty { image.imagePath }
         val objectPath = spotThumbnailStoragePath(userId, spotUuid, image.uuid)
-        val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
 
         if (localPath.isNotEmpty() && !localPath.startsWith("http")) {
             val bytes = readBytesFromFile(localPath)
             if (bytes != null) {
-                return try {
-                    val storageUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o?uploadType=media&name=$encodedPath"
-                    val storageResponse = client.authenticatedClient.post(storageUrl) {
-                        contentType(ContentType.Image.JPEG)
-                        setBody(bytes)
-                    }
-                    if (storageResponse.status.value in 200..299) {
-                        val token = try {
-                            val responseJson = client.jsonConfig.parseToJsonElement(storageResponse.bodyAsText()).jsonObject
-                            responseJson["downloadTokens"]?.jsonPrimitive?.content
-                        } catch (_: Exception) {
-                            null
-                        }
-                        if (!token.isNullOrEmpty()) {
-                            "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media&token=$token"
-                        } else {
-                            "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media"
-                        }
-                    } else {
-                        println("Storage upload failed for ${image.uuid}: ${storageResponse.bodyAsText()}")
-                        null
-                    }
-                } catch (e: Exception) {
-                    println("Failed to upload thumbnail ${image.uuid}: ${e.message}")
-                    null
-                }
+                return uploadBytesToStorage(objectPath, bytes)
             }
         }
 
         if (image.remoteThumbnailUrl.startsWith("http")) return image.remoteThumbnailUrl
         if (image.thumbnailPath.startsWith("http")) return image.thumbnailPath
 
-        return try {
-            val metadataUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath"
-            val metadataResponse = client.authenticatedClient.get(metadataUrl)
-            if (metadataResponse.status.value == 200) {
-                val responseJson = client.jsonConfig.parseToJsonElement(metadataResponse.bodyAsText()).jsonObject
-                val token = responseJson["downloadTokens"]?.jsonPrimitive?.content
-                if (!token.isNullOrEmpty()) {
-                    "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media&token=$token"
-                } else {
-                    "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media"
-                }
-            } else {
-                null
-            }
-        } catch (_: Exception) {
-            null
-        }
+        return fetchDownloadUrlFromStorage(objectPath)
     }
 
     private fun isSafePathSegment(value: String): Boolean =
         value.isNotEmpty() && value.all { it.isLetterOrDigit() || it == '-' || it == '_' }
 
     private fun isApprovedStorageUrl(url: String): Boolean =
-        url.startsWith("https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/")
+        url.startsWith("$storageOrigin/v0/b/${JvmFirebaseConfig.storageBucket}/")
+
+    private fun cacheFileFor(
+        cacheRoot: java.io.File,
+        userId: String,
+        spotUuid: String,
+        imageUuid: String,
+        remoteUrl: String
+    ): java.io.File? {
+        if (!isSafePathSegment(userId) || !isSafePathSegment(spotUuid) || !isSafePathSegment(imageUuid)) {
+            return null
+        }
+        val urlHash = remoteUrl.hashCode().toUInt().toString(16)
+        val candidate = java.io.File(cacheRoot, "$userId/$spotUuid/${imageUuid}_$urlHash.jpg").canonicalFile
+        return if (candidate.path.startsWith(cacheRoot.path + java.io.File.separator)) candidate else null
+    }
+
+    private fun cleanupStaleCachedThumbnails(spotCacheDir: java.io.File, imageUuid: String, keepFileName: String) {
+        spotCacheDir.listFiles()?.forEach { file ->
+            if (file.isFile &&
+                file.name != keepFileName &&
+                (file.name == "$imageUuid.jpg" || file.name.startsWith("${imageUuid}_"))
+            ) {
+                runCatching { file.delete() }
+            }
+        }
+    }
 
     private suspend fun resolveRemoteThumbnails(userId: String, cloudDetail: SpotDetails): SpotDetails {
         val spotUuid = cloudDetail.spot.uuid
-        val userHome = System.getProperty("user.home")
-        val cacheRoot = java.io.File("$userHome/Pictures/TagSpotter/thumbnails").canonicalFile
-        val updatedImages = cloudDetail.images.map { image ->
-            val canCacheLocally = isSafePathSegment(userId) && isSafePathSegment(spotUuid) && isSafePathSegment(image.uuid)
-            val localThumbnailFile = if (canCacheLocally) {
-                val candidate = java.io.File(cacheRoot, "$userId/$spotUuid/${image.uuid}.jpg").canonicalFile
-                if (candidate.path.startsWith(cacheRoot.path + java.io.File.separator)) candidate else null
-            } else {
-                null
-            }
-            val existingRemote = image.remoteThumbnailUrl.ifBlank {
-                if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
-            }
-
-            if (localThumbnailFile != null && localThumbnailFile.exists() && localThumbnailFile.isFile) {
-                image.copy(
-                    thumbnailPath = localThumbnailFile.absolutePath,
-                    remoteThumbnailUrl = existingRemote
-                )
-            } else if (existingRemote.isNotEmpty()) {
-                if (localThumbnailFile != null && isApprovedStorageUrl(existingRemote)) {
-                    try {
-                        val downloadResponse = client.authClient.get(existingRemote)
-                        if (downloadResponse.status.value == 200) {
-                            val bytes = downloadResponse.readBytes()
-                            localThumbnailFile.parentFile?.mkdirs()
-                            localThumbnailFile.writeBytes(bytes)
-                        }
-                    } catch (_: Exception) {
-                        // Fallback to remote URL in UI
+        val cacheRoot = thumbnailCacheRoot.canonicalFile
+        val updatedImages = coroutineScope {
+            cloudDetail.images.map { image ->
+                async {
+                    val existingRemote = image.remoteThumbnailUrl.ifBlank {
+                        if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
                     }
+                    val resolvedRemoteUrl = existingRemote.ifEmpty {
+                        val canonicalPath = spotThumbnailStoragePath(userId, spotUuid, image.uuid)
+                        fetchDownloadUrlFromStorage(canonicalPath)
+                            ?: fetchDownloadUrlFromStorage("users/$userId/thumbnails/${image.uuid}.jpg")
+                            ?: ""
+                    }
+
+                    if (resolvedRemoteUrl.isEmpty()) {
+                        return@async image
+                    }
+
+                    val localThumbnailFile = cacheFileFor(cacheRoot, userId, spotUuid, image.uuid, resolvedRemoteUrl)
+                    if (localThumbnailFile != null &&
+                        localThumbnailFile.exists() &&
+                        localThumbnailFile.isFile &&
+                        localThumbnailFile.length() > 0L
+                    ) {
+                        return@async image.copy(
+                            thumbnailPath = localThumbnailFile.absolutePath,
+                            imagePath = localThumbnailFile.absolutePath,
+                            remoteThumbnailUrl = resolvedRemoteUrl
+                        )
+                    }
+
+                    if (localThumbnailFile != null && isApprovedStorageUrl(resolvedRemoteUrl)) {
+                        try {
+                            val downloadResponse = client.authClient.get(resolvedRemoteUrl)
+                            if (downloadResponse.status.value == 200) {
+                                val bytes = downloadResponse.readBytes()
+                                if (bytes.isNotEmpty()) {
+                                    localThumbnailFile.parentFile?.mkdirs()
+                                    localThumbnailFile.writeBytes(bytes)
+                                    localThumbnailFile.parentFile?.let { dir ->
+                                        cleanupStaleCachedThumbnails(dir, image.uuid, localThumbnailFile.name)
+                                    }
+                                }
+                            }
+                        } catch (_: Exception) {
+                            // Fallback to remote URL in UI
+                        }
+                    }
+
+                    val resolvedPath = if (localThumbnailFile != null &&
+                        localThumbnailFile.exists() &&
+                        localThumbnailFile.length() > 0L
+                    ) {
+                        localThumbnailFile.absolutePath
+                    } else {
+                        resolvedRemoteUrl
+                    }
+                    image.copy(
+                        thumbnailPath = resolvedPath,
+                        imagePath = resolvedPath,
+                        remoteThumbnailUrl = resolvedRemoteUrl
+                    )
                 }
-                val resolvedPath = if (localThumbnailFile != null && localThumbnailFile.exists()) {
-                    localThumbnailFile.absolutePath
-                } else {
-                    existingRemote
-                }
-                image.copy(
-                    thumbnailPath = resolvedPath,
-                    imagePath = resolvedPath,
-                    remoteThumbnailUrl = existingRemote
-                )
-            } else {
-                val canonicalPath = spotThumbnailStoragePath(userId, spotUuid, image.uuid)
-                val resolvedUrl = fetchDownloadUrlFromStorage(canonicalPath)
-                    ?: fetchDownloadUrlFromStorage("users/$userId/thumbnails/${image.uuid}.jpg")
-                if (resolvedUrl != null) {
-                    image.copy(thumbnailPath = resolvedUrl, imagePath = resolvedUrl, remoteThumbnailUrl = resolvedUrl)
-                } else {
-                    image
-                }
-            }
+            }.awaitAll()
         }
         return cloudDetail.copy(images = updatedImages)
     }
@@ -397,15 +566,14 @@ class JvmSyncManager(
     private suspend fun fetchDownloadUrlFromStorage(objectPath: String): String? {
         return try {
             val encodedPath = java.net.URLEncoder.encode(objectPath, "UTF-8")
-            val getUrl = "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath"
+            val getUrl = "$storageOrigin/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath"
             val getResponse = client.authenticatedClient.get(getUrl)
             if (getResponse.status.value == 200) {
-                val responseJson = client.jsonConfig.parseToJsonElement(getResponse.bodyAsText()).jsonObject
-                val downloadToken = responseJson["downloadTokens"]?.jsonPrimitive?.content
-                if (!downloadToken.isNullOrEmpty()) {
-                    "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media&token=$downloadToken"
+                val downloadToken = extractFirstDownloadToken(getResponse.bodyAsText())
+                if (downloadToken != null) {
+                    "$storageOrigin/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media&token=$downloadToken"
                 } else {
-                    "https://firebasestorage.googleapis.com/v0/b/${JvmFirebaseConfig.storageBucket}/o/$encodedPath?alt=media"
+                    null
                 }
             } else {
                 null
@@ -547,6 +715,13 @@ class JvmSyncManager(
                 val activePublicUuids = publicSpots.map { it.spot.uuid }.toSet()
                 val otherUsersSpots = publicSpots.filter { detail ->
                     currentUid == null || detail.spot.ownerUid != currentUid
+                }.map { detail ->
+                    val ownerUid = detail.spot.ownerUid
+                    if (!ownerUid.isNullOrBlank() && detail.hasUnresolvedRemoteThumbnails()) {
+                        resolveRemoteThumbnails(ownerUid, detail)
+                    } else {
+                        detail
+                    }
                 }
                 repository.savePublicSpots(otherUsersSpots)
                 if (!result.hadDecodeFailure) {

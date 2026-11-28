@@ -64,7 +64,8 @@ import net.maiatoday.tagspotter.core.ui.theme.StatusBarAppearanceEffect
 import net.maiatoday.tagspotter.feature.gallery.FilterBottomSheet
 import net.maiatoday.tagspotter.feature.map.res.MapRes
 import net.maiatoday.tagspotter.feature.map.res.stringResource
-import net.maiatoday.tagspotter.feature.map.res.formatImageModel
+import net.maiatoday.tagspotter.core.ui.image.SpotAsyncImage
+import net.maiatoday.tagspotter.core.ui.image.formatImageModel
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.abs
 
@@ -484,12 +485,13 @@ fun MapScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             if (latestImage != null) {
-                                val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath) {
-                                    formatImageModel(latestImage.imagePath, latestImage.thumbnailPath)
+                                val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath, latestImage.remoteThumbnailUrl) {
+                                    formatImageModel(latestImage)
                                 }
-                                AsyncImage(
+                                SpotAsyncImage(
                                     model = imageModel,
                                     contentDescription = null,
+                                    remoteThumbnailUrl = latestImage.remoteThumbnailUrl,
                                     modifier = Modifier
                                         .size(90.dp)
                                         .clip(RoundedCornerShape(8.dp))

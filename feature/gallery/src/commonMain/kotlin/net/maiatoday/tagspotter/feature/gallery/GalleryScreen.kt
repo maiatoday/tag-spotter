@@ -90,7 +90,8 @@ import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 import net.maiatoday.tagspotter.core.ui.theme.categoryColors
 import net.maiatoday.tagspotter.feature.gallery.res.DateFormatter
 import net.maiatoday.tagspotter.feature.gallery.res.GalleryStrings
-import net.maiatoday.tagspotter.feature.gallery.res.formatImageModel
+import net.maiatoday.tagspotter.core.ui.image.SpotAsyncImage
+import net.maiatoday.tagspotter.core.ui.image.formatImageModel
 import net.maiatoday.tagspotter.feature.gallery.res.rememberGalleryPlatformHelper
 import net.maiatoday.tagspotter.feature.gallery.res.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -1457,12 +1458,13 @@ fun SpotGridCard(
                     .background(Color.DarkGray)
             ) {
                 if (latestImage != null) {
-                    val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath) {
-                        formatImageModel(latestImage.imagePath, latestImage.thumbnailPath)
+                    val imageModel = remember(latestImage.imagePath, latestImage.thumbnailPath, latestImage.remoteThumbnailUrl) {
+                        formatImageModel(latestImage)
                     }
-                    AsyncImage(
+                    SpotAsyncImage(
                         model = imageModel,
                         contentDescription = "Spot photo",
+                        remoteThumbnailUrl = latestImage.remoteThumbnailUrl,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )

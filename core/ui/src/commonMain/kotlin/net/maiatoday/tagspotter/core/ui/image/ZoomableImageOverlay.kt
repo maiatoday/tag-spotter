@@ -49,6 +49,7 @@ import kotlin.math.abs
 fun ZoomableImageOverlay(
     imagePath: String,
     thumbnailPath: String = "",
+    remoteThumbnailUrl: String = "",
     isOriginalDeleted: Boolean? = null,
     imageModel: Any? = null,
     onClose: () -> Unit,
@@ -70,10 +71,12 @@ fun ZoomableImageOverlay(
         }
     }
 
-    val resolvedImageModel = remember(imageModel, imagePath, thumbnailPath, effectiveIsDeleted) {
+    val resolvedImageModel = remember(imageModel, imagePath, thumbnailPath, remoteThumbnailUrl, effectiveIsDeleted) {
         imageModel ?: formatImageModel(
-            if (effectiveIsDeleted) thumbnailPath else imagePath,
-            if (effectiveIsDeleted) "" else thumbnailPath
+            imagePath = if (effectiveIsDeleted) "" else imagePath,
+            thumbnailPath = thumbnailPath,
+            remoteThumbnailUrl = remoteThumbnailUrl,
+            preferFullImage = !effectiveIsDeleted
         )
     }
 
@@ -116,9 +119,10 @@ fun ZoomableImageOverlay(
                     )
                 }
         ) {
-            AsyncImage(
+            SpotAsyncImage(
                 model = resolvedImageModel,
                 contentDescription = "Zoomable spot image",
+                remoteThumbnailUrl = remoteThumbnailUrl,
                 modifier = Modifier
                     .fillMaxSize()
                     .align(Alignment.Center)
@@ -128,7 +132,8 @@ fun ZoomableImageOverlay(
                         translationX = offset.x,
                         translationY = offset.y
                     ),
-                contentScale = ContentScale.Fit
+                contentScale = ContentScale.Fit,
+                allowRetryOnError = true
             )
         }
 

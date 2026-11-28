@@ -473,6 +473,12 @@ class LocalSpotRepository(
             val remoteUrl = image.remoteThumbnailUrl.ifBlank {
                 if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
             }
+            val incomingThumbExists = image.thumbnailPath.isNotBlank() &&
+                !image.thumbnailPath.startsWith("http") &&
+                photoProcessor.fileExists(image.thumbnailPath)
+            val incomingImageExists = image.imagePath.isNotBlank() &&
+                !image.imagePath.startsWith("http") &&
+                photoProcessor.fileExists(image.imagePath)
             if (existingImage != null) {
                 val localThumbExists = existingImage.thumbnailPath.isNotBlank() &&
                     !existingImage.thumbnailPath.startsWith("http") &&
@@ -485,8 +491,16 @@ class LocalSpotRepository(
                     id = existingImage.id,
                     spotId = finalSpotId,
                     ownerUid = activeUid ?: image.ownerUid,
-                    thumbnailPath = if (localThumbExists) existingImage.thumbnailPath else image.thumbnailPath.ifBlank { resolvedRemoteUrl },
-                    imagePath = if (localImageExists) existingImage.imagePath else image.imagePath.ifBlank { resolvedRemoteUrl },
+                    thumbnailPath = when {
+                        localThumbExists -> existingImage.thumbnailPath
+                        incomingThumbExists -> image.thumbnailPath
+                        else -> resolvedRemoteUrl.ifBlank { image.thumbnailPath }
+                    },
+                    imagePath = when {
+                        localImageExists -> existingImage.imagePath
+                        incomingImageExists -> image.imagePath
+                        else -> resolvedRemoteUrl.ifBlank { image.imagePath }
+                    },
                     remoteThumbnailUrl = resolvedRemoteUrl
                 )
                 spotDao.updateImage(updated.toEntity())
@@ -495,8 +509,8 @@ class LocalSpotRepository(
                     id = 0L,
                     spotId = finalSpotId,
                     ownerUid = activeUid ?: image.ownerUid,
-                    thumbnailPath = image.thumbnailPath.ifBlank { remoteUrl },
-                    imagePath = image.imagePath.ifBlank { remoteUrl },
+                    thumbnailPath = if (incomingThumbExists) image.thumbnailPath else remoteUrl.ifBlank { image.thumbnailPath },
+                    imagePath = if (incomingImageExists) image.imagePath else remoteUrl.ifBlank { image.imagePath },
                     remoteThumbnailUrl = remoteUrl
                 )
                 spotDao.insertImage(inserted.toEntity())

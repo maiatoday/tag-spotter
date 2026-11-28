@@ -549,7 +549,15 @@ class WasmSpotRepository : SpotRepository {
 
     override suspend fun saveSyncedSpot(spotDetails: SpotDetails) {
         val existingEntry = spotsFlow.value.entries.find { it.value.spot.uuid == spotDetails.spot.uuid }
-        if (existingEntry != null && existingEntry.value.spot.effectiveOrigin == SpotOrigin.IMPORTED) return
+        if (existingEntry != null && (
+                existingEntry.value.spot.effectiveOrigin == SpotOrigin.IMPORTED ||
+                (existingEntry.value.spot.effectiveOrigin == SpotOrigin.OWN &&
+                    !existingEntry.value.spot.isSynced &&
+                    spotDetails.spot.lastEditedAt <= existingEntry.value.spot.lastEditedAt)
+            )
+        ) {
+            return
+        }
         val finalSpotId = existingEntry?.key ?: allocateSpotId()
 
         val spotToSave = spotDetails.spot.copy(
@@ -565,12 +573,13 @@ class WasmSpotRepository : SpotRepository {
             val remoteUrl = image.remoteThumbnailUrl.ifBlank {
                 if (image.thumbnailPath.startsWith("http")) image.thumbnailPath else ""
             }
+            val resolvedRemoteUrl = remoteUrl.ifBlank { existingImage?.remoteThumbnailUrl ?: "" }
             image.copy(
                 id = finalImgId,
                 spotId = finalSpotId,
-                thumbnailPath = image.thumbnailPath.ifBlank { remoteUrl },
-                imagePath = image.imagePath.ifBlank { remoteUrl },
-                remoteThumbnailUrl = remoteUrl.ifBlank { existingImage?.remoteThumbnailUrl ?: "" }
+                thumbnailPath = resolvedRemoteUrl.ifBlank { image.thumbnailPath },
+                imagePath = resolvedRemoteUrl.ifBlank { image.imagePath },
+                remoteThumbnailUrl = resolvedRemoteUrl
             )
         }
 

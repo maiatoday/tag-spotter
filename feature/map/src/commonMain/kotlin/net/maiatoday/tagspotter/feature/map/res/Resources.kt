@@ -37,5 +37,3 @@ fun stringResource(id: StringResource): String {
 fun stringResource(id: StringResource, vararg formatArgs: Any): String {
     return org.jetbrains.compose.resources.stringResource(id, *formatArgs)
 }
-
-expect fun formatImageModel(imagePath: String, thumbnailPath: String): Any
