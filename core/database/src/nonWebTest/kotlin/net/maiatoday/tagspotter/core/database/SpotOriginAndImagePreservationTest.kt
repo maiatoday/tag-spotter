@@ -437,9 +437,10 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
         )
         val imgUuid = repo.getSpotById(spotId).first()!!.images.first().uuid
 
-        // Sign out on shared device (activeUid = null) and pull updated public spot with HTTPS URL
+        // Sign out on shared device (activeUid = null) and pull updated public spot with a different image UUID and HTTPS URL
         repo.activeUid = null
-        val remoteUrl = "https://firebasestorage.googleapis.com/v0/b/test/o/spots%2Fuser-a%2Fcube-uuid%2Fthumbnails%2F$imgUuid.jpg?alt=media"
+        val remoteImgUuid = "remote-cube-img-uuid"
+        val remoteUrl = "https://firebasestorage.googleapis.com/v0/b/test/o/spots%2Fuser-a%2Fcube-uuid%2Fthumbnails%2F$remoteImgUuid.jpg?alt=media"
         repo.savePublicSpot(
             SpotDetails(
                 spot = Spot(
@@ -460,7 +461,7 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
                         imagePath = remoteUrl,
                         thumbnailPath = remoteUrl,
                         timestamp = 1000L,
-                        uuid = imgUuid,
+                        uuid = remoteImgUuid,
                         ownerUid = "user-a",
                         remoteThumbnailUrl = remoteUrl
                     )
@@ -472,6 +473,8 @@ class SpotOriginAndImagePreservationTest : BaseDaoTest() {
         val healed = repo.getSpotById(spotId).first()!!
         assertEquals(SpotOrigin.OWN, healed.spot.origin)
         assertEquals("Cube", healed.spot.description)
+        assertEquals(1, healed.images.size)
+        assertEquals(remoteImgUuid, healed.images.first().uuid)
         assertEquals(remoteUrl, healed.images.first().thumbnailPath)
         assertEquals(remoteUrl, healed.images.first().remoteThumbnailUrl)
     }
