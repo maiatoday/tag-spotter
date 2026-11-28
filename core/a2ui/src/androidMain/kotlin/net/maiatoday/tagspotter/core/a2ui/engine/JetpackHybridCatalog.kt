@@ -29,8 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.a2ui.catalog.MaterialA2uiBasicCatalogV1Defaults
 import androidx.compose.material3.a2ui.catalog.materialA2uiBasicCatalogV1
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import net.maiatoday.tagspotter.core.ui.components.NeonArtistBioCard
@@ -91,26 +94,44 @@ fun createJetpackHybridCatalog(
                 else -> Alignment.Start
             }
 
+            val listContentDescription = accessibility?.let { attrs ->
+                val cleanLabel = attrs.label?.takeUnless { it.isBlank() }
+                val cleanDescription = attrs.description?.takeUnless { it.isBlank() }
+                when {
+                    cleanLabel != null && cleanDescription != null -> "$cleanLabel - $cleanDescription"
+                    cleanLabel != null -> cleanLabel
+                    cleanDescription != null -> cleanDescription
+                    else -> null
+                }
+            }
+            val listModifier = if (listContentDescription != null) {
+                modifier.semantics { contentDescription = listContentDescription }
+            } else {
+                modifier
+            }
+
             Column(
-                modifier = modifier,
+                modifier = listModifier,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = horizontalAlignment,
             ) {
                 children.forEach { childRef ->
-                    when (val state = observeA2uiComponentState(childRef)) {
-                        is A2uiComponentState.Error -> {
-                            Text(
-                                text = state.exception.message ?: "Component error",
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = itemModifier
-                            )
-                        }
-                        is A2uiComponentState.Loading -> {
-                            Box(modifier = itemModifier.fillMaxWidth().height(56.dp))
-                        }
-                        is A2uiComponentState.Success -> {
-                            A2uiComponent(component = state.component, modifier = itemModifier)
+                    key(childRef.id, childRef.baseDataPath) {
+                        when (val state = observeA2uiComponentState(childRef)) {
+                            is A2uiComponentState.Error -> {
+                                Text(
+                                    text = state.exception.message ?: "Component error",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = itemModifier
+                                )
+                            }
+                            is A2uiComponentState.Loading -> {
+                                Box(modifier = itemModifier.fillMaxWidth().height(56.dp))
+                            }
+                            is A2uiComponentState.Success -> {
+                                A2uiComponent(component = state.component, modifier = itemModifier)
+                            }
                         }
                     }
                 }
