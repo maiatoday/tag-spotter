@@ -4,6 +4,7 @@ package net.maiatoday.tagspotter.core.ui.image
 
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 
 internal actual fun resolveExistingLocalFilePath(rawPath: String): String? {
@@ -28,4 +29,9 @@ internal actual fun resolveExistingLocalFilePath(rawPath: String): String? {
     }
 
     return if (fileManager.fileExistsAtPath(resolvedPath)) resolvedPath else null
+}
+
+internal actual fun toLocalFileModel(path: String): Any {
+    if (path.isBlank()) return ""
+    return NSURL.fileURLWithPath(path).absoluteString ?: "file://$path"
 }

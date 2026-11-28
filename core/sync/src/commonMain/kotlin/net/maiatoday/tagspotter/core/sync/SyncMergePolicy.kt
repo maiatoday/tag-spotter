@@ -12,6 +12,7 @@ import net.maiatoday.tagspotter.core.model.SpotDetails
  */
 internal fun shouldApplyRemoteUpdate(localMatch: SpotDetails, remoteDetail: SpotDetails): Boolean {
     if (!localMatch.spot.isSynced) return false
+    if (remoteDetail.spot.lastEditedAt < localMatch.spot.lastEditedAt) return false
     if (remoteDetail.spot.lastEditedAt > localMatch.spot.lastEditedAt) return true
 
     val localImageUuids = localMatch.images.map { it.uuid }.toSet()

@@ -194,7 +194,9 @@ class JvmSyncManager(
                 fieldPath = "ownerUid",
                 value = buildJsonObject { put("stringValue", userId) }
             )
-            if (ownQueryResult != null) {
+            if (ownQueryResult == null) {
+                runError = runError ?: "Failed to fetch spots from cloud."
+            } else {
                 val localSpots = repository.getAllSpots().first()
                 val remoteUuids = mutableSetOf<String>()
 
@@ -225,8 +227,8 @@ class JvmSyncManager(
             }
 
             // 3. Pull public spots from other users
-            syncPublicSpots()
-            _syncError.value = runError
+            val publicError = syncPublicSpotsInternal()
+            _syncError.value = runError ?: publicError
         } catch (e: Exception) {
             _syncError.value = "Cloud sync failed: ${e.message ?: "unknown error"}"
             println("Error during JvmSyncManager syncNow: ${e.message}")
@@ -273,7 +275,7 @@ class JvmSyncManager(
     }
 
     override suspend fun forceBackupAllImages(): BackupResult {
-        val userId = activeUserId ?: return BackupResult()
+        val userId = activeUserId ?: return BackupResult(attempted = false)
         return syncMutex.withLock {
             _isSyncing.value = true
             var total = BackupResult()
@@ -284,6 +286,7 @@ class JvmSyncManager(
                     total += backupSpotImagesLocked(userId, localDetail)
                 }
             } catch (e: Exception) {
+                total += BackupResult(failed = 1)
                 println("Error during JvmSyncManager forceBackupAllImages: ${e.message}")
             } finally {
                 _isSyncing.value = false
@@ -293,7 +296,7 @@ class JvmSyncManager(
     }
 
     override suspend fun forceBackupSpot(uuid: String): BackupResult {
-        val userId = activeUserId ?: return BackupResult()
+        val userId = activeUserId ?: return BackupResult(attempted = false)
         return syncMutex.withLock {
             _isSyncing.value = true
             var result = BackupResult()
@@ -304,6 +307,7 @@ class JvmSyncManager(
                     result = backupSpotImagesLocked(userId, localDetail)
                 }
             } catch (e: Exception) {
+                result += BackupResult(failed = 1)
                 println("Error during JvmSyncManager forceBackupSpot: ${e.message}")
             } finally {
                 _isSyncing.value = false
@@ -320,6 +324,7 @@ class JvmSyncManager(
         var skippedNoLocalFile = 0
         var spotModified = false
         var allThumbnailsReady = true
+        val pendingRemoteUrlUpdates = mutableListOf<Pair<Long, String>>()
 
         val remoteImages = localDetail.images.map { image ->
             val objectPath = spotThumbnailStoragePath(userId, uuid, image.uuid)
@@ -328,7 +333,7 @@ class JvmSyncManager(
                 val downloadUrl = uploadBytesToStorage(objectPath, bytes)
                 if (downloadUrl != null) {
                     if (image.id != 0L) {
-                        repository.updateImageRemoteUrl(image.id, downloadUrl)
+                        pendingRemoteUrlUpdates.add(image.id to downloadUrl)
                     }
                     uploaded++
                     spotModified = true
@@ -343,7 +348,7 @@ class JvmSyncManager(
                 if (!refreshedUrl.isNullOrBlank()) {
                     if (refreshedUrl != image.remoteThumbnailUrl) {
                         if (image.id != 0L) {
-                            repository.updateImageRemoteUrl(image.id, refreshedUrl)
+                            pendingRemoteUrlUpdates.add(image.id to refreshedUrl)
                         }
                         refreshedUrls++
                         spotModified = true
@@ -368,29 +373,40 @@ class JvmSyncManager(
         }
 
         if (spotModified && allThumbnailsReady) {
-            val detailToPush = localDetail.copy(
-                spot = localDetail.spot.copy(ownerUid = userId, origin = SpotOrigin.OWN, isImported = false),
-                images = remoteImages
-            )
-            val firestoreDoc = FirestoreSpotDocument.fromSpotDetails(userId, detailToPush)
-            val jsonElement = client.jsonConfig.encodeToJsonElement(FirestoreSpotDocument.serializer(), firestoreDoc)
-            val firestoreFields = jsonElement.jsonObject.toFirestoreValue()["mapValue"]?.jsonObject?.get("fields")?.jsonObject
-            if (firestoreFields != null) {
-                val docUrl = "$firestoreOrigin/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/spots/$uuid"
-                val patchResponse = client.authenticatedClient.patch(docUrl) {
-                    contentType(ContentType.Application.Json)
-                    setBody(buildJsonObject {
-                        put("fields", firestoreFields)
-                    })
-                }
-                if (patchResponse.status.value in 200..299) {
-                    repository.markSpotAsSynced(uuid)
+            try {
+                val detailToPush = localDetail.copy(
+                    spot = localDetail.spot.copy(ownerUid = userId, origin = SpotOrigin.OWN, isImported = false),
+                    images = remoteImages
+                )
+                val firestoreDoc = FirestoreSpotDocument.fromSpotDetails(userId, detailToPush)
+                val jsonElement = client.jsonConfig.encodeToJsonElement(FirestoreSpotDocument.serializer(), firestoreDoc)
+                val firestoreFields = jsonElement.jsonObject.toFirestoreValue()["mapValue"]?.jsonObject?.get("fields")?.jsonObject
+                if (firestoreFields != null) {
+                    val docUrl = "$firestoreOrigin/v1/projects/${JvmFirebaseConfig.projectId}/databases/(default)/documents/spots/$uuid"
+                    val patchResponse = client.authenticatedClient.patch(docUrl) {
+                        contentType(ContentType.Application.Json)
+                        setBody(buildJsonObject {
+                            put("fields", firestoreFields)
+                        })
+                    }
+                    if (patchResponse.status.value in 200..299) {
+                        pendingRemoteUrlUpdates.forEach { (imageId, url) ->
+                            repository.updateImageRemoteUrl(imageId, url)
+                        }
+                        val latestLocal = repository.getAllSpots().first().find { it.spot.uuid == uuid }
+                        if (latestLocal == null || latestLocal.spot.lastEditedAt == localDetail.spot.lastEditedAt) {
+                            repository.markSpotAsSynced(uuid)
+                        }
+                    } else {
+                        failed++
+                        println("Failed to push spot metadata after force backup for $uuid: ${patchResponse.bodyAsText()}")
+                    }
                 } else {
                     failed++
-                    println("Failed to push spot metadata after force backup for $uuid: ${patchResponse.bodyAsText()}")
                 }
-            } else {
+            } catch (e: Exception) {
                 failed++
+                println("Error pushing spot metadata after force backup for $uuid: ${e.message}")
             }
         }
 
@@ -702,13 +718,20 @@ class JvmSyncManager(
     }
 
     override suspend fun syncPublicSpots() {
-        publicSyncMutex.withLock {
+        val error = syncPublicSpotsInternal()
+        if (error != null) {
+            _syncError.value = error
+        }
+    }
+
+    private suspend fun syncPublicSpotsInternal(): String? {
+        return publicSyncMutex.withLock {
             try {
                 val result = runSpotsQuery(
                     httpClient = client.authClient,
                     fieldPath = "isPublic",
                     value = buildJsonObject { put("booleanValue", true) }
-                ) ?: return
+                ) ?: return@withLock "Failed to fetch public spots from cloud."
 
                 val currentUid = activeUserId ?: repository.activeUid
                 val publicSpots = result.spots.filter { it.spot.isPublic }
@@ -727,8 +750,10 @@ class JvmSyncManager(
                 if (!result.hadDecodeFailure) {
                     repository.pruneRemovedPublicSpots(activePublicUuids)
                 }
+                null
             } catch (e: Exception) {
                 println("Error during JvmSyncManager syncPublicSpots: ${e.message}")
+                "Failed to sync public spots: ${e.message ?: "unknown error"}"
             }
         }
     }

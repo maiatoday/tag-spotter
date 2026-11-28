@@ -160,8 +160,8 @@ class WasmSyncManager(
                 }
             }
 
-            syncPublicSpots()
-            _syncError.value = runError
+            val publicError = syncPublicSpotsInternal()
+            _syncError.value = runError ?: publicError
         } catch (e: Exception) {
             _syncError.value = "Cloud sync failed: ${e.message ?: "unknown error"}"
             println("Error during Wasm syncNow: ${e.message}")
@@ -183,13 +183,14 @@ class WasmSyncManager(
                         try {
                             val cloudDoc = json.decodeFromString(FirestoreSpotDocument.serializer(), spotJson)
                             val cloudDetail = cloudDoc.toSpotDetails()
-                            val localSpots = repository.getAllSpots().first()
-                            val localMatch = localSpots.find { it.spot.uuid == cloudDetail.spot.uuid }
-                            val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail, localMatch)
+                            val initialLocalMatch = repository.getAllSpots().first().find { it.spot.uuid == cloudDetail.spot.uuid }
+                            val resolvedDetail = resolveRemoteThumbnails(userId, cloudDetail, initialLocalMatch)
+                            // Re-read after suspending on thumbnail resolution so stale listener jobs cannot overwrite newer state
+                            val latestLocalMatch = repository.getAllSpots().first().find { it.spot.uuid == resolvedDetail.spot.uuid }
 
-                            if (localMatch == null) {
+                            if (latestLocalMatch == null) {
                                 repository.saveSyncedSpot(resolvedDetail)
-                            } else if (shouldApplyRemoteUpdate(localMatch, resolvedDetail)) {
+                            } else if (shouldApplyRemoteUpdate(latestLocalMatch, resolvedDetail)) {
                                 repository.saveSyncedSpot(resolvedDetail)
                             }
                         } catch (e: Exception) {
@@ -296,8 +297,15 @@ class WasmSyncManager(
     }
 
     override suspend fun syncPublicSpots() {
-        try {
-            val remoteSpots = fetchPublicSpotsOrNull() ?: return
+        val error = syncPublicSpotsInternal()
+        if (error != null) {
+            _syncError.value = error
+        }
+    }
+
+    private suspend fun syncPublicSpotsInternal(): String? {
+        return try {
+            val remoteSpots = fetchPublicSpotsOrNull() ?: return "Failed to fetch public spots from cloud."
             val currentUid = activeUserId ?: repository.activeUid
             val activePublicUuids = remoteSpots.map { it.spot.uuid }.toSet()
             val otherUsersSpots = remoteSpots.filter { detail ->
@@ -312,8 +320,10 @@ class WasmSyncManager(
             }
             repository.savePublicSpots(otherUsersSpots)
             repository.pruneRemovedPublicSpots(activePublicUuids)
+            null
         } catch (e: Exception) {
             println("Error during Wasm syncPublicSpots: ${e.message}")
+            "Failed to sync public spots: ${e.message ?: "unknown error"}"
         }
     }
 

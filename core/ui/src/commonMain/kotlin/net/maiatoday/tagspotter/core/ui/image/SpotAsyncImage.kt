@@ -33,8 +33,9 @@ import coil3.request.ImageRequest
 /**
  * Shared Coil 3 image composable for Tag Spotter with:
  * - cache keys scoped to the resolved model + [remoteThumbnailUrl] + retry nonce,
- * - error logging and a visible fallback state instead of a silent blank box,
- * - optional tap-to-retry bypassing cached failures.
+ * - sanitized error logging (never logging download tokens/URLs),
+ * - optional [fallbackModel] automatically attempted when the primary [model] fails,
+ * - visible fallback state with optional tap-to-retry bypassing cached failures.
  */
 @Composable
 fun SpotAsyncImage(
@@ -42,17 +43,21 @@ fun SpotAsyncImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     remoteThumbnailUrl: String = "",
+    fallbackModel: Any? = null,
     contentScale: ContentScale = ContentScale.Crop,
     allowRetryOnError: Boolean = false
 ) {
     val platformContext = LocalPlatformContext.current
-    var retryNonce by remember(model, remoteThumbnailUrl) { mutableIntStateOf(0) }
-    var hasError by remember(model, remoteThumbnailUrl, retryNonce) { mutableStateOf(false) }
+    var retryNonce by remember(model, remoteThumbnailUrl, fallbackModel) { mutableIntStateOf(0) }
+    var useFallback by remember(model, remoteThumbnailUrl, fallbackModel) { mutableStateOf(false) }
+    var hasError by remember(model, remoteThumbnailUrl, fallbackModel, retryNonce, useFallback) { mutableStateOf(false) }
 
-    val cacheKey = remember(model, remoteThumbnailUrl, retryNonce) {
+    val activeModel = if (useFallback && fallbackModel != null) fallbackModel else model
+
+    val cacheKey = remember(activeModel, remoteThumbnailUrl, retryNonce, useFallback) {
         buildString {
-            append(model.toString())
-            if (remoteThumbnailUrl.isNotBlank()) {
+            append(activeModel.toString())
+            if (!useFallback && remoteThumbnailUrl.isNotBlank()) {
                 append("|")
                 append(remoteThumbnailUrl)
             }
@@ -63,9 +68,9 @@ fun SpotAsyncImage(
         }
     }
 
-    val request = remember(platformContext, model, cacheKey, retryNonce) {
+    val request = remember(platformContext, activeModel, cacheKey, retryNonce) {
         ImageRequest.Builder(platformContext)
-            .data(model)
+            .data(activeModel)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
             .apply {
@@ -87,8 +92,13 @@ fun SpotAsyncImage(
                 hasError = false
             },
             onError = { state ->
-                hasError = true
-                println("SpotAsyncImage failed to load [$model]: ${state.result.throwable.message}")
+                val errorType = state.result.throwable::class.simpleName ?: "UnknownError"
+                println("SpotAsyncImage load failed (errorType=$errorType, fallback=$useFallback)")
+                if (!useFallback && fallbackModel != null && fallbackModel != model) {
+                    useFallback = true
+                } else {
+                    hasError = true
+                }
             }
         )
 
@@ -97,7 +107,10 @@ fun SpotAsyncImage(
                 Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable { retryNonce++ }
+                    .clickable {
+                        useFallback = false
+                        retryNonce++
+                    }
                     .padding(8.dp)
             } else {
                 Modifier

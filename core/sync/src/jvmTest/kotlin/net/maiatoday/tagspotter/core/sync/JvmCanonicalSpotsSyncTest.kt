@@ -224,6 +224,7 @@ class JvmCanonicalSpotsSyncTest {
             exchange.responseBody.use { it.write(bytes) }
         }
         server.start()
+        var syncManager: JvmSyncManager? = null
         try {
             val origin = "http://127.0.0.1:${server.address.port}"
             val repo = FakeSpotRepository()
@@ -247,17 +248,16 @@ class JvmCanonicalSpotsSyncTest {
                 putString("firebase_id_token", "fake-token")
             }
             val client = JvmFirebaseClient(storage)
-            val syncManager = JvmSyncManager(
+            val manager = JvmSyncManager(
                 repository = repo,
                 client = client,
                 firestoreOrigin = origin,
                 storageOrigin = origin,
                 thumbnailCacheRoot = java.io.File(tempDir, "cache")
             )
-            syncManager.startRealtimeSync("user-1")
-            // Stop polling immediately while keeping activeUserId set? No, stopRealtimeSync clears activeUserId.
-            // Wait a tiny moment or test directly after cancelling via reflection? Better: just run forceBackupSpot while active.
-            val successResult = syncManager.forceBackupSpot("spot-desktop-1")
+            syncManager = manager
+            manager.startRealtimeSync("user-1")
+            val successResult = manager.forceBackupSpot("spot-desktop-1")
             assertEquals(1, successResult.uploaded)
             assertEquals(0, successResult.failed)
             val updatedUrl = repo.getAllSpots().first().first().images.first().remoteThumbnailUrl
@@ -265,11 +265,11 @@ class JvmCanonicalSpotsSyncTest {
 
             // Now simulate tokenless Storage response: must fail rather than persist a tokenless URL
             storageResponseBody = """{"name":"spots/user-1/spot-desktop-1/thumbnails/x.jpg"}"""
-            val failedResult = syncManager.forceBackupSpot("spot-desktop-1")
+            val failedResult = manager.forceBackupSpot("spot-desktop-1")
             assertEquals(0, failedResult.uploaded)
             assertEquals(1, failedResult.failed)
-            syncManager.stopRealtimeSync()
         } finally {
+            syncManager?.stopRealtimeSync()
             server.stop(0)
             tempDir.deleteRecursively()
         }

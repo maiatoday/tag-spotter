@@ -58,10 +58,18 @@ fun DetailHeroSection(
         val imageModel = remember(imagePath, thumbnailPath, remoteThumbnailUrl) {
             formatImageModel(imagePath, thumbnailPath, remoteThumbnailUrl)
         }
+        val fallbackModel = remember(imagePath) {
+            if (imagePath.startsWith("content://") || imagePath.startsWith("android.resource://")) {
+                formatImageModel(imagePath = imagePath, thumbnailPath = "", remoteThumbnailUrl = "", preferFullImage = true)
+            } else {
+                null
+            }
+        }
         SpotAsyncImage(
             model = imageModel,
             contentDescription = "Spot Hero Image",
             remoteThumbnailUrl = remoteThumbnailUrl,
+            fallbackModel = fallbackModel,
             modifier = Modifier
                 .fillMaxSize()
                 .clickable { onImageClick() },

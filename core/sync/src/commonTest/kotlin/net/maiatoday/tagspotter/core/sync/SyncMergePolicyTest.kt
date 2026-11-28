@@ -93,7 +93,16 @@ class SyncMergePolicyTest {
     }
 
     @Test
+    fun rejectsOlderRemoteSnapshotEvenWhenImageUuidsDiffer() {
+        val local = SpotDetails(sampleSpot(lastEditedAt = 2000L), listOf(sampleImage(uuid = "newer-local-uuid")), emptyList())
+        val olderRemote = SpotDetails(sampleSpot(lastEditedAt = 1000L), listOf(sampleImage(uuid = "older-remote-uuid")), emptyList())
+
+        assertFalse(shouldApplyRemoteUpdate(local, olderRemote))
+    }
+
+    @Test
     fun backupResultFormatsAccurateUserMessages() {
+        assertEquals("Backup unavailable right now; please try again", BackupResult(attempted = false).toUserMessage())
         assertEquals("Uploaded 2 photo(s) to cloud", BackupResult(uploaded = 2).toUserMessage())
         assertEquals("Uploaded 1 photo(s); 2 failed", BackupResult(uploaded = 1, failed = 2).toUserMessage())
         assertEquals("Refreshed 3 cloud photo link(s)", BackupResult(refreshedUrls = 3).toUserMessage())

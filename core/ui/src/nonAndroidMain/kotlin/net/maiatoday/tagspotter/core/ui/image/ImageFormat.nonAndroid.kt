@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
 internal expect fun resolveExistingLocalFilePath(rawPath: String): String?
+internal expect fun toLocalFileModel(path: String): Any
 
 actual fun formatImageModel(
     imagePath: String,
@@ -20,7 +21,7 @@ actual fun formatImageModel(
     )
 
     return when (resolved) {
-        is ResolvedImageSource.LocalFile -> "file://${resolved.resolvedPath}"
+        is ResolvedImageSource.LocalFile -> toLocalFileModel(resolved.resolvedPath)
         is ResolvedImageSource.RemoteOrDataUrl -> resolved.url
         is ResolvedImageSource.PlatformUri -> resolved.uri
         is ResolvedImageSource.Fallback -> {
@@ -28,7 +29,7 @@ actual fun formatImageModel(
             if (raw.isEmpty() || raw.isRemoteOrDataUrl() || raw.isPlatformUri()) {
                 raw
             } else {
-                "file://${raw.stripFileScheme()}"
+                toLocalFileModel(raw.stripFileScheme())
             }
         }
     }

@@ -147,8 +147,8 @@ class NonWebSyncManager(
             }
 
             // 3. Pull public spots from other users
-            syncPublicSpots()
-            _syncError.value = runError
+            val publicError = syncPublicSpotsInternal()
+            _syncError.value = runError ?: publicError
         } catch (e: Exception) {
             _syncError.value = "Cloud sync failed: ${e.message ?: "unknown error"}"
             platformLogError(TAG, "Error during syncNow", e)
@@ -239,10 +239,10 @@ class NonWebSyncManager(
     }
 
     override suspend fun forceBackupAllImages(): BackupResult {
-        val userId = activeUserId ?: return BackupResult()
-        val currentFirestore = firestore ?: return BackupResult()
-        val currentStorage = storage ?: return BackupResult()
-        if (!syncMutex.tryLock()) return BackupResult()
+        val userId = activeUserId ?: return BackupResult(attempted = false)
+        val currentFirestore = firestore ?: return BackupResult(attempted = false)
+        val currentStorage = storage ?: return BackupResult(attempted = false)
+        if (!syncMutex.tryLock()) return BackupResult(attempted = false)
         _isSyncing.value = true
         var total = BackupResult()
 
@@ -255,6 +255,7 @@ class NonWebSyncManager(
                 total += backupSpotImagesLocked(currentStorage, spotsCollection, userId, localDetail)
             }
         } catch (e: Exception) {
+            total += BackupResult(failed = 1)
             platformLogError(TAG, "Error during forceBackupAllImages", e)
         } finally {
             _isSyncing.value = false
@@ -264,10 +265,10 @@ class NonWebSyncManager(
     }
 
     override suspend fun forceBackupSpot(uuid: String): BackupResult {
-        val userId = activeUserId ?: return BackupResult()
-        val currentFirestore = firestore ?: return BackupResult()
-        val currentStorage = storage ?: return BackupResult()
-        if (!syncMutex.tryLock()) return BackupResult()
+        val userId = activeUserId ?: return BackupResult(attempted = false)
+        val currentFirestore = firestore ?: return BackupResult(attempted = false)
+        val currentStorage = storage ?: return BackupResult(attempted = false)
+        if (!syncMutex.tryLock()) return BackupResult(attempted = false)
         _isSyncing.value = true
         var result = BackupResult()
 
@@ -279,6 +280,7 @@ class NonWebSyncManager(
                 result = backupSpotImagesLocked(currentStorage, spotsCollection, userId, localDetail)
             }
         } catch (e: Exception) {
+            result += BackupResult(failed = 1)
             platformLogError(TAG, "Error during forceBackupSpot", e)
         } finally {
             _isSyncing.value = false
@@ -300,6 +302,7 @@ class NonWebSyncManager(
         var skippedNoLocalFile = 0
         var spotModified = false
         var allThumbnailsReady = true
+        val pendingRemoteUrlUpdates = mutableListOf<Pair<Long, String>>()
         val remoteImages = localDetail.images.map { image ->
             val bytes = readBytesFromFile(image.thumbnailPath) ?: readBytesFromFile(image.imagePath)
             val storageRef = currentStorage.reference(spotThumbnailStoragePath(userId, uuid, image.uuid))
@@ -308,7 +311,7 @@ class NonWebSyncManager(
                     storageRef.putData(bytes.toFirebaseStorageData())
                     val downloadUrl = storageRef.getDownloadUrl()
                     if (image.id != 0L) {
-                        repository.updateImageRemoteUrl(image.id, downloadUrl)
+                        pendingRemoteUrlUpdates.add(image.id to downloadUrl)
                     }
                     uploaded++
                     spotModified = true
@@ -328,7 +331,7 @@ class NonWebSyncManager(
                 if (!refreshedUrl.isNullOrBlank()) {
                     if (refreshedUrl != image.remoteThumbnailUrl) {
                         if (image.id != 0L) {
-                            repository.updateImageRemoteUrl(image.id, refreshedUrl)
+                            pendingRemoteUrlUpdates.add(image.id to refreshedUrl)
                         }
                         refreshedUrls++
                         spotModified = true
@@ -362,7 +365,13 @@ class NonWebSyncManager(
                     FirestoreSpotDocument.serializer(),
                     FirestoreSpotDocument.fromSpotDetails(userId, detailToPush)
                 )
-                repository.markSpotAsSynced(uuid)
+                pendingRemoteUrlUpdates.forEach { (imageId, url) ->
+                    repository.updateImageRemoteUrl(imageId, url)
+                }
+                val latestLocal = repository.getAllSpots().first().find { it.spot.uuid == uuid }
+                if (latestLocal == null || latestLocal.spot.lastEditedAt == localDetail.spot.lastEditedAt) {
+                    repository.markSpotAsSynced(uuid)
+                }
             } catch (e: Exception) {
                 failed++
                 platformLogError(TAG, "Failed to update Firestore metadata after force backup for $uuid", e)
@@ -479,8 +488,15 @@ class NonWebSyncManager(
     }
 
     override suspend fun syncPublicSpots() {
-        val currentFirestore = firestore ?: return
-        publicSyncMutex.withLock {
+        val error = syncPublicSpotsInternal()
+        if (error != null) {
+            _syncError.value = error
+        }
+    }
+
+    private suspend fun syncPublicSpotsInternal(): String? {
+        val currentFirestore = firestore ?: return null
+        return publicSyncMutex.withLock {
             try {
                 val snapshot = currentFirestore.collection("spots")
                     .where { "isPublic" equalTo true }
@@ -513,8 +529,10 @@ class NonWebSyncManager(
                     repository.pruneRemovedPublicSpots(activePublicUuids)
                 }
                 platformLog(TAG, "syncPublicSpots completed: ${remoteSpots.size} remote public spots")
+                null
             } catch (e: Exception) {
                 platformLogError(TAG, "Error during syncPublicSpots", e)
+                "Failed to sync public spots: ${e.message ?: "unknown error"}"
             }
         }
     }

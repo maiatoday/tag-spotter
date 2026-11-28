@@ -12,16 +12,19 @@ data class BackupResult(
     val uploaded: Int = 0,
     val refreshedUrls: Int = 0,
     val failed: Int = 0,
-    val skippedNoLocalFile: Int = 0
+    val skippedNoLocalFile: Int = 0,
+    val attempted: Boolean = true
 ) {
     operator fun plus(other: BackupResult): BackupResult = BackupResult(
         uploaded = uploaded + other.uploaded,
         refreshedUrls = refreshedUrls + other.refreshedUrls,
         failed = failed + other.failed,
-        skippedNoLocalFile = skippedNoLocalFile + other.skippedNoLocalFile
+        skippedNoLocalFile = skippedNoLocalFile + other.skippedNoLocalFile,
+        attempted = attempted && other.attempted
     )
 
     fun toUserMessage(): String = when {
+        !attempted -> "Backup unavailable right now; please try again"
         uploaded > 0 && failed > 0 -> "Uploaded $uploaded photo(s); $failed failed"
         uploaded > 0 -> "Uploaded $uploaded photo(s) to cloud"
         refreshedUrls > 0 && failed == 0 -> "Refreshed $refreshedUrls cloud photo link(s)"

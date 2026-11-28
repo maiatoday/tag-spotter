@@ -13,3 +13,8 @@ internal actual fun resolveExistingLocalFilePath(rawPath: String): String? {
     val file = File(cleanPath)
     return if (file.exists() && file.isFile) file.absolutePath else null
 }
+
+internal actual fun toLocalFileModel(path: String): Any {
+    if (path.isBlank()) return ""
+    return File(path).toURI().toString()
+}
