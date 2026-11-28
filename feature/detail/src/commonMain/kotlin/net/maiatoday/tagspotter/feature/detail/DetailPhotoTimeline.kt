@@ -1,7 +1,8 @@
 package net.maiatoday.tagspotter.feature.detail
 
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
-import net.maiatoday.tagspotter.feature.detail.res.formatImageModel
+import net.maiatoday.tagspotter.core.ui.image.SpotAsyncImage
+import net.maiatoday.tagspotter.core.ui.image.formatImageModel
 import net.maiatoday.tagspotter.feature.detail.res.DateFormatter
 
 import androidx.compose.foundation.background
@@ -135,8 +136,8 @@ fun SpotTimelineCard(
         )
     ) {
         Column {
-            val imageModel = remember(image.imagePath, image.thumbnailPath) {
-                formatImageModel(image.imagePath, image.thumbnailPath)
+            val imageModel = remember(image.imagePath, image.thumbnailPath, image.remoteThumbnailUrl) {
+                formatImageModel(image)
             }
             Box(
                 modifier = Modifier
@@ -144,9 +145,10 @@ fun SpotTimelineCard(
                     .height(130.dp)
                     .background(Color.Black)
             ) {
-                AsyncImage(
+                SpotAsyncImage(
                     model = imageModel,
                     contentDescription = null,
+                    remoteThumbnailUrl = image.remoteThumbnailUrl,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )

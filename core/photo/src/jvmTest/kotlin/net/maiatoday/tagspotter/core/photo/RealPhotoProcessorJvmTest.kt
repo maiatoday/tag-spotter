@@ -77,4 +77,29 @@ class RealPhotoProcessorJvmTest {
             tempDir.delete()
         }
     }
+
+    @Test
+    fun testCreateThumbnailFromFileWritesScaled480pxJpeg() = runTest {
+        val tempDir = Files.createTempDirectory("tagspotter_thumb_test").toFile()
+        val thumbDir = File(tempDir, "thumbs")
+        val imageFile = File(tempDir, "large.png")
+        try {
+            val source = BufferedImage(1600, 800, BufferedImage.TYPE_INT_RGB)
+            assertTrue(ImageIO.write(source, "png", imageFile))
+
+            val processor = RealPhotoProcessor(thumbnailRootDir = thumbDir)
+            val thumbPath = processor.createThumbnailFromFile(imageFile.absolutePath)
+            assertNotNull(thumbPath)
+            assertTrue(thumbPath != imageFile.absolutePath, "Thumbnail should be written to a separate JPEG file")
+            val thumbFile = File(thumbPath)
+            assertTrue(thumbFile.exists() && thumbFile.length() > 0L)
+
+            val decoded = ImageIO.read(thumbFile)
+            assertNotNull(decoded)
+            assertEquals(480, decoded.width)
+            assertEquals(240, decoded.height)
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
 }

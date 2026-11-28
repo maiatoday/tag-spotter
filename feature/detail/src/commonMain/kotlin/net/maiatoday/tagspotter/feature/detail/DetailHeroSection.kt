@@ -1,7 +1,8 @@
 package net.maiatoday.tagspotter.feature.detail
 
 import net.maiatoday.tagspotter.feature.detail.res.DetailRes
-import net.maiatoday.tagspotter.feature.detail.res.formatImageModel
+import net.maiatoday.tagspotter.core.ui.image.SpotAsyncImage
+import net.maiatoday.tagspotter.core.ui.image.formatImageModel
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,6 +42,7 @@ import net.maiatoday.tagspotter.core.ui.getCategoryInactiveStatusLabel
 fun DetailHeroSection(
     imagePath: String,
     thumbnailPath: String,
+    remoteThumbnailUrl: String = "",
     status: String,
     category: String,
     isFallback: Boolean,
@@ -53,16 +55,26 @@ fun DetailHeroSection(
             .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
             .background(Color.Black)
     ) {
-        val imageModel = remember(imagePath, thumbnailPath) {
-            formatImageModel(imagePath, thumbnailPath)
+        val imageModel = remember(imagePath, thumbnailPath, remoteThumbnailUrl) {
+            formatImageModel(imagePath, thumbnailPath, remoteThumbnailUrl)
         }
-        AsyncImage(
+        val fallbackModel = remember(imagePath) {
+            if (imagePath.startsWith("content://") || imagePath.startsWith("android.resource://")) {
+                formatImageModel(imagePath = imagePath, thumbnailPath = "", remoteThumbnailUrl = "", preferFullImage = true)
+            } else {
+                null
+            }
+        }
+        SpotAsyncImage(
             model = imageModel,
             contentDescription = "Spot Hero Image",
+            remoteThumbnailUrl = remoteThumbnailUrl,
+            fallbackModel = fallbackModel,
             modifier = Modifier
                 .fillMaxSize()
                 .clickable { onImageClick() },
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            allowRetryOnError = true
         )
 
         // Bottom gradient overlay

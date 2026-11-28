@@ -76,5 +76,3 @@ interface ToastLauncher {
 
 @Composable
 expect fun rememberToastLauncher(): ToastLauncher
-
-expect fun formatImageModel(imagePath: String, thumbnailPath: String): Any

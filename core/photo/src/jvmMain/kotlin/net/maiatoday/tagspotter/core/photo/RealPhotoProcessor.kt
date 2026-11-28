@@ -13,7 +13,9 @@ import java.net.URI
 import javax.imageio.ImageIO
 import kotlin.random.Random
 
-class RealPhotoProcessor : PhotoProcessor {
+class RealPhotoProcessor(
+    private val thumbnailRootDir: File = File(System.getProperty("user.home"), "Pictures/TagSpotter/thumbnails/local")
+) : PhotoProcessor {
     override suspend fun saveImageToPublicGallery(filePath: String): String? = withContext(Dispatchers.IO) {
         try {
             val userHome = System.getProperty("user.home")
@@ -38,13 +40,28 @@ class RealPhotoProcessor : PhotoProcessor {
         }
     }
 
-    override suspend fun createThumbnailFromFile(filePath: String): String? {
-        // Return original path to let Coil load it directly (Coil handles scaling/caching)
-        return filePath
+    override suspend fun createThumbnailFromFile(filePath: String): String? = withContext(Dispatchers.IO) {
+        createJpegThumbnail(filePath) ?: filePath
     }
 
-    override suspend fun createThumbnailFromUri(uriString: String): String? {
-        return uriString
+    override suspend fun createThumbnailFromUri(uriString: String): String? = withContext(Dispatchers.IO) {
+        createJpegThumbnail(uriString) ?: uriString
+    }
+
+    private suspend fun createJpegThumbnail(sourcePathOrUri: String): String? {
+        if (sourcePathOrUri.isBlank() || sourcePathOrUri.startsWith("http")) return null
+        val bytes = decodeScaledBitmap(sourcePathOrUri, maxDimension = 480) ?: return null
+        return try {
+            if (!thumbnailRootDir.exists()) {
+                thumbnailRootDir.mkdirs()
+            }
+            val destFile = File(thumbnailRootDir, "thumb_${java.util.UUID.randomUUID()}.jpg")
+            destFile.writeBytes(bytes)
+            destFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     override suspend fun extractMetadataFromUri(uriString: String): PhotoMetadata? = withContext(Dispatchers.IO) {

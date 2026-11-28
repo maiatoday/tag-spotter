@@ -556,12 +556,12 @@ class DetailViewModel(
         }
     }
 
-    fun forceBackupSpotImages(onResult: (Int) -> Unit) {
+    fun forceBackupSpotImages(onResult: (net.maiatoday.tagspotter.core.sync.BackupResult) -> Unit) {
         if (!isCurrentlyEditable()) return
         val details = spotDetails.value ?: return
         viewModelScope.launch {
-            val count = syncManager.forceBackupSpot(details.spot.uuid)
-            onResult(count)
+            val result = syncManager.forceBackupSpot(details.spot.uuid)
+            onResult(result)
         }
     }
 

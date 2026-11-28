@@ -199,4 +199,79 @@ class JvmCanonicalSpotsSyncTest {
             server.stop(0)
         }
     }
+
+    @Test
+    fun forceBackupSpotUploadsLocalFileAndRejectsTokenlessResponse(): Unit = runBlocking {
+        val tempDir = java.nio.file.Files.createTempDirectory("jvm_backup_test").toFile()
+        val localThumb = java.io.File(tempDir, "thumb.jpg").apply {
+            writeBytes(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0x01, 0x02))
+        }
+        var storageResponseBody = """{"downloadTokens":"tok-123,tok-456"}"""
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/") { exchange ->
+            val path = exchange.requestURI.path
+            if (path.endsWith(":runQuery")) {
+                val errBytes = "{}".toByteArray()
+                exchange.responseHeaders.add("Content-Type", "application/json")
+                exchange.sendResponseHeaders(500, errBytes.size.toLong())
+                exchange.responseBody.use { it.write(errBytes) }
+                return@createContext
+            }
+            val body = if (path.startsWith("/v0/b/")) storageResponseBody else "{}"
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        var syncManager: JvmSyncManager? = null
+        try {
+            val origin = "http://127.0.0.1:${server.address.port}"
+            val repo = FakeSpotRepository()
+            repo.activeUid = "user-1"
+            repo.saveSpot(
+                spot = Spot(
+                    latitude = 52.52,
+                    longitude = 13.405,
+                    createdAt = 1000L,
+                    description = "Desktop mural",
+                    tags = emptyList(),
+                    category = "graffiti",
+                    status = "active",
+                    uuid = "spot-desktop-1",
+                    ownerUid = "user-1"
+                ),
+                imagePath = localThumb.absolutePath,
+                thumbnailPath = localThumb.absolutePath
+            )
+            val storage = InMemorySecureStorage().apply {
+                putString("firebase_id_token", "fake-token")
+            }
+            val client = JvmFirebaseClient(storage)
+            val manager = JvmSyncManager(
+                repository = repo,
+                client = client,
+                firestoreOrigin = origin,
+                storageOrigin = origin,
+                thumbnailCacheRoot = java.io.File(tempDir, "cache")
+            )
+            syncManager = manager
+            manager.startRealtimeSync("user-1")
+            val successResult = manager.forceBackupSpot("spot-desktop-1")
+            assertEquals(1, successResult.uploaded)
+            assertEquals(0, successResult.failed)
+            val updatedUrl = repo.getAllSpots().first().first().images.first().remoteThumbnailUrl
+            assertTrue(updatedUrl.contains("token=tok-123"), "Expected first download token in URL: $updatedUrl")
+
+            // Now simulate tokenless Storage response: must fail rather than persist a tokenless URL
+            storageResponseBody = """{"name":"spots/user-1/spot-desktop-1/thumbnails/x.jpg"}"""
+            val failedResult = manager.forceBackupSpot("spot-desktop-1")
+            assertEquals(0, failedResult.uploaded)
+            assertEquals(1, failedResult.failed)
+        } finally {
+            syncManager?.stopRealtimeSync()
+            server.stop(0)
+            tempDir.deleteRecursively()
+        }
+    }
 }

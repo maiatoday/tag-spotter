@@ -44,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -342,10 +343,8 @@ fun SettingsScreen(
 
                             androidx.compose.material3.OutlinedButton(
                                 onClick = {
-                                    viewModel.forceBackupAllImages { count ->
-                                        toastLauncher.showToast(
-                                            if (count > 0) "Backed up $count photo(s) to Cloud Storage" else "All local photos are already backed up!"
-                                        )
+                                    viewModel.forceBackupAllImages { result ->
+                                        toastLauncher.showToast(result.toUserMessage())
                                     }
                                 },
                                 enabled = !isSyncing,
@@ -353,6 +352,38 @@ fun SettingsScreen(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text("Backup All Local Photos", fontWeight = FontWeight.SemiBold)
+                            }
+
+                            val syncError by viewModel.syncError.collectAsStateWithLifecycle()
+                            if (!syncError.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = syncError ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        TextButton(onClick = { viewModel.clearSyncError() }) {
+                                            Text("Dismiss")
+                                        }
+                                    }
+                                }
                             }
 
                             // Adoption Prompt UI (Phase 3)

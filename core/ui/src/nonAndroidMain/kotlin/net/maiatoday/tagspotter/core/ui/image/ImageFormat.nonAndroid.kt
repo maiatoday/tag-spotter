@@ -3,19 +3,36 @@ package net.maiatoday.tagspotter.core.ui.image
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
-actual fun formatImageModel(imagePath: String, thumbnailPath: String): Any {
-    val thumb = thumbnailPath.trim()
-    val img = imagePath.trim()
+internal expect fun resolveExistingLocalFilePath(rawPath: String): String?
+internal expect fun toLocalFileModel(path: String): Any
 
-    if (thumb.startsWith("data:") || thumb.startsWith("http://") || thumb.startsWith("https://")) {
-        return thumb
-    }
-    if (img.startsWith("data:") || img.startsWith("http://") || img.startsWith("https://")) {
-        return img
-    }
+actual fun formatImageModel(
+    imagePath: String,
+    thumbnailPath: String,
+    remoteThumbnailUrl: String,
+    preferFullImage: Boolean
+): Any {
+    val resolved = resolveImageSource(
+        imagePath = imagePath,
+        thumbnailPath = thumbnailPath,
+        remoteThumbnailUrl = remoteThumbnailUrl,
+        preferFullImage = preferFullImage,
+        resolveExistingLocalFile = ::resolveExistingLocalFilePath
+    )
 
-    val path = thumb.ifEmpty { img }
-    return if (path.startsWith("file://")) path.removePrefix("file://") else path
+    return when (resolved) {
+        is ResolvedImageSource.LocalFile -> toLocalFileModel(resolved.resolvedPath)
+        is ResolvedImageSource.RemoteOrDataUrl -> resolved.url
+        is ResolvedImageSource.PlatformUri -> resolved.uri
+        is ResolvedImageSource.Fallback -> {
+            val raw = resolved.rawPath
+            if (raw.isEmpty() || raw.isRemoteOrDataUrl() || raw.isPlatformUri()) {
+                raw
+            } else {
+                toLocalFileModel(raw.stripFileScheme())
+            }
+        }
+    }
 }
 
 @Composable

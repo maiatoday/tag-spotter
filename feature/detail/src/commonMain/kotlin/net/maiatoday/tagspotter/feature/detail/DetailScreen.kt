@@ -591,10 +591,8 @@ fun DetailScreen(
                             if (canEdit) {
                                 IconButton(
                                     onClick = {
-                                        viewModel.forceBackupSpotImages { count ->
-                                            toastLauncher.showToast(
-                                                if (count > 0) "Uploaded $count photo(s) to cloud" else "Spot photos already backed up"
-                                            )
+                                        viewModel.forceBackupSpotImages { result ->
+                                            toastLauncher.showToast(result.toUserMessage())
                                         }
                                     }
                                 ) {
@@ -685,6 +683,7 @@ fun DetailScreen(
                         DetailHeroSection(
                             imagePath = mainImage.imagePath,
                             thumbnailPath = mainImage.thumbnailPath,
+                            remoteThumbnailUrl = mainImage.remoteThumbnailUrl,
                             status = details.spot.status,
                             category = details.spot.category,
                             isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported,
@@ -822,6 +821,7 @@ fun DetailScreen(
                         DetailHeroSection(
                             imagePath = mainImage.imagePath,
                             thumbnailPath = mainImage.thumbnailPath,
+                            remoteThumbnailUrl = mainImage.remoteThumbnailUrl,
                             status = details.spot.status,
                             category = details.spot.category,
                             isFallback = if (isCreationMode) draftIsFallback else details.spot.isImported,
@@ -973,6 +973,7 @@ fun DetailScreen(
                 ZoomableImageOverlay(
                     imagePath = image.imagePath,
                     thumbnailPath = image.thumbnailPath,
+                    remoteThumbnailUrl = image.remoteThumbnailUrl,
                     onClose = { zoomImage = null },
                     onScaleChanged = { scale ->
                         if (pagerState.currentPage == page) {
