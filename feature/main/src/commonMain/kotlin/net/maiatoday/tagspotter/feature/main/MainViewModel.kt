@@ -54,21 +54,24 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
+            var hasSyncedPublicOnStart = false
             authService.currentUserFlow.collect { user ->
                 spotRepository.activeUid = user?.uid
                 if (user != null) {
                     syncManager.startRealtimeSync(user.uid)
+                    if (!hasSyncedPublicOnStart) {
+                        hasSyncedPublicOnStart = true
+                        if (settingsRepository.showPublicSpots.first()) {
+                            syncManager.syncPublicSpots()
+                        }
+                    }
                 } else {
                     syncManager.stopRealtimeSync()
+                    hasSyncedPublicOnStart = true
                     if (settingsRepository.showPublicSpots.first()) {
                         syncManager.syncPublicSpots()
                     }
                 }
-            }
-        }
-        viewModelScope.launch {
-            if (settingsRepository.showPublicSpots.first()) {
-                syncManager.syncPublicSpots()
             }
         }
     }

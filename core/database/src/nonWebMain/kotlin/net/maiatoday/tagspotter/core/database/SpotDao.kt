@@ -33,6 +33,9 @@ interface SpotDao {
     @Query("UPDATE spot_images SET remoteThumbnailUrl = :remoteUrl WHERE id = :imageId")
     suspend fun updateImageRemoteUrl(imageId: Long, remoteUrl: String)
 
+    @Query("UPDATE spot_images SET thumbnailPath = :thumbnailPath, imagePath = :imagePath, remoteThumbnailUrl = :remoteThumbnailUrl WHERE id = :imageId")
+    suspend fun updateImagePaths(imageId: Long, thumbnailPath: String, imagePath: String, remoteThumbnailUrl: String)
+
     @Delete
     suspend fun deleteSpot(spot: SpotEntity)
 
