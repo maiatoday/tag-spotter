@@ -43,5 +43,9 @@ kotlin {
             implementation(libs.androidx.work.runtime.ktx)
             implementation(libs.koin.android)
         }
+
+        jvmMain.dependencies {
+            implementation(project(":core:settings"))
+        }
     }
 }
